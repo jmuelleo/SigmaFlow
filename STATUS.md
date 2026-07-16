@@ -4,7 +4,103 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT (2026-07-16, Ende der Sitzung) — hier beim nächsten Mal zuerst lesen
+## 🔖 PAUSE-PUNKT #2 (2026-07-16, später am selben Tag) — AKTUELL, zuerst lesen
+
+**Gerade laufend/zu prüfen beim Wiedereinstieg:** Ein GPU+Überanpassungs-
+Testlauf (`slurm/train_dummy_overfit_gpu.sh`, 300 Epochen auf den 10 Dummy-
+Beispielen, Early Stopping deaktiviert) wurde auf ARC eingereicht, kurz
+bevor die Sitzung pausiert wurde. **Job-Nummer wurde in der Sitzung nicht
+mitgeteilt** — als erstes prüfen:
+```bash
+sacct -u shug8458 --format=JobID,JobName,State,Elapsed,Start,End -S today
+```
+Zeile mit `sigmaflo` (Jobname `sigmaflow-overfit-gpu-test`) suchen, `State`
+prüfen (`COMPLETED`/`TIMEOUT`/`FAILED`/noch `RUNNING`/`PENDING`).
+
+**Vorgeschichte dieses Testlaufs:** Ein erster Versuch (Job `8176776`) lief
+mit `--time=01:00:00`, schaffte 208 von 300 Epochen (~15s/Epoche auf GPU),
+wurde dann vom Zeitlimit gekillt (`TIMEOUT`, kein Absturz). Zeitlimit
+daraufhin auf `01:45:00` erhöht (Hochrechnung: 300 Epochen × ~15s ≈ 86 Min
++ Anlaufzeit-Puffer) und neu eingereicht — **das ist der Job, dessen
+Ergebnis jetzt geprüft werden muss.**
+
+**Bereits bestätigt aus dem ersten (unvollständigen) Versuch — nicht
+nochmal prüfen, nur den fehlenden Rest (vollständige Verlustkurve) holen:**
+- ✅ GPU funktioniert: `CUDA available: True`, `device: NVIDIA L40S`,
+  `sigmadock` korrekt aus `SigmaFlow_Development` geladen (nicht aus dem
+  alten SigmaDock-Repo). Erster GPU-Testlauf unseres Flow-Matching-Codes
+  war also erfolgreich.
+- ⚠️ **Ungeklärter Fund, noch zu untersuchen (nicht blockierend):**
+  Wiederholt (Epochen 18, 79, 168, 188 im ersten Versuch) tauchte
+  `[WARN] Sample 4 failed: 'NoneType' object has no attribute 'GetAtoms'.
+  Skipping...` auf — ein bestimmtes Dummy-Beispiel (Index 4) lässt sich
+  gelegentlich nicht parsen (RDKit bekommt `None` statt Molekül-Objekt).
+  Wird abgefangen (kein Absturz, Sample wird übersprungen), aber
+  intermittierend (nicht bei jedem Zugriff), was auf eine echte, noch nicht
+  verstandene Ursache hindeutet (Datenqualität in einer der `.sdf`-Dateien,
+  oder eine Racebedingung/Nichtdeterminismus im Parsing-Code). **Vor dem
+  großen Lauf anschauen, aber nicht zwingend blockierend**, da der Code
+  robust genug ist, es zu überspringen.
+- Vollständige Verlustkurve über alle 300 Epochen: noch nicht eingesehen
+  (erster Versuch wurde vor Abschluss gekillt, `wandb`-Zusammenfassung
+  erscheint nur bei sauberem Lauf-Ende; zweiter Versuch mit mehr Zeit sollte
+  das liefern — **das als erstes beim Wiedereinstieg prüfen**, per `cat
+  slurm_logs/<jobnummer>.out` am Ende, Abschnitt "Run summary"/Sparklines
+  wie beim allerersten CPU-Erfolgslauf).
+
+**Was als nächstes zu tun ist, sobald der Testlauf-Befund vorliegt:**
+1. Verlustkurve über 300 Epochen einsehen — sinkt `loss_train`/`loss_val`
+   jetzt klar (Überanpassung, wie erhofft)? Falls ja: Modell kann lernen,
+   grünes Licht für den großen Lauf. Falls nein: genauer hinschauen, bevor
+   eine Woche Rechenzeit investiert wird.
+2. `Sample 4`-Parsing-Warnung untersuchen (siehe oben).
+3. **Echtes SLURM-Skript für den großen Trainingslauf schreiben:**
+   - Datensatz liegt bereits vor: `/data/stat-cadd/shug8458/data/{pdbbind,
+     astex,posebusters}` (User hat das per `find` bestätigt) — `--data_dir
+     /data/stat-cadd/shug8458/data` sollte funktionieren (Unterordner-Namen
+     in `conf/experiments/pdbbind-core.yaml` etc. noch gegenchecken, ob sie
+     zur tatsächlichen Ordnerstruktur unter `data/pdbbind/` passen — nicht
+     abschließend verifiziert).
+   - `conf/training/slurm.yaml` (existiert bereits, unverändert vom
+     Original) als `--config`-Datei nutzen statt manueller CLI-Flags.
+   - Reale Config sagt selbst "4-GPU DDP, 7-Tage-Lauf" — braucht andere
+     Partition/Zeitlimit als `short` (das ist auf Stunden gedeckelt, nicht
+     Tage). **User kennt Partitionsnamen, muss noch geklärt werden, welche
+     für Mehrtages-Jobs passt — noch nicht besprochen.**
+   - `--offline_run` vs. echtes W&B-Online-Logging für den "richtigen" Lauf
+     überdenken (bräuchte W&B-API-Key-Setup, noch nicht besprochen).
+   - Environment/Pfade sind bereits bekannt und funktionieren (siehe unten,
+     "Wichtige Pfade/Fakten für ARC").
+4. `scripts/sample.py`-Fix (später, nicht blockierend fürs Training) — hat
+   noch denselben `.diffuser._so3_diffuser.set_device(...)`-Bug wie
+   `trainer.py` vor dessen Fix.
+
+**Wichtige Pfade/Fakten für ARC (damit nichts neu erfragt werden muss):**
+- Projekt-Ordner: `/data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow/SigmaFlow_Development`
+- Conda-Umgebung: `/data/stat-cadd/shug8458/sigmaflow_env` (separate Umgebung,
+  Python 3.11.15, komplett getrennt vom alten `myenv`/SigmaDock — Grund:
+  gemeinsame Umgebung hätte `sigmadock`-Namenskollision riskiert, siehe
+  Meilenstein-Abschnitt weiter unten für die Details des dabei gefundenen
+  Bugs).
+- Python-Interpreter **immer über absoluten Pfad** aufrufen
+  (`/data/stat-cadd/shug8458/sigmaflow_env/bin/python`), nicht über `PATH`/
+  `python` nach `conda activate` — in einem `#!/bin/bash -l`-Batch-Skript
+  hat sich `conda activate` als unzuverlässig erwiesen (siehe Meilenstein-
+  Abschnitt).
+- Echter Datensatz: `/data/stat-cadd/shug8458/data/{pdbbind,astex,
+  posebusters}`.
+- `slurm_logs/` muss vor jedem `sbatch`-Aufruf manuell existieren (`mkdir -p
+  slurm_logs`), sonst schlägt der Job sofort fehl (SLURM öffnet die
+  `--output`/`--error`-Dateien vor Skriptausführung).
+- Partition `short`, GPU-Typ `l40s` (z.B. `--gres=gpu:l40s:1`).
+- Nützliche Befehle: `squeue -u shug8458` (laufend/wartend), `sacct -u
+  shug8458 --format=JobID,JobName,State,Elapsed,Start,End -S today`
+  (Historie/Status nach Jobende), `cat slurm_logs/<jobnummer>.{out,err}`
+  (Ergebnisse).
+
+---
+
+## 🔖 PAUSE-PUNKT #1 (2026-07-16, Ende der Sitzung) — älter, siehe #2 oben für aktuellen Stand
 
 **Wo wir stehen:** Der komplette SigmaFlow-Trainingsloop läuft nachweislich
 Ende-zu-Ende auf ARC (siehe Meilenstein-Abschnitt weiter unten für Details).
