@@ -22,15 +22,21 @@ conda activate /data/stat-cadd/shug8458/sigmaflow_env
 
 cd /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow/SigmaFlow_Development
 
-# Diagnostics: confirm the right environment is actually active before
-# running anything real. If this prints the wrong path/version, the
-# activation above failed silently and nothing downstream can be trusted.
-echo "python:  $(which python)"
-echo "version: $(python --version)"
-echo "prefix:  $CONDA_PREFIX"
-python -c "import sigmadock; print('sigmadock loaded from:', sigmadock.__file__)"
+# `conda activate` in a login-shell batch script has proven unreliable here
+# (CONDA_PREFIX gets set correctly, but PATH ends up pointing at the base
+# Mamba module's python instead of this environment's). Bypass PATH lookup
+# entirely and call this environment's interpreter by its absolute path.
+PYTHON=/data/stat-cadd/shug8458/sigmaflow_env/bin/python
 
-python scripts/train.py \
+# Diagnostics: confirm the right environment is actually active before
+# running anything real. If this prints the wrong path/version, something
+# is still wrong and nothing downstream can be trusted.
+echo "python:  $PYTHON"
+echo "version: $($PYTHON --version)"
+echo "prefix:  $CONDA_PREFIX"
+$PYTHON -c "import sigmadock; print('sigmadock loaded from:', sigmadock.__file__)"
+
+$PYTHON scripts/train.py \
     --data_dir /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow/SigmaFlow_Development/notebooks \
     --train_exps dummy_train \
     --val_exps dummy_train \
