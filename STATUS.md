@@ -4,6 +4,75 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
+## 🔖 PAUSE-PUNKT (2026-07-16, Ende der Sitzung) — hier beim nächsten Mal zuerst lesen
+
+**Wo wir stehen:** Der komplette SigmaFlow-Trainingsloop läuft nachweislich
+Ende-zu-Ende auf ARC (siehe Meilenstein-Abschnitt weiter unten für Details).
+Wir haben gerade besprochen, dass der Validierungsverlust im Smoke-Test
+**gestiegen** ist (nicht Überanpassung) — bei nur 15 Optimierungsschritten
+auf 15M Parametern absolut erwartbar, keine Sorge, das war nie das Ziel
+dieses Tests (siehe "Was der Smoke-Test NICHT zeigt" weiter unten).
+
+**Nächste Schritte, in dieser Reihenfolge vorgeschlagen (mit User noch nicht
+final vereinbart, nur besprochen):**
+
+1. **Offene Schlüsselfrage, zuerst klären:** Liegt der große Datensatz
+   (PDBbind general/refined/core, PoseBusters, Astex) auf ARC schon fertig
+   vorbereitet (z.B. unter `/data/stat-cadd/shug8458/
+   SigmaDock_Reproduction_JulianMueller/`, da User dort schon 2 Benchmarks
+   mit dem Original-SigmaDock gefahren hat)? Falls ja: einfach `--data_dir`
+   dorthin zeigen lassen (Datenlade-Pipeline ist unverändert von uns). Falls
+   nein: eigene, potenziell große Aufgabe außerhalb unserer Kontrolle
+   (Download/Registrierung bei PDBbind etc.) — **noch nicht mit User
+   geklärt, unbedingt zuerst fragen.**
+2. **GPU-Rauchtest** (empfohlen vor echtem Training): bisher NUR CPU
+   getestet (lokal und auf ARC). Ob `R3_FlowMatcher`/`SO3_FlowMatcher`/
+   `SE3_FlowMatcher`/`denoiser.py` auf einer echten GPU (Tensor-Geräte-
+   Platzierung!) fehlerfrei laufen, ist unverifiziert. Vorschlag: Kopie von
+   `slurm/train_dummy_test.sh` mit `--accelerator gpu --devices 1` und
+   `#SBATCH --gres=gpu:l40s:1`, sonst identisch (weiterhin Dummy-Datensatz,
+   winzig, günstig).
+3. **Überanpassungs-Test** (User-Idee, sinnvoll): viele Schritte (Hunderte
+   statt 15) auf den 10 Dummy-Beispielen, Early Stopping deaktivieren oder
+   `--early_stopping_patience` groß setzen (aktuell `1/4`, ein *Verhältnis*
+   zu `max_steps`, keine absolute Epochenzahl — Vorsicht bei der Anpassung).
+   Zeigt, ob das Modell überhaupt lernen *kann* — bisher nicht getestet.
+4. **Echtes SLURM-Skript fürs große Training**: nutzt `conf/training/
+   slurm.yaml` (existiert unverändert, siehe `SigmaFlow_Development/conf/
+   training/slurm.yaml`) statt manueller CLI-Flags wie im Dummy-Test.
+   Referenz-Config selbst sagt "4-GPU DDP, 7-Tage-Lauf" — braucht andere
+   Partition/Zeitlimit als `short` (typischerweise auf Stunden gedeckelt,
+   nicht Tage) — **User kennt Partitionsnamen, muss zusammen geklärt
+   werden, noch nicht besprochen welche Partition für Mehrtages-Jobs
+   passt.** Auch: `--offline_run` vs. echtes W&B-Logging (bräuchte
+   API-Key-Setup, noch nicht besprochen) für einen "richtigen" Lauf
+   überdenken.
+5. **`scripts/sample.py`** hat denselben `.diffuser._so3_diffuser.
+   set_device(...)`-Bug wie `trainer.py` vor dessen Fix (siehe
+   Infrastruktur-Lücke-Abschnitt weiter oben) — nicht blockierend fürs
+   Training selbst, aber nötig bevor später Posen generiert/PoseBusters-
+   Benchmarks gefahren werden sollen. Noch nicht angefasst.
+
+**Zeitschätzung (mit User geteilt, Vorbehalt: hängt stark an Punkt 1):**
+Falls Datensatz schon vorbereitet vorliegt: Schritte 2-4 zusammen vermutlich
+**3-4 Stunden aktive Sitzungszeit** (SLURM/Environment/Config-Mechanik ist
+inzwischen Routine, kein Neuland mehr). Die eigentliche Trainingslaufzeit
+danach (Punkt 4) ist separat und unbeaufsichtigt — Referenz-Config nennt
+**~7 Tage auf 4 GPUs** als vorgesehene volle Trainingsdauer, kein aktiver
+Arbeitsaufwand für uns während dieser Zeit.
+
+**Was der Smoke-Test NICHT zeigt (wichtig, nicht verwechseln):** Der
+bisherige Erfolg beweist "Pipeline stürzt nicht ab, Shapes/NaN/Vorwärts-
+Rückwärtspass korrekt" — NICHT "Modell lernt gut". `loss_val/total` ist im
+Smoke-Test über 3 Epochen gestiegen (`▁▅█`), `loss_train/total` erst
+gestiegen dann leicht gefallen (`▁█▅`) — bei nur 15 Optimierungsschritten
+auf 15M Parametern und Hyperparametern, die für den großen Datensatz
+kalibriert sind (nicht für 10 Beispiele), völlig erwartbar und kein
+Alarmsignal. Lernfähigkeit wurde bewusst noch nicht getestet (siehe
+Überanpassungs-Test-Vorschlag oben).
+
+---
+
 Letztes Update: 2026-07-16 (**Alle 6 Dateien strukturell fertig** —
 `R3_FlowMatcher.py`, `SO3_FlowMatcher.py`, `SE3_FlowMatcher.py`,
 `denoiser_adapted.py`, `sampling_adapted.py`, und neu **`trainer_adapted.py`**
@@ -973,6 +1042,78 @@ eigentliche SLURM-Batch-Skript schreiben (Grundlagen — Warteschlangen-
 Konzept, `#SBATCH`-Direktiven, Aufbau der Datei — bereits sehr ausführlich
 und langsam erklärt, siehe Konversation; konkrete Werte für unseren
 Testlauf noch nicht final zusammengesetzt).
+
+---
+
+## ✅✅✅ MEILENSTEIN (2026-07-16): Erster erfolgreicher End-zu-Ende-Trainingslauf auf ARC
+
+Nach Umgebungs-Setup (`sigmaflow_env`, separate Conda-Umgebung auf ARC,
+`/data/stat-cadd/shug8458/sigmaflow_env`, Python 3.11, `pip install -e
+".[train]"` inkl. `esm`/`biotraj` — baute auf Linux problemlos, anders als
+hier lokal unter Windows) und `SigmaFlow_Development/slurm/
+train_dummy_test.sh` (minimaler Smoke-Test: 10 Dummy-Komplexe,
+`batch_size=2`, CPU, `--offline_run`, `--debug`) lief der komplette
+Trainingsloop **zum ersten Mal überhaupt mit echten Tensoren, echten
+Daten, Ende-zu-Ende, ohne Absturz.**
+
+**Zwei echte Bugs unterwegs gefunden und gefixt** (beide nur beim
+tatsächlichen Ausführen entdeckbar, nicht durch Codelesen):
+1. `#SBATCH --output`/`--error` verweisen auf `slurm_logs/`, aber SLURM
+   öffnet diese Dateien, bevor irgendeine Zeile des Skripts läuft — ein
+   `mkdir -p slurm_logs` *innerhalb* des Skripts kommt zu spät. Fix: Kommentar
+   im Skript, Ordner muss vor `sbatch` manuell angelegt werden.
+2. `source activate <pfad>` (ohne vorheriges Sourcen von `conda.sh`)
+   aktivierte die Umgebung in einer nicht-interaktiven Login-Shell nur
+   unvollständig: `$CONDA_PREFIX` zeigte korrekt auf `sigmaflow_env`, aber
+   `PATH`/`which python` lösten trotzdem auf die Basis-Mamba-Modul-Installation
+   (Python 3.10) auf — wodurch `sigmadock` **lautlos aus dem alten
+   SigmaDock-Repo** (`SigmaDock_Reproduction_JulianMueller`) geladen wurde,
+   nicht aus unserem. Genau das Risiko, vor dem beim "Weg A vs. Weg B"-
+   Vergleich gewarnt wurde — trat trotz Weg B auf, wegen der Aktivierungs-
+   Mechanik selbst, nicht wegen geteilter Umgebungen. Fix: Python-Interpreter
+   der Umgebung über absoluten Pfad aufrufen (`/data/.../sigmaflow_env/bin/
+   python`), PATH-Auflösung komplett umgangen. Zusätzlich Diagnose-Zeilen
+   im Skript ergänzt (`which python`, Version, `sigmadock.__file__`), die
+   das beim nächsten Mal sofort sichtbar machen würden.
+
+**Verifizierte Ergebnisse aus dem echten Lauf:**
+- `sigmadock` korrekt aus `SigmaFlow_Development/src/sigmadock/__init__.py`
+  geladen (Diagnose-Zeile bestätigt), Python 3.11.15.
+- `MetaFront` lud korrekt `total_pairs=10` für train/val/test (unsere
+  `dummy_train.yaml` funktioniert im echten Trainingslauf, nicht nur im
+  isolierten Test).
+- `SigmaDockDenoiser`/`EquiformerV2` erfolgreich konstruiert (15.0M
+  Parameter, vollständige Layer-Zusammenfassung im Log).
+- 3 Trainings-Epochen (5 Batches/Epoche) liefen durch, Verluste mit
+  **unseren** Flow-Matching-Namen geloggt (`loss_train/loss_R`,
+  `loss_train/loss_trans`, `loss_val/loss_R`, `loss_val/loss_trans`,
+  `loss_*/total`) — bestätigt, dass die komplette Kette
+  `SE3_FlowMatcher.conditional_probability_path` → `denoiser._compute_
+  vector_field` → `denoiser.compute_losses` → `trainer._shared_step` →
+  PyTorch-Lightning-Backward-Pass in der Praxis funktioniert.
+- Kein NaN/Inf (weder unser eigener Check in `compute_losses` noch
+  `FullNaNCheckCallback` schlugen an).
+- Lauf endete nach 3 Epochen durch **Early Stopping** (nicht Absturz, nicht
+  Zeitlimit) — Ursache identifiziert: `--max_steps 5` fließt im
+  *originalen*, unveränderten `scripts/train.py` in die
+  Early-Stopping-Geduld-Berechnung ein (`patience = max_steps × early_
+  stopping_patience_ratio ≈ 1.25`), unabhängig von der tatsächlichen
+  Trainingsschritt-Begrenzung (die stattdessen über `max_epochs` läuft,
+  welches `--max_steps` NICHT überschreibt, da `Trainer(...)` in
+  `train.py` nur `max_epochs`, nie `max_steps` übergeben bekommt — eine
+  Eigenart des Original-Codes, keine Folge unserer Konversion). Validierungs-
+  verlust stieg über die 3 Epochen (erwartet bei nur 10 Beispielen/3
+  Epochen, keine sinnvolle Lernkurve zu erwarten, für den Zweck dieses
+  Smoke-Tests irrelevant).
+
+**Einordnung:** Das ist der zentrale Meilenstein des gesamten bisherigen
+Projekts — zum ersten Mal lief die komplette Diffusion→Flow-Matching-
+Konversion (alle 6 Dateien) nicht nur syntaktisch/isoliert getestet,
+sondern als vollständiger End-zu-Ende-Trainingslauf mit echten
+Proteindaten. Verbleibende Arbeit ab hier ist Verfeinerung
+(Hyperparameter, echte PoseBusters-Benchmarks, `scripts/sample.py`-Fix
+analog zu `trainer.py`, GPU-Testlauf), nicht mehr grundlegende
+Korrektheit der Konversion.
 
 ---
 
