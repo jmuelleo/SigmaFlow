@@ -10,8 +10,11 @@
 #SBATCH --time=00:20:00
 #SBATCH --output=slurm_logs/%j.out
 #SBATCH --error=slurm_logs/%j.err
-
-mkdir -p slurm_logs
+#
+# IMPORTANT: slurm_logs/ must already exist before you run `sbatch` on this
+# script. SLURM opens the --output/--error files before any line of this
+# script runs, so `mkdir -p slurm_logs` inside the script itself is too late.
+# Run `mkdir -p slurm_logs` yourself once, from this directory, first.
 
 module load Mamba
 source activate /data/stat-cadd/shug8458/sigmaflow_env
