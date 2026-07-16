@@ -17,9 +17,18 @@
 # Run `mkdir -p slurm_logs` yourself once, from this directory, first.
 
 module load Mamba
-source activate /data/stat-cadd/shug8458/sigmaflow_env
+source "$(conda info --base)/etc/profile.d/conda.sh"
+conda activate /data/stat-cadd/shug8458/sigmaflow_env
 
 cd /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow/SigmaFlow_Development
+
+# Diagnostics: confirm the right environment is actually active before
+# running anything real. If this prints the wrong path/version, the
+# activation above failed silently and nothing downstream can be trusted.
+echo "python:  $(which python)"
+echo "version: $(python --version)"
+echo "prefix:  $CONDA_PREFIX"
+python -c "import sigmadock; print('sigmadock loaded from:', sigmadock.__file__)"
 
 python scripts/train.py \
     --data_dir /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow/SigmaFlow_Development/notebooks \
