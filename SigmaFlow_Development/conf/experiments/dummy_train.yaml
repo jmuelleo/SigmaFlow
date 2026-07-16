@@ -1,0 +1,5 @@
+_target_: sigmadock.experiments.ExperimentConfig
+name: "dummy_train"
+dataset: "dummy_data"
+pdb_regex: ".*_protein\\.pdb$"
+sdf_regex: ".*_ligand\\.sdf$"
