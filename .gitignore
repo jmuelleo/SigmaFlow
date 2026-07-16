@@ -1,0 +1,7 @@
+# SigmaDock is a local, read-only reference copy of the original repo
+# (github.com/alvaroprat97/sigmadock) - not part of the SigmaFlow deliverable.
+SigmaDock/
+
+# Python
+__pycache__/
+*.pyc
