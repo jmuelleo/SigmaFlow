@@ -6,7 +6,14 @@
 # (2) prove the model can actually drive the loss down given enough steps
 # on a tiny dataset it can memorize. NOT meant to produce a useful model.
 #
-#SBATCH --job-name=sigmaflow-overfit-gpu-test
+# Round 2 (2026-07-17): rot_score_weight raised 0.5 -> 2.0 (4x its prior
+# value) to test whether giving rotation more gradient priority helps it
+# escape the near-baseline loss_R plateau seen in round 1 (job 8177699).
+# See STATUS.md for the reasoning (0.5 already offsets the structural 2x
+# factor from the skew-symmetric matrix norm, so rotation was already at
+# per-DOF parity with translation yet still barely learned).
+#
+#SBATCH --job-name=sigmaflow-overfit-gpu-test-rotw2
 #SBATCH --partition=short
 #SBATCH --gres=gpu:l40s:1
 #SBATCH --cpus-per-task=4
@@ -45,5 +52,6 @@ $PYTHON scripts/train.py \
     --devices 1 \
     --max_epochs 300 \
     --early_stopping_patience 0 \
+    --rot_score_weight 2.0 \
     --offline_run \
     --debug

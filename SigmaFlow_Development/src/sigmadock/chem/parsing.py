@@ -844,15 +844,11 @@ def read_pdb_from_string(pdb_string: str, as_biopython: bool = False) -> Union[C
         try:
             tmp = Chem.MolFromPDBBlock(pdb_string, removeHs=True)
             assert tmp is not None
-        except Exception as e:
-            # NOTE disabled non-sanitized training. This will destroy bond and atom features!
+        except Exception:
+            # NOTE non-sanitized fallback intentionally disabled: it would destroy bond
+            # and atom features, so a sanitization/valence failure here means the pocket
+            # is unusable and callers must skip this sample (see parse_complex's None check).
             return None
-            print(f"Failed to parse PDB string: {e}. Skipping Sanitization")
-            try:
-                tmp = Chem.MolFromPDBBlock(pdb_string, removeHs=False, sanitize=False)
-                assert tmp is not None
-            except Exception as e:
-                print(f"Failed to parse PDB string without sanitization: {e}.")
     return tmp
 
 

@@ -4,7 +4,273 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #2 (2026-07-16, später am selben Tag) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #4 (2026-07-17, später am selben Tag) — AKTUELL, zuerst lesen
+
+**Zwei Dinge in dieser Sitzung erledigt, lokal committet/gepusht(?) noch zu
+prüfen — siehe "Nächster Schritt" unten:**
+
+### 1. Sample-4-Bug: echte Ursache gefunden (widerlegt alte Vermutung unten) + gefixt
+
+Die Vermutung in PAUSE-PUNKT #3 ("RDKit ETKDGv3-Ligand-Embedding ist
+stochastisch, `None` propagiert bis `.GetAtoms()`") war **falsch** — lokal
+reproduziert (volle `sigmadock`-Umgebung ist auch lokal installiert, kein
+ARC-Zugriff nötig) und dabei widerlegt. Repro-Skript: Dummy-Datensatz über
+`SigmaDataset.__getitem__` in einer Schleife über alle 10 Beispiele × 40
+Wiederholungen aufgerufen, mit `traceback.format_exc()` statt der (vorher
+teils unterdrückten) Kurzmeldung.
+
+**Echte Ursache:** Betrifft die **Proteintasche**, nicht den Liganden.
+`read_pdb_from_string()` (`src/sigmadock/chem/parsing.py`) gibt bei einem
+RDKit-Sanitisierungs-/Valenzfehler beim Parsen des Pocket-PDB-Blocks
+absichtlich `None` zurück (Kommentar im Code: nicht-sanitisiertes Parsing
+würde Bindungs-/Atom-Features zerstören — das war schon immer so gewollt).
+Aber `parse_complex()` (`src/sigmadock/data.py`) hat dieses `None` nie
+geprüft — es lief unbemerkt 3 Funktionsaufrufe weiter bis
+`get_global_protein_graph()` mit `protein.GetAtoms()` abstürzte
+(`AttributeError: 'NoneType' object has no attribute 'GetAtoms'`).
+
+Betrifft **ausschließlich** `1R1H_BIR` (Dummy-Index 4), 15/40 Versuchen
+schlugen fehl, alle anderen 9 Beispiele nie. Erklärt auch die beobachtete
+Intermittenz: `pocket_distance_noise` verschiebt den Taschen-Cutoff
+zufällig bei jedem Aufruf; je nachdem ob eine bestimmte valenz-brechende
+Randresidue mit reinfällt oder nicht, schlägt die Sanitisierung fehl oder
+nicht.
+
+**Fix (3 Stellen, alle in `SigmaFlow_Development/src/sigmadock/`):**
+- `chem/parsing.py::read_pdb_from_string`: totes, unerreichbares
+  Fallback-`print`/Retry nach dem bewusst gesetzten `return None` entfernt
+  (Aufräumen, kein Verhaltenswechsel — der Kommentar erklärt jetzt auch
+  *warum* kein Fallback existiert).
+- `data.py::parse_complex`: neue explizite Prüfung `if pocket_mol is None:
+  raise ValueError(...)` direkt nach der Konvertierung, mit Dateipfad in
+  der Fehlermeldung — Fehler wird jetzt an der eigentlichen Fehlerquelle
+  sauber gemeldet statt drei Ebenen tiefer als kryptischer `AttributeError`.
+- `data.py::__getitem__`s Exception-Handler: druckt jetzt **immer** die
+  Kurzmeldung `[WARN] Sample {idx} failed: {e}. Skipping...` (vorher wurden
+  `ValueError`s komplett stillschweigend verschluckt, siehe Fund in
+  PAUSE-PUNKT #3); vollständiger Traceback zusätzlich nur bei
+  `verbose=True` (Log-Rauschen bei langen Läufen vermeiden).
+
+**Verhalten für Training unverändert:** Sample 4 wird weiterhin
+übersprungen (wie vorher, `force_retry` default `False` in unseren
+Skripten) — der Unterschied ist nur: sauberer, verständlicher Log-Eintrag
+statt Absturz-Traceback aus einem völlig unrelated Modul. Verifiziert:
+360 erfolgreiche `__getitem__`-Aufrufe über die anderen 9 Beispiele im
+Test, keine neuen Fehler eingeführt.
+
+### 2. `rot_score_weight` für Testlauf Runde 2 erhöht: 0.5 → 2.0
+
+Kontext: Runde-1-Ergebnis (Job `8177699`, siehe PAUSE-PUNKT #3) zeigte
+`loss_R` praktisch auf Zufalls-Baseline-Niveau (`≈10.75` vs. `≈10.6`
+"sag-Null-voraus"), während `loss_trans` deutlich sank. `0.5` kompensiert
+rechnerisch bereits exakt den strukturellen Faktor 2 aus der
+schiefsymmetrischen Matrixnorm (siehe PAUSE-PUNKT #3, "Finding 1") — pro
+Freiheitsgrad war Rotation also schon gleichgewichtet mit Translation im
+Loss, hat aber trotzdem kaum gelernt. Mit dem User besprochen: bewusst
+aggressiver Diagnose-Test (nicht die finale Kalibrierung fürs große
+Training) — `2.0` (4× relativ zur bisherigen Parität) statt vorsichtigerem
+`1.0`, um in einem kurzen 1.5–2h-Testlauf ein klares Signal zu bekommen, ob
+mehr Gewicht überhaupt hilft.
+
+**Umsetzung:** bewusst NICHT der globale Default in `trainer.py`/
+`config.py` geändert (bleibt `0.5`, weiterhin die kalibrierte Ausgangslage
+für zukünftige Läufe) — stattdessen `--rot_score_weight 2.0` explizit als
+CLI-Flag in `SigmaFlow_Development/slurm/train_dummy_overfit_gpu.sh`
+ergänzt (Job umbenannt zu `sigmaflow-overfit-gpu-test-rotw2`,
+`--time=01:45:00` unverändert, passt bereits zur gewünschten 1.5–2h-Dauer,
+war in Runde 1 kalibriert für exakt 300 Epochen auf GPU).
+
+### ⚠️ Nächster Schritt (noch NICHT erledigt, wichtig beim Wiedereinstieg)
+
+Diese Sitzung hatte **keinen SSH-Zugriff auf ARC** (kein hinterlegter
+Passwordless-Key für `shug8458@htc-login.arc.ox.ac.uk` in dieser Umgebung,
+`Permission denied`) und hat gemäß CLAUDE.md §9 (keine autonomen Git-
+Commits/Pushes) auch nicht selbst committet. D.h. die drei geänderten
+Dateien (`src/sigmadock/chem/parsing.py`, `src/sigmadock/data.py`,
+`slurm/train_dummy_overfit_gpu.sh`) liegen aktuell nur **lokal**
+verändert im Arbeitsverzeichnis, nicht committet, nicht gepusht, nicht auf
+ARC synchronisiert. **Bevor der Testlauf gestartet werden kann, muss der
+User:**
+1. Diff review + Commit (User-Entscheidung, ob mit meiner Hilfe oder
+   selbst).
+2. Push nach GitHub (`origin`, `jmuelleo/SigmaFlow`).
+3. Auf ARC: `git pull` im Projektordner (`/data/stat-cadd/shug8458/
+   SigmaFlow_Development_JulianMueller/SigmaFlow`).
+4. `sbatch slurm/train_dummy_overfit_gpu.sh` (aus
+   `SigmaFlow_Development/`, `slurm_logs/` muss existieren).
+5. Nach Abschluss: `loss_R`-Kurve aus Runde 2 gegen Runde 1 (Job `8177699`)
+   vergleichen — ist der Endwert (`~10.75` in Runde 1) jetzt klar
+   niedriger? Falls ja: Gewichts-Erhöhung hilft, für den großen Lauf
+   übernehmen (Wert eventuell noch feiner kalibrieren). Falls nein:
+   Rotation braucht vermutlich eine andere Intervention als reines
+   Loss-Gewicht (z.B. Lernrate, Architektur, mehr Trainingsschritte) —
+   nicht weiter blind am Gewicht drehen.
+
+---
+
+## 🔖 PAUSE-PUNKT #3 (2026-07-17) — älter, siehe #4 oben für aktuellen Stand
+
+**Überanpassungs-Testlauf: BESTANDEN.** Job `8177699` (`sigmaflow-overfit-
+gpu-test`, resubmittiert mit `--time=01:45:00`), Status `COMPLETED`,
+Laufzeit `01:28:03` (kein Timeout, sauber zu Ende gelaufen, alle 300
+Epochen). Log: `slurm_logs/8177699.out`.
+
+**Verlustkurven-Befund (wandb Run-summary/Sparklines am Ende des Logs):**
+- `loss_val/total`, `loss_val/loss_trans`, `loss_val/loss_R` zeigen alle
+  einen **klaren Abwärtstrend** über die 300 Epochen (Sparklines gehen von
+  `█`/`▇` am Anfang zu `▁`/`▂` am Ende). Das ist das gesuchte
+  Überanpassungs-Signal: **das Modell kann lernen**, keine strukturelle
+  Blockade in der Flow-Matching-Implementierung. **Grünes Licht für den
+  großen Trainingslauf.**
+- `loss_train/*` ist deutlich verrauschter (erwartbar bei nur 5
+  Batches/Epoche auf 10 Beispielen, hohe Varianz pro Schritt).
+  `loss_train/loss_trans` zeigt trotzdem einen erkennbaren Abwärtstrend
+  gegen Ende; `loss_train/loss_R` ist die verrauschteste Kurve von allen,
+  ohne klaren Trend.
+- Finale Werte (Epoche 299): `loss_train/loss_R=10.75`,
+  `loss_train/loss_trans=2.12`, `loss_train/total=7.50`,
+  `loss_val/loss_R=8.76`, `loss_val/loss_trans=2.49`.
+
+**Rigorose Ende-zu-Ende-Codeprüfung: ABGESCHLOSSEN (2026-07-17).** Komplett
+unabhängig durchgeführt (nicht auf frühere Zusammenfassungen in dieser Datei
+verlassen, sondern Code frisch gelesen und nachvollzogen). Ergebnis:
+
+### ⚠️ WICHTIG: Datei-Pfade in dieser Datei sind veraltet
+
+Die fünf Kerndateien liegen **nicht mehr** unter
+`SigmaFlow_Development/src_sigmadock_diff/*_adapted.py` (wie in den
+"Datei X/5"-Abschnitten weiter unten dokumentiert), sondern wurden zu einem
+echten installierbaren Package umstrukturiert (bestätigt über den
+Trainings-Log: `sigmadock loaded from: .../SigmaFlow_Development/src/
+sigmadock/__init__.py`). **Aktueller, tatsächlich importierter Ort:**
+- `src/sigmadock/diff/r3_flow_matcher.py`, `so3_flow_matcher.py`,
+  `se3_flow_matcher.py`, `so3_utils.py` (die gepatchte Version, nicht das
+  Original — Patch bestätigt vorhanden)
+- `src/sigmadock/diff/denoiser.py` (der "adaptierte" Denoiser, ohne Suffix)
+- `src/sigmadock/diff/sampling.py`
+- `src/sigmadock/trainer.py`
+
+Kein Bug, nur Doku-Rückstand (die Ordnerstruktur-Angleichung, die weiter
+unten im Abschnitt "Infrastruktur-Lücke" noch als offen vermerkt ist, wurde
+also irgendwann zwischen den Sitzungen erledigt, ohne dass diese Datei
+nachgezogen wurde). Die Design-Entscheidungen/Formeln in den historischen
+"Datei X/5"-Abschnitten weiter unten bleiben inhaltlich gültig (gegen den
+aktuellen Code geprüft), nur die genannten Pfade/Dateinamen sind zu
+korrigieren, falls dort referenziert.
+
+### Trainingspfad: verifiziert korrekt
+
+`t=0→t=1`-Konvention konsistent überall bestätigt, keine
+Diffusions-Konventions-Leckage gefunden. Exakter Cross-Check gegen die
+echten wandb-Zahlen: `trainer.py` gewichtet `total_loss = trans_score_weight
+(1.0)·loss_trans + rot_score_weight (0.5)·loss_R`. Eingesetzt:
+`1.0×2.12487 + 0.5×10.74963 = 7.499685` — trifft `loss_train/total=7.49969`
+exakt. Trainingsschleife/Loss-Aggregation sind also nachweislich korrekt
+verdrahtet, nicht nur "es sieht plausibel aus".
+
+### 🔴 Kritischer, neuer Fund: Sampling-Pfad ist komplett kaputt
+
+Ernster als der bisherige Vermerk unten ("scripts/sample.py hat denselben
+Bug, nicht blockierend") — es gibt kein `scripts/sample.py`, der eigentliche
+Blocker sitzt direkt in `denoiser.py`/`sampling.py`:
+- `sampling.py` (`sample_notebook()` und `sampler()`) ruft in **jedem**
+  ODE-Schritt unconditional `denoiser._compute_true_vector_field(...)` auf.
+- Diese Methode ruft `self.diffuser.calc_trans_vector_field(...)`/
+  `calc_rot_vector_field(...)` auf. `self.diffuser` wurde zu
+  `self.flow_matcher` umbenannt (per Grep bestätigt: `self.diffuser`
+  kommt nirgends sonst mehr vor) — UND `calc_trans_vector_field`/
+  `calc_rot_vector_field` wurden **nie implementiert**, in keiner Datei.
+- **Jeder** Aufruf von `sample_notebook()`/`sampler()` crasht sofort mit
+  `AttributeError`. Zusätzlich haben alle drei Sampling-Notebooks
+  (`04_diffusion.ipynb`, `05_crossdock_sampling.ipynb`,
+  `extensions/sampling.ipynb`) einen zweiten, unabhängigen Crash-Punkt:
+  `denoiser.diffuser._so3_diffuser.set_device(device)` (obsoleter
+  Device-Cache-Aufruf).
+
+**Fix braucht echte neue Mathematik, keine Umbenennung.** Hergeleitete
+Formeln (aus der bereits verifizierten `conditional_probability_path`-Logik):
+```
+u_t_trans = (trans_1 - trans_t) / (1 - t)
+u_t_R = so3_utils.log(R_tᵀ @ R_1) / (1 - t)
+```
+**Nicht blockierend fürs große Training**, aber muss vor jeglicher
+Posen-Generierung/PoseBusters-Arbeit erledigt werden — sollte explizit
+eingeplant werden, nicht als triviales Aufräumen behandelt.
+
+### Finding 1 (Größenordnung loss_R vs. loss_trans) — GEKLÄRT
+
+Drei sich überlagernde, alle bestätigte Ursachen:
+1. **Struktur-Faktor 2:** `u_t_R`/`pred_u_t_R` sind schiefsymmetrische
+   3×3-Matrizen; für `hat(v)` gilt `‖hat(v)‖²_F = 2‖v‖²` — Summe über alle 9
+   Matrixeinträge zählt jeden der 3 echten Freiheitsgrade doppelt.
+   Translation summiert sauber über 3 Komponenten. Reine Buchhaltung, kein
+   Bug.
+2. **Baseline-Vergleich:** Da `R_1` immer Identität ist (toter PCA-Code,
+   siehe Datei-4/5-Abschnitt unten), ist `u_t_R = log(R_0ᵀ)`. Analytisch
+   berechnete erwartete quadrierte Norm für Haar-uniforme Rotation:
+   `E[ω²] = π²/3+2 ≈ 5.29`; mit Faktor 2 ergibt die "sag-Null-voraus"-
+   Baseline `≈10.6` — nahezu identisch mit dem beobachteten `loss_R=10.75`
+   nach 300 Epochen. **Das Modell hat sich bei Rotation kaum von der
+   trivialen Baseline wegbewegt**, während Translation deutlich darunter
+   liegt — Rotation lernt hier spürbar langsamer als Translation.
+   Beobachtenswert für den großen Lauf, kein Blocker.
+3. `rot_score_weight=0.5` (`trainer.py:27-29`, **byte-identisch** zum
+   Original-Diffusions-Trainer übernommen) war gegen den alten, intern
+   reskalierten Score-Loss kalibriert; diese Reskalierung wurde beim
+   Flow-Matching-Umbau korrekt entfernt. Dass `0.5` den Faktor-2-Artefakt
+   aus Punkt 1 ungefähr kompensiert, ist vermutlich Zufall, keine bewusste
+   Neukalibrierung — bei Bedarf später neu austarieren.
+
+### Finding 2 (Sample-4-Warnung) — Ursache mit hoher Konfidenz identifiziert
+
+RDKits `ETKDGv3`-Konformer-Embedding in `ligalign.py` ist stochastisch
+(Zufalls-Seed pro Versuch); für das spezifische Molekül in Sample 4
+schlagen manchmal alle Embedding-Versuche fehl → `None` propagiert
+ungeprüft weiter bis zu einem `.GetAtoms()`-Aufruf, der crasht. Erklärt
+sowohl warum es **immer** Sample 4 ist (spezifische Molekülgeometrie) als
+auch warum es **intermittierend** ist (abhängig vom Zufalls-Seed-Zustand
+der jeweiligen Epoche). Datenpipeline fängt das sicher ab (`None` wird vor
+dem Batching gefiltert, keine Korruption erreicht den Loss).
+
+**Zusätzlicher neuer Fund dabei:** `data.py:556-558` — `ValueError`-Fehler
+in derselben Pipeline werden komplett stillschweigend verschluckt, **ohne
+jede Log-Ausgabe**. Die sichtbaren Sample-4-Warnungen könnten also nur ein
+Teil der tatsächlichen Fehlerrate sein. Empfehlung: einmal
+`traceback.format_exc()` statt `str(e)` loggen, um die exakte Zeile zu
+fixieren (noch nicht gemacht).
+
+### Kleinere Funde (nicht dringend)
+- Toter Code in `ligalign.py` (`TorsionalOptimizer.optimize` ruft eine
+  nicht-existente Methode `_calculate_rmsd` auf; `best_rmsd`-Vergleich in
+  derselben Klasse ist durch Init-Bug quasi wirkungslos) — auf keinem
+  aktiven Pfad (`data.py` nutzt `ConformerOptimizer.optimize_torsions`
+  direkt, nie `TorsionalOptimizer.optimize()`).
+- Vergessener `print(idx, pos_sel[atom_idx_sel].shape)`-Debug-Aufruf in
+  `denoiser.py`s `get_fragment_com`, feuert bei jedem Forward-Pass —
+  harmlos, aber Log-Rauschen.
+
+### Gesamturteil des Audits
+
+Trainingspfad: solide, verifiziert korrekt, grünes Licht für den großen
+Lauf bestätigt. Sampling-Pfad: komplett kaputt, ernster als bisher
+dokumentiert, muss vor jeglicher Posen-Generierung neu implementiert
+werden (echte Mathematik, s.o.), aber nicht blockierend fürs Training
+selbst.
+
+### Nächste konkrete Schritte (mit User besprochen, noch nicht final entschieden welches zuerst)
+
+1. `_compute_true_vector_field` in `denoiser.py`/`sampling.py` reparieren
+   (echte neue Implementierung nötig, s.o. Formeln) — jetzt höher
+   priorisiert als vorher angenommen.
+2. Echtes SLURM-Skript für den großen Trainingslauf schreiben (blockiert
+   nicht durch Punkt 1) — siehe Pfade/Fakten-Abschnitt unten.
+3. Optional, nicht dringend: `rot_score_weight` neu kalibrieren, Sample-4/
+   `ValueError`-Logging verbessern (`traceback.format_exc()`), Debug-`print`
+   in `get_fragment_com` entfernen, toten Code in `ligalign.py` aufräumen.
+
+---
+
+## 🔖 PAUSE-PUNKT #2 (2026-07-16, später am selben Tag) — älter, siehe #3 oben für aktuellen Stand
 
 **Gerade laufend/zu prüfen beim Wiedereinstieg:** Ein GPU+Überanpassungs-
 Testlauf (`slurm/train_dummy_overfit_gpu.sh`, 300 Epochen auf den 10 Dummy-

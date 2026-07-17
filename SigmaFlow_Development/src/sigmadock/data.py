@@ -1,6 +1,7 @@
 # import copy
 import random
 import time
+import traceback
 from copy import deepcopy
 from pathlib import Path
 from typing import Literal, Optional
@@ -269,6 +270,12 @@ class SigmaDataset(Dataset):
             pocket_mol = structure_to_rdkit(pocket_struct, remove_hs=False)
         else:
             raise ValueError(f"Unsupported pocket structure type: {type(pocket_struct)}")
+
+        if pocket_mol is None:
+            raise ValueError(
+                f"Failed to parse pocket into a valid RDKit Mol from {pdb} "
+                "(likely a sanitization/valence error in the extracted pocket block)."
+            )
 
         has_waters, has_hydrogens, has_hetatoms = inspect_structure(pocket_struct)
         assert not has_waters, f"Pocket structure {pdb} contains waters. Please remove them."
@@ -553,9 +560,9 @@ class SigmaDataset(Dataset):
             return data
 
         except Exception as e:
-            # Only print if Exception is not ValueError
-            if not isinstance(e, ValueError):
-                print(f"[WARN] Sample {idx} failed: {e}. Skipping...")
+            print(f"[WARN] Sample {idx} failed: {e}. Skipping...")
+            if self.verbose:
+                print(traceback.format_exc())
             if self.retry:
                 return self._try_again()
             else:
