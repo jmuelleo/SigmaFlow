@@ -4,7 +4,113 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #7 (2026-07-21, später am selben Tag) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #8 (2026-07-21, später am selben Tag) — AKTUELL, zuerst lesen
+
+**Kontext:** Trainingsjob (`slurm/train_dummy_overfit_gpu_3h.sh`, ~2.75h,
+`rot_score_weight=2.0`) wurde vom User auf ARC gestartet (`htc-login.arc.
+ox.ac.uk`, Job läuft auf `htc-g048` o.ä. Compute-Node). Während der Lauf
+lief, wurde ein vollständiger, penibler Audit über das **gesamte** Repo
+gemacht (nicht nur die bisher angefassten Dateien) — Ergebnis unten. Wenn
+diese Session hier weitermacht: **zuerst prüfen, ob der Trainingsjob fertig
+ist und was er ergeben hat** (Checkpoint unter `experiments/sigmadock/
+<timestamp>/checkpoints/`, dann `CKPT_DIR=... sbatch slurm/sample_dummy.sh`,
+dann `.sdf`s per `scp` runterladen — Login-Host `htc-login.arc.ox.ac.uk`,
+siehe Beispiel-Befehl weiter unten falls nötig — und in PyMOL ansehen).
+
+### Vollständiger Repo-Audit: keine Blocker gefunden
+
+Geprüft (komplett gelesen, nicht nur gegrept): `trainer.py`,
+`core/callbacks.py`, `net/model.py`s `forward`-Signatur, `net/encoder.py`,
+`data.py`, `core/data.py`, `datafronts.py`, alle `conf/*.yaml`, plus zwei
+bisher nie erwähnte Dateien in `diff/`: `criterion.py`, `utils.py`.
+
+**Bestätigt konsistent, keine funktionalen Diffusions-Reste:**
+- `trainer.py`/`core/callbacks.py`: Loss-Gewichtung, NaN-Sicherung,
+  LR-Scheduler, EMA — alles generisch. `SamplerDebugCallback` heißt zwar so
+  als ginge es um den Flow-Matching-Sampler, debuggt aber tatsächlich nur
+  PyTorchs `DistributedSampler` (Daten-Batching) — kein Bug, nur ein Name,
+  der kurz verwirren könnte.
+- `net/model.py`: `forward(self, data, t, **kwargs)` nimmt `t` direkt ohne
+  eingebaute Rauschschema-Logik — unabhängig bestätigt, dass das Netzwerk
+  Diffusion/Flow-Matching-agnostisch ist (deckt sich mit dem ursprünglichen
+  Dependency-Mapping).
+- `data.py`/`core/data.py`/`datafronts.py`: keine Diffusions-Spuren.
+- **Neu gefunden, beide komplett toter Code (nirgends importiert/aufgerufen):**
+  `diff/criterion.py::scale_rotational_score` (noch Diffusions-Wortwahl
+  "rotational scores", aber folgenlos da unbenutzt), `diff/utils.py::
+  autograd_gradients` (generischer MD-Gradienten-Helfer, gar nicht
+  Diffusions-spezifisch, auch unbenutzt).
+- `trainer.py:117`s beunruhigend klingender TODO-Kommentar ("old checkpoint
+  will not load under new __class__") **geprüft und als unkritisch
+  bestätigt**: Checkpoint-Laden konstruiert `SigmaFlowGenerator` immer frisch
+  aus Kwargs (`SigmaFlowGenerator(model=equi, **denoiser_cfg)`), nicht aus
+  dem gespeicherten Klassennamen — kein Risiko durch unsere Umbenennung.
+
+**Rein kosmetische Funde (Docstrings/Kommentare/Klassennamen, keine Logik,
+nichts davon blockierend):**
+- `sampling.py` (beide Funktionen): Docstrings sagen noch "Evaluate the
+  SE3Diffuser by performing a reverse sampling process" — sollte
+  SE3FlowMatcher/Vorwärts-ODE heißen.
+- `sigma_flow_generator.py`: vereinzelte Kommentare mit alten Begriffen
+  ("Output of forward_marginal", "Forward pass for the denoiser", "Noise
+  the current denoised states") — Logik selbst mehrfach diese Session real
+  getestet und korrekt.
+- `trainer.py`: Docstring "Preconditioned Denoiser".
+- `net/encoder.py`/`net/model.py`: Klasse `AtomDiffusionEncoder` ist reine
+  generische Atom-Typ-Embedding-Logik ohne Diffusions-Mathematik — Name ist
+  Altlast.
+- `oracle.py`: Kommentar zu `epsilon_t` ("avoid division by zero in
+  diffusion process") übertreibt die Notwendigkeit leicht (unsere
+  Trainings-Formel hat bei `t=0` keine Singularität), schadet aber nicht.
+
+**Bereits bekannt, hier nur bestätigt weiterhin offen (kein neuer Fund):**
+`rot_score_method`/`rot_score_scaling` totes Config-Feld in
+`conf/training/slurm.yaml` (PAUSE-PUNKT #6/#7) — betrifft nur die künftige
+Große-Lauf-Config, nicht den aktuell laufenden Dummy-Test.
+
+### Wichtige Klarstellung für die weitere Einordnung (User-Frage beantwortet)
+
+User fragte: wenn der Dummy-Überanpassungstest gut aussieht, fehlt dann
+nichts mehr außer Doku/Cleanup/Kalibrierung? **Antwort: die Software-
+Konversion (das eigentliche Projektziel laut `CLAUDE.md` §1) wäre damit
+validiert — ein einsatzbereites, benchmarkgeprüftes Modell ist es aber
+noch nicht.** Zwei Dinge fehlen dafür grundsätzlich, nicht nur kosmetisch:
+1. **Überanpassung auf 10 Beispielen beweist keine Generalisierung** — nur
+   der große Lauf auf dem vollen Datensatz beantwortet das.
+2. Der große Lauf selbst ist kein triviales "Skript starten": `slurm/
+   train.sh` existiert noch nicht (braucht ARC-Partitions-Klärung für
+   Mehrtages-Jobs), die echten Datensatz-Pfade auf ARC wurden nie gegen die
+   Config-Regex verifiziert, und danach steht die eigentliche PoseBusters-
+   Auswertung noch komplett aus (laut `CLAUDE.md` §11 bewusst ein
+   eigener, späterer Schritt, nicht Teil der Kern-Konversion).
+
+### ARC-Zugangsdaten (neu dokumentiert, bisher nirgends festgehalten)
+
+Login-Host: `htc-login.arc.ox.ac.uk` (`ssh -X shug8458@htc-login.arc.ox.ac.uk`).
+Beispiel `scp` von einem lokalen Windows-Rechner aus (nicht von innerhalb
+ARC), um Sampling-Ergebnisse runterzuladen:
+```
+scp shug8458@htc-login.arc.ox.ac.uk:/data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow/SigmaFlow_Development/sampling_output/results/dummy_train/last/seed_0/*.sdf "<lokaler-Zielordner>"
+```
+
+### Nächste Schritte
+
+1. Trainingsjob-Ergebnis prüfen (Loss-Kurven, Checkpoint vorhanden).
+2. `slurm/sample_dummy.sh` mit dem Checkpoint laufen lassen, `.sdf`s
+   runterladen, in PyMOL ansehen — **`use_true_vector_field=false` (Default,
+   schon so in `conf/sampling/base.yaml`) ist Pflicht für einen echten Test**,
+   nicht `true` (das würde das Netzwerk umgehen, siehe PAUSE-PUNKT #5).
+3. Je nach Ergebnis: falls die Posen gut aussehen, grünes Licht fürs
+   Vorbereiten des großen Laufs (siehe "Wichtige Klarstellung" oben für den
+   tatsächlichen Umfang davon). Falls nicht: genauer hinschauen, bevor
+   Rechenzeit für den großen Lauf investiert wird.
+4. Weiterhin offen (unverändert aus PAUSE-PUNKT #6/#7): `rot_score_method`-
+   Entscheidung, `rot_score_weight`-Kalibrierung für den großen Lauf,
+   `slurm/train.sh` bauen, Datensatz-Pfade auf ARC verifizieren.
+
+---
+
+## 🔖 PAUSE-PUNKT #7 (2026-07-21, später am selben Tag) — älter, siehe #8 oben für aktuellen Stand
 
 ### `scripts/sample.py` portiert + SDF-Export gebaut — fertig, verifiziert
 
