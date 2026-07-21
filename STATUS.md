@@ -85,17 +85,40 @@ deutlich unter Baseline aber nicht Null. Erwartung: sichtbar bessere,
 wahrscheinlich schon ziemlich passende Posen, aber realistisch einschätzen,
 nicht "garantiert perfekt" versprechen.
 
-**Noch zu klären/bauen (nächster konkreter Schritt):**
-1. `rot_score_weight` für diesen Testlauf festlegen (weiterhin offene
-   Kalibrierungsfrage aus PAUSE-PUNKT #4 — für einen reinen Sichtcheck
-   pragmatisch `2.0` weiterverwenden, das war bisher am besten getestet,
-   oder `1.0` als Mittelweg probieren).
-2. `slurm/train_dummy_overfit_gpu.sh`-Kopie mit `--time`/`--max_epochs` für
-   2-3h statt bisher 1.75h/300 Epochen.
-3. `slurm/sample_dummy.sh` neu bauen (Basis: SigmaDock-Vorlage), zeigt auf
-   `experiment=dummy_train`, den frischen Checkpoint, und schaltet
-   Vina/PoseBusters-Postprocessing ab (`postprocessing.scoring=null
-   postprocessing.bust_config=null`, für einen reinen Sichtcheck nicht nötig).
+### ✅ Beide fehlenden SLURM-Skripte gebaut und lokal verifiziert (soweit ohne ARC/GPU möglich)
+
+- **`slurm/train_dummy_overfit_gpu_3h.sh`** (neue Datei, `train_dummy_overfit_gpu.sh`
+  bleibt als Referenz für die 300-Epochen-Läufe unverändert): `--time=02:45:00`,
+  `--max_epochs 700` (Rate-Schätzung aus Job 8177699/8182812: `~3.4` Epochen/Min
+  auf GPU L40S → `~600` Epochen in 2.75h; `max_epochs` bewusst etwas höher
+  gesetzt, damit das `--time`-Limit die tatsächliche Grenze ist, nicht ein zu
+  früh erreichtes `max_epochs` — `ModelCheckpoint` mit `save_last=True`
+  speichert so oder so den zuletzt abgeschlossenen Stand). `rot_score_weight`
+  bei `2.0` belassen (bisher am besten getestet), leicht editierbar falls
+  gewünscht.
+- **`slurm/sample_dummy.sh`** (neue Datei, portiert von `SigmaDock/slurm/sample.sh`,
+  generisches Vorlagen-Skript ohne Diffusions-Reste): `experiment=dummy_train`,
+  `graph.sample_conformer=false` (nutzt die Bound-Pose-Fragmentierung wie beim
+  Training, direktester Test auf Auswendiglernen), `postprocessing.scoring=null
+  postprocessing.bust_config=null` (Vina/PoseBusters für den reinen Sichtcheck
+  nicht nötig, spart potenzielle Fehlerquellen). `CKPT_DIR` als Pflicht-Env-Var
+  (Pfad zum Checkpoint aus dem Trainingslauf).
+
+  **Lokal verifiziert** (kein ARC/GPU nötig dafür): Hydra-Overrides lösen über
+  `prepare_sampling_cfg` korrekt zu `cfg.model.ckpt_dir`/`cfg.data.data_dir`/
+  `cfg.experiments.name` auf; `build_sampling_datafront` findet mit
+  `experiment=dummy_train` + echtem `data_dir=notebooks` tatsächlich alle 10
+  Dummy-Komplexe (`Datafront pairs: 10`, "Re-Docking"-Modus wie erwartet, da
+  kein `reference_sdf`). Was **nicht** lokal testbar war: der eigentliche
+  Sampling-Lauf selbst (braucht einen echten trainierten Checkpoint + GPU).
+
+**Nächster konkreter Schritt:** User führt beide Skripte auf ARC aus
+(`sbatch slurm/train_dummy_overfit_gpu_3h.sh`, danach — sobald ein Checkpoint
+unter `experiments/sigmadock/<timestamp>/checkpoints/` liegt —
+`CKPT_DIR=... sbatch slurm/sample_dummy.sh`), dann die geschriebenen `.sdf`-
+Dateien unter `sampling_output/results/dummy_train/.../` in PyMOL ansehen.
+`rot_score_weight` für diesen Testlauf ist mit `2.0` vorbelegt, bei Bedarf in
+`train_dummy_overfit_gpu_3h.sh` direkt editierbar (eine Zeile).
 
 ## 🔖 PAUSE-PUNKT #6 (2026-07-21, später am selben Tag) — älter, siehe #7 oben für aktuellen Stand
 
