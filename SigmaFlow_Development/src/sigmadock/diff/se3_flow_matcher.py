@@ -38,6 +38,17 @@ class SE3_FlowMatcher:
         
         return result
     
+    def calc_vector_field(self, trans_t: torch.Tensor, R_t: torch.Tensor, trans_1: torch.Tensor, R_1: torch.Tensor, t: torch.Tensor) -> dict[str, torch.Tensor]:
+        """
+        brings calc_trans_vector_field and calc_rot_vector_field together to a SE(3) vector_field
+        """
+        u_t_trans = self._r3_flow_matcher.calc_trans_vector_field(trans_t,trans_1, t)
+        u_t_R = self._so3_flow_matcher.calc_rot_vector_field(R_t,R_1, t)
+
+        result = {"u_t_trans": u_t_trans,
+                  "u_t_R": u_t_R}
+        return result
+    
         
 
 

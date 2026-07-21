@@ -1012,14 +1012,8 @@ class SigmaDockDenoiser(nn.Module):
         Returns:
             dict[str, torch.Tensor]: A dictionary containing the true vector_field.
         """
-        # Compute true translational vector_field
-        u_t_trans = self.diffuser.calc_trans_vector_field(Tt, trans_1, t_batch)
-        # Compute true rotational vector_field
-        u_t_R = self.diffuser.calc_rot_vector_field(Rt, R_1, t_batch)
-        return {
-            "u_t_trans": u_t_trans,
-            "u_t_R": u_t_R,
-        }
+        result = self.flow_matcher.calc_vector_field(Tt, Rt, trans_1, R_1, t_batch)
+        return result
 
     def forward(
         self,

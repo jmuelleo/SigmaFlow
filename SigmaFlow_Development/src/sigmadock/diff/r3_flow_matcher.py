@@ -35,6 +35,19 @@ class R3_FlowMatcher:
         x_next = x_t + v_t * dt
         return x_next
     
+    def calc_trans_vector_field(self, x_t: torch.Tensor, x_1: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        """
+        x_t: [n,3] current position
+        x_1: [n,3] final position
+        t: [n] time per fragment; in (0,1) due to singularity at t = 1
+        Returns: 
+        u_t_trans: [n,3] the vector field that brings (x_t,t) to x_1
+        """
+
+        u_t_trans = (x_1 - x_t)/(1-t[:, None])
+        return u_t_trans
+
+    
     
     
 

@@ -159,7 +159,7 @@ def sample_notebook(
     )  # [N]
     # Iterate across timesteps in reverse order
     for i, t in tqdm(enumerate(timesteps[:-1])):
-        dt = timesteps[i] - timesteps[i + 1]
+        dt = timesteps[i+1] - timesteps[i]
         noise_scale = noise_scales[i]  # [1]
         t = torch.tensor(t, device=batch.x.device)  # [1]
         t_batch = t.repeat_interleave(sum(num_fragments))  # [B x F]
@@ -388,7 +388,7 @@ def sampler(
     all_pos = [pos_t[is_lig]]
     # Iterate across timesteps in reverse order
     for i, t in tqdm(enumerate(timesteps[:-1])):
-        dt = timesteps[i] - timesteps[i + 1]
+        dt = timesteps[i+1] - timesteps[i]
         noise_scale = noise_scales[i]  # [1]
         t = torch.tensor(t, device=batch.x.device)  # [1]
         t_batch = t.repeat_interleave(sum(num_fragments))  # [B x F]

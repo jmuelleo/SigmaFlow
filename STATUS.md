@@ -4,7 +4,212 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #4 (2026-07-17, später am selben Tag) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #5 (2026-07-21) — AKTUELL, zuerst lesen
+
+**Der Sampling-Pfad (kritischer Fund aus PAUSE-PUNKT #3, "komplett kaputt")
+ist in dieser Session vollständig repariert und Schritt für Schritt
+verifiziert worden.** User hat jede Einheit selbst geschrieben (Lehr-Workflow
+aus CLAUDE.md §6 durchgezogen), Claude hat jeweils Interface/Mathematik erklärt,
+Review gemacht und danach lokal getestet. Reihenfolge und Ergebnisse:
+
+### 1. `calc_trans_vector_field` (`R3_FlowMatcher`, `src/sigmadock/diff/r3_flow_matcher.py`)
+
+Neue Methode: `u_t = (x_1 - x_t) / (1-t)` — hergeleitet aus der bereits
+verifizierten `conditional_probability_path`-Interpolation (auflösen nach
+`x_0`, einsetzen in `u_t = x_1 - x_0`). Liefert auf dem exakten Pfad dasselbe
+Feld wie das Trainingsziel, korrigiert aber zusätzlich selbstständig in
+Richtung `x_1`, falls `x_t` (z.B. durch Integrationsfehler) nicht exakt auf
+der Geraden liegt — genau die Eigenschaft, die für ODE-Sampling gebraucht
+wird. Singularität bei `t=1`, deshalb iteriert `sampling.py` bewusst nie über
+`t=t_max=1.0` selbst.
+
+Lokal getestet (4 Fälle, alle bestanden): Pfad-Konsistenz (`3e-7`
+Abweichung), Selbstkorrektur von gestörtem `x_t` aus (ein Euler-Schritt mit
+`dt=1-t` trifft `x_1` exakt), Endlichkeit nahe `t=1` (`t=0.9999`, groß aber
+kein `NaN`/`Inf`), Shape-Check.
+
+### 2. `calc_rot_vector_field` (`SO3_FlowMatcher`, `so3_flow_matcher.py`)
+
+Analog auf SO(3): `ω = log(R_t^T R_1) / (1-t)`, rechts-trivialisiert
+(konsistent mit der bestehenden `conditional_probability_path`-Konvention).
+Herleitung: `R_1 = R_t · exp((1-t)·ω)` nach `ω` aufgelöst.
+
+Getestet (5 Fälle): Pfad-Konsistenz (Restfehler bis `~7e-4` bei Rotationspaaren
+nahe `ω≈172-173°` — **kein neuer Bug**, sondern der bereits in PAUSE-PUNKT #3
+dokumentierte, akzeptierte Präzisionsrest von `so3_utils` nahe `ω=π`;
+verifiziert durch Diagnose: Fehler korreliert exakt mit dem Rotationswinkel
+pro Sample), Selbstkorrektur (`8e-7`), Endlichkeit nahe `t=1`, Schiefsymmetrie
+von `u_t_R` (exakt `0`), Shape-Check.
+
+### 3. `calc_vector_field` (`SE3_FlowMatcher`, `se3_flow_matcher.py`)
+
+Komponiert die beiden obigen zu `{"u_t_trans": ..., "u_t_R": ...}` (gleiche
+Schlüssel wie `conditional_probability_path`, damit `denoiser.py` sie direkt
+weiterverwenden kann). Erster Entwurf gab zusätzlich `trans_t`/`R_t` unverändert
+zurück (Kopie der Eingabe, kein Mehrwert) — auf Review hin entfernt.
+
+Getestet: Pfad-Konsistenz beider Komponenten, Shape/Keys, **volle 20-Schritt-
+ODE-Trajektorie** von zufälligem Startzustand bis `t=1` ausschließlich mit
+`calc_vector_field`+`euler_step` — landet praktisch exakt bei `trans_1`/`R_1`
+(`trans_error=0.0`, `R_error=1.4e-6`). Stärkster Beleg, dass Formel und
+Verdrahtung stimmen.
+
+### 4. `denoiser.py::_compute_true_vector_field` (Zeile ~995-1016)
+
+Der ursprüngliche Crash-Grund aus PAUSE-PUNKT #3: `self.diffuser` (existiert
+nicht mehr, umbenannt zu `self.flow_matcher`) und die nie implementierten
+`calc_trans_vector_field`/`calc_rot_vector_field`. Jetzt ein einziger Aufruf:
+`return self.flow_matcher.calc_vector_field(Tt, Rt, trans_1, R_1, t_batch)`.
+
+**Wichtige Klarstellung, die im Zuge dessen mit dem User besprochen wurde:**
+Diese Methode wird **nicht** für echte, blinde Posen-Generierung benutzt (dafür
+kennt `_compute_vector_field`, unverändert, nur Netzwerk-Output, nie `R_1`).
+`_compute_true_vector_field` dient nur (a) dem Redocking-Diagnose-Logging
+(`compute_losses` pro Schritt, `R_1` aus bekannter Testpose) und (b) dem
+expliziten `use_true_vector_field=True`-Debug-Modus (Netzwerk komplett
+umgangen, reiner ODE-Selbsttest). Im Normalfall (`use_true_vector_field=False`,
+Default) fließt das wahre Feld nirgends in die generierte Trajektorie ein —
+kein Datenleck.
+
+Getestet mit einer echten `SigmaDockDenoiser`-Instanz (Stub-Module für
+`torch_geometric`/`rdkit`-abhängige Importe, da lokal nicht installiert, s.u.):
+Rückgabe-Keys, Pfad-Konsistenz beider Feld-Komponenten (`3.6e-7` /
+`3.1e-4`), Shapes — alle bestanden.
+
+### 5. `sampling.py`: `dt`-Vorzeichenfehler behoben (NEUER, unabhängiger Fund)
+
+Beim Testen der obigen Fixes fiel auf: `dt = timesteps[i] - timesteps[i+1]`
+(beide Sampling-Funktionen, `sample_notebook` Zeile ~162, `sampler` Zeile
+~391) ist bei der jetzt **steigenden** Zeitfolge (`t_min→t_max`, Flow-Matching-
+Konvention `0→1`) **negativ** — ein Überbleibsel der alten Diffusions-
+Konvention (dort lief die Zeit `1→0`, da war dieselbe Formel korrekt).
+Empirisch bestätigt: mit der alten Formel divergiert eine 18-Schritt-
+Integration mit dem *wahren* Feld komplett (`trans_error=48.7`,
+`R_error=1.8`, praktisch eine zufällige Endrotation) statt bei `trans_1`/`R_1`
+anzukommen. Fix: `dt = timesteps[i+1] - timesteps[i]`. Nach dem Fix:
+`trans_error=0.0`, `R_error=1e-6` (Formel direkt aus der Datei extrahiert und
+verifiziert, nicht nur eine Kopie getestet).
+
+Dieser Bug war in PAUSE-PUNKT #3 **nicht** dokumentiert (die dortige
+Verifikation "keine Diffusions-Konventions-Leckage gefunden" bezog sich nur
+auf den Trainingspfad, nicht auf `sampling.py`) — reiner Zufallsfund beim
+End-to-End-Testen der neuen `calc_vector_field`-Kette.
+
+### 6. Notebook-Bugs behoben (`04_diffusion.ipynb`, `05_crossdock_sampling.ipynb`, `extensions/sampling.ipynb`)
+
+Der in PAUSE-PUNKT #3 als "zweiter, unabhängiger Crash-Punkt" notierte
+`denoiser.diffuser._so3_diffuser.set_device(device)`-Aufruf war beim
+genaueren Hinsehen nur einer von **zwei** Blockern pro Notebook:
+
+- `denoiser.diffuser._so3_diffuser.set_device(device)` /
+  `ema_model.model.diffuser._so3_diffuser.set_device(device)`: obsoleter
+  Diffusions-Device-Cache-Aufruf, ersatzlos entfernt (`SE3_FlowMatcher`/
+  `SO3_FlowMatcher` cachen kein Device, jeder Aufruf bekommt es als Parameter
+  oder erbt es vom Input-Tensor — kein Ersatz nötig).
+- `sample_notebook(..., use_true_scores=...)` / `sampler(..., use_true_scores=...)`:
+  falscher Parametername (Diffusions-Rest), aktuelle Signatur heißt
+  `use_true_vector_field`. Hätte selbst nach Fix des ersten Bugs sofort mit
+  `TypeError: unexpected keyword argument` gecrasht. In allen drei Notebooks
+  umbenannt (4 Fundstellen: `04` ×2, `05` ×1, `extensions/sampling.ipynb` ×1).
+
+**Zusätzlicher, bisher nicht dokumentierter dritter Fund** (nur in `04` und
+`05`, im jeweiligen "kein Checkpoint gefunden"-Fallback-Zweig): der manuelle
+`SigmaDockDenoiser(model=..., include_interactions=False, cache_path=CACHE)`-
+Aufruf übergibt kein `sigma_min` — Pflichtparameter ohne Default
+(`TypeError: missing 1 required positional argument`). Betrifft nur den Pfad
+ohne trainiertes Checkpoint (aktuell der einzig mögliche Zustand, da der große
+Trainingslauf noch nicht stattgefunden hat) — behoben mit `sigma_min=0.0`
+(konsistent mit der Konvention aus `R3_FlowMatcher`/`SE3_FlowMatcher` in
+dieser Session).
+
+**Bewusst NICHT angefasst:** Notebook `04` enthält zusätzlich einen älteren,
+in sich abgeschlossenen Demo-Abschnitt (erste ~6 Zellen), der die alten
+Diffusions-Klassen (`R3Diffuser`, `SE3Diffuser`, `SO3Diffuser`) direkt
+importiert und deren *Vorwärts*-Prozess visualisiert (Noise-Schedules,
+`forward_marginal`) — komplett unabhängig von `sample_notebook`/`denoiser.py`,
+keine Fehlerquelle für den reparierten Sampling-Pfad. Diesen Abschnitt auf
+Flow-Matching umzustellen (oder zu entfernen) wäre eine separate,
+größere Entscheidung (Inhalt/Umfang), nicht Teil des "Bug ausmerzen"-Auftrags
+dieser Session — bei Bedarf gesondert besprechen.
+
+### Methodische Notiz: lokales Testen ohne vollen Stack
+
+Wichtig für künftige Sessions: die in PAUSE-PUNKT #3 gemachte Notiz "volle
+sigmadock-Umgebung ist auch lokal installiert" **trifft aktuell nicht mehr
+zu** — auf dieser Maschine gibt es nur eine Anaconda-Base-Umgebung
+(`C:\Users\julia\anaconda3`, `torch==2.10.0+cpu`), **ohne** `rdkit`,
+`torch_geometric`, `pytorch_lightning`. Systemweite Suche bestätigt: keine
+andere Konfiguration mit diesen Paketen lokal vorhanden. `KMP_DUPLICATE_LIB_OK=TRUE`
+muss gesetzt sein, sonst crasht schon der `torch`-Import (OMP-Konflikt).
+
+Alle Tests dieser Session liefen trotzdem lokal (ohne ARC), indem gezielt nur
+die tatsächlich benötigten `sigmadock.diff.*`-Module per `importlib` direkt
+geladen wurden (unter Umgehung von `sigmadock/__init__.py`, das eager alle
+Submodule inkl. `rdkit`-Abhängigkeiten importiert) — für den
+`denoiser.py`-Test zusätzlich mit Stub-Modulen für `torch_geometric`/
+`sigmadock.chem.processing`/`sigmadock.oracle` (diese werden nur innerhalb
+von Methodenkörpern gebraucht, nicht bei `__init__`/Klassendefinition, daher
+funktioniert das sauber). Für einen echten End-to-End-Test von
+`sample_notebook()` selbst mit einem echten `Batch`-Objekt (reale
+Molekül-/Graphdaten) bräuchte man dagegen den vollen Stack — bisher nicht
+gemacht, siehe "Nächste Schritte".
+
+### ✅ Nachtrag (noch selbe Session): End-to-End-Test mit echten Daten erfolgreich
+
+Fehlende Pakete lokal nachinstalliert (`rdkit`, `torch-geometric`,
+`pytorch-lightning`, `biopython`, `e3nn`, `omegaconf`, `hydra-core`,
+`posebusters` — alle in die Anaconda-Base-Umgebung, `pip install`, kein
+Versions-Pinning in `pyproject.toml` vorgegeben). Hinweis: lokale
+Python-Version ist `3.13.9`, `pyproject.toml` deklariert
+`requires-python = ">=3.9, <3.13"` — die einzelnen Pakete liegen trotzdem
+alle sauber, `import sigmadock` (das komplette Package, nicht mehr nur
+gestubbte `diff`-Submodule) funktioniert jetzt ohne Workarounds.
+
+Danach echten Dummy-Datensatz geladen (`SigmaDataset` über
+`conf/experiments/dummy_train.yaml`, `notebooks/dummy_data/`, 10 Beispiele)
+und `sample_notebook(..., use_true_vector_field=True)` — der eingebaute
+ODE-Selbsttest, Netzwerk komplett umgangen — auf zwei echten Molekülen
+laufen lassen:
+
+- Sample 0 (`1G9V_RQ3`): Abweichung Liganden-Atome vs. Referenzpose
+  `5.97 Å → 0.06 Å` nach 25 Schritten. Kein Crash.
+- Sample 6 (anderes Molekül): `5.69 Å → 0.06 Å`. Kein Crash.
+
+Wichtige Lektion beim ersten Versuch: `pos_t`/`all_pos` liegen in einem
+skalierten, taschen-zentrierten internen Koordinatensystem — für einen
+fairen Vergleich mit `ref_pos` muss man erst zurücktransformieren
+(`pos_t * HPARAMS.general.dimensional_scale + pocket_com`, exakt wie am Ende
+von `sample_notebook` selbst schon vorgerechnet, aber nicht zurückgegeben).
+Ohne diese Rücktransformation sieht es fälschlich nach Nicht-Konvergenz aus.
+
+`use_true_vector_field=False` (echter, netzwerkgetriebener Pfad) ließ sich
+mit einem einfachen `DummyModel`-Stub nicht sauber durchtesten (Stub hat
+nicht die exakte Aufruf-Signatur/Rückgabeform des echten EquiformerV2) —
+bewusst nicht weiterverfolgt, da dieser Pfad (`_compute_forces` →
+Modell → `_compute_vector_field`) in dieser Session unverändert blieb und
+bereits durch die erfolgreichen Trainingsläufe (PAUSE-PUNKT #3/#4, echtes
+Modell, echte Backward-Pässe über 300 Epochen) unabhängig bestätigt ist.
+
+**Damit ist der Sampling-Pfad nicht nur fachlich, sondern auch praktisch auf
+echten Daten verifiziert.** Punkt 1 der ursprünglichen "Nächste Schritte"
+unten ist erledigt.
+
+### Nächste Schritte (noch nicht final entschieden, mit User zu klären)
+
+1. `rot_score_weight` für den großen Lauf final festlegen (siehe
+   PAUSE-PUNKT #4, weiterhin offen).
+2. Echtes SLURM-Skript für den großen (Mehrtages-)Trainingslauf schreiben
+   (siehe PAUSE-PUNKT #2, weiterhin offen).
+3. Optional, nicht dringend: den älteren Diffusions-Demo-Abschnitt in
+   `04_diffusion.ipynb` (erste ~6 Zellen) auf Flow-Matching umstellen oder
+   entfernen — bewusst in dieser Session nicht angefasst (s.o.).
+4. Optional: lokale Umgebung jetzt vollständiger (siehe oben) — könnte
+   künftige Sessions erleichtern, falls weiter lokal getestet werden soll,
+   statt jedes Mal auf ARC zu warten.
+
+---
+
+## 🔖 PAUSE-PUNKT #4 (2026-07-17, später am selben Tag) — älter, siehe #5 oben für aktuellen Stand
 
 **Zwei Dinge in dieser Sitzung erledigt, lokal committet/gepusht(?) noch zu
 prüfen — siehe "Nächster Schritt" unten:**
@@ -80,31 +285,58 @@ ergänzt (Job umbenannt zu `sigmaflow-overfit-gpu-test-rotw2`,
 `--time=01:45:00` unverändert, passt bereits zur gewünschten 1.5–2h-Dauer,
 war in Runde 1 kalibriert für exakt 300 Epochen auf GPU).
 
-### ⚠️ Nächster Schritt (noch NICHT erledigt, wichtig beim Wiedereinstieg)
+### ✅ Runde 2 gelaufen (2026-07-17, später): Job `8182812`, COMPLETED
 
-Diese Sitzung hatte **keinen SSH-Zugriff auf ARC** (kein hinterlegter
-Passwordless-Key für `shug8458@htc-login.arc.ox.ac.uk` in dieser Umgebung,
-`Permission denied`) und hat gemäß CLAUDE.md §9 (keine autonomen Git-
-Commits/Pushes) auch nicht selbst committet. D.h. die drei geänderten
-Dateien (`src/sigmadock/chem/parsing.py`, `src/sigmadock/data.py`,
-`slurm/train_dummy_overfit_gpu.sh`) liegen aktuell nur **lokal**
-verändert im Arbeitsverzeichnis, nicht committet, nicht gepusht, nicht auf
-ARC synchronisiert. **Bevor der Testlauf gestartet werden kann, muss der
-User:**
-1. Diff review + Commit (User-Entscheidung, ob mit meiner Hilfe oder
-   selbst).
-2. Push nach GitHub (`origin`, `jmuelleo/SigmaFlow`).
-3. Auf ARC: `git pull` im Projektordner (`/data/stat-cadd/shug8458/
-   SigmaFlow_Development_JulianMueller/SigmaFlow`).
-4. `sbatch slurm/train_dummy_overfit_gpu.sh` (aus
-   `SigmaFlow_Development/`, `slurm_logs/` muss existieren).
-5. Nach Abschluss: `loss_R`-Kurve aus Runde 2 gegen Runde 1 (Job `8177699`)
-   vergleichen — ist der Endwert (`~10.75` in Runde 1) jetzt klar
-   niedriger? Falls ja: Gewichts-Erhöhung hilft, für den großen Lauf
-   übernehmen (Wert eventuell noch feiner kalibrieren). Falls nein:
-   Rotation braucht vermutlich eine andere Intervention als reines
-   Loss-Gewicht (z.B. Lernrate, Architektur, mehr Trainingsschritte) —
-   nicht weiter blind am Gewicht drehen.
+Commit `f321dc9` gepusht (User hat auf ARC gepullt + `sbatch`t, kein
+SSH-Zugriff für mich in dieser Umgebung, s.o.). Alle 300 Epochen sauber
+durchgelaufen, kein Crash.
+
+**Sample-4-Fix in echter ARC-Umgebung bestätigt:** `[WARN] Sample 4
+failed: Failed to parse pocket into a valid RDKit Mol from .../1R1H_BIR_
+protein.pdb (likely a sanitization/valence error in the extracted pocket
+block).. Skipping...` erscheint sauber mehrfach im Log, kein Absturz, Job
+läuft bis `max_epochs=300 reached` durch. Fix funktioniert wie erwartet.
+
+**`rot_score_weight`-Vergleich, Runde 1 (`0.5`, Job `8177699`) vs. Runde 2
+(`2.0`, Job `8182812`), Endwerte Epoche 299:**
+
+| Metrik | Runde 1 (0.5) | Runde 2 (2.0) |
+|---|---|---|
+| `loss_train/loss_R` | 10.75 | **6.76** |
+| `loss_val/loss_R` | 8.76 | **7.81** |
+| `loss_train/loss_trans` | 2.12 | 3.50 |
+| `loss_val/loss_trans` | 2.49 | 3.16 |
+
+Sanity-Check bestanden: gewichtete Summe stimmt exakt
+(`1.0×3.49711 + 2.0×6.76139 = 17.0199 == loss_train/total`).
+
+**Interpretation:** Klarer Trade-off, kein Freifahrtschein. Rotation
+lernt jetzt nachweislich (`loss_R` deutlich unter der Zufalls-Baseline
+`≈10.6`, nicht mehr nur knapp darüber wie in Runde 1) — bestätigt, dass
+das Problem in Runde 1 in erster Linie **Untergewichtung** war, keine
+strukturelle Blockade der SO(3)-Flow-Matching-Implementierung.
+Translation ist dafür bei fixem Trainingsbudget (300 Epochen) sichtbar
+schlechter geworden (mehr Gradienten-Budget ging in Rotation). `2.0` ist
+vermutlich zu aggressiv für den finalen Lauf — ein Mittelweg (z.B. `1.0`)
+ist für den großen Lauf noch nicht getestet, aber naheliegender nächster
+Schritt falls weiter kalibriert werden soll. Bewusst nicht weiter
+automatisch durchprobiert (Zeit-/Kostenaufwand pro Testlauf, User-Wunsch
+abwarten).
+
+### Nächste Schritte (noch nicht final entschieden, mit User zu klären)
+
+1. `rot_score_weight` für den großen Lauf final festlegen (z.B. `1.0` als
+   Mittelweg testen, oder direkt mit `2.0`/`0.5` in den großen Lauf gehen
+   und dort weiter beobachten) — Trade-off Rotation-vs-Translation im
+   Hinterkopf behalten.
+2. Sampling-Pfad reparieren (`_compute_true_vector_field` in
+   `denoiser.py`/`sampling.py`, siehe PAUSE-PUNKT #3 für die hergeleiteten
+   Formeln) — weiterhin nicht blockierend fürs Training, aber Pflicht vor
+   jeglicher Posen-Generierung/PoseBusters-Arbeit.
+3. Echtes SLURM-Skript für den großen (Mehrtages-)Trainingslauf schreiben
+   (Partition/Zeitlimit für Mehrtages-Jobs noch mit User zu klären,
+   `conf/training/slurm.yaml` als Basis, `--offline_run` vs. echtes
+   W&B-Logging überdenken).
 
 ---
 

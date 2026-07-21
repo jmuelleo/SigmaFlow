@@ -36,6 +36,17 @@ class SO3_FlowMatcher:
         return R_next
     
 
+    def calc_rot_vector_field(self, R_t: torch.Tensor, R_1: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        """
+        R_t: [n, 3, 3] current position
+        R_1: [n, 3, 3] final position
+        t: [n] time per fragment: in (0,1) due to singularity at t = 1
+        Returns:
+        u_t_R: [n, 3, 3] right trivialised vector field (skew symmetric) brings (R_t,t) to R_1
+        """
+        u_t_R = so3_utils.log(R_t.transpose(-1,-2)@R_1)/(1-t[:, None, None])
+        return u_t_R
+
 
     
 
