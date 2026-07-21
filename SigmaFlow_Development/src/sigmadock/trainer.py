@@ -15,14 +15,14 @@ from sigmadock.core.misc import (
     DecayExponentialCosineAnnealingWarmRestarts,
     StepDecayExponentialCosineAnnealingWarmRestarts,
 )
-from sigmadock.diff.denoiser import SigmaDockDenoiser
+from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
 
 
 class SigmaLightningModule(pl.LightningModule):
     def __init__(
         self,
         *,
-        denoiser: SigmaDockDenoiser,
+        denoiser: SigmaFlowGenerator,
         # Loss scalings
         fragment_scaling: float = 0.5,
         trans_score_weight: float = 1.0,

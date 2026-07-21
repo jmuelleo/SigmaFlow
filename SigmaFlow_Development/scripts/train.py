@@ -23,7 +23,7 @@ from sigmadock.config import (
 from sigmadock.core.callbacks import EMAWithRampup, FullNaNCheckCallback, SamplerDebugCallback
 from sigmadock.data import SigmaDataModule
 from sigmadock.datafronts import MetaFront
-from sigmadock.diff.denoiser import SigmaDockDenoiser
+from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
 from sigmadock.net.model import EquiformerV2
 from sigmadock.oracle import HPARAMS
 from sigmadock.torch_utils.utils import extract_init_kwargs
@@ -197,7 +197,7 @@ def main() -> None:  # noqa: C901
         share_edge_mlp=False,
     )
     # Init denoiser
-    denoiser = SigmaDockDenoiser(
+    denoiser = SigmaFlowGenerator(
         equimodel,
         cache_path=EXP_DIR.parent / "cache",
         # Cutoffs for local dynamic edges

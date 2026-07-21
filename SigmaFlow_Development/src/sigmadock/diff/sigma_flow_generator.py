@@ -16,9 +16,11 @@ from sigmadock.torch_utils.utils import (
 )  # add_batch_node_attribute,
 
 
-class SigmaDockDenoiser(nn.Module):
+class SigmaFlowGenerator(nn.Module):
     """
-    SigmaDockDenoiser is a class that represents a denoising model for SigmaDock used for training and inference.
+    SigmaFlowGenerator wraps the network and orchestrates one flow-matching training/inference
+    step: samples time and the conditional probability path, calls the model, converts its
+    force/torque output into an SE(3) vector field, and computes the flow-matching loss.
     """
 
     def __init__(
@@ -44,9 +46,9 @@ class SigmaDockDenoiser(nn.Module):
         **kwargs: Any,
     ) -> None:
         """
-        Initialize the SigmaDockDenoiser with a given model.
+        Initialize the SigmaFlowGenerator with a given model.
         Args:
-            model (nn.Module): The model to be used for denoising.
+            model (nn.Module): The model used to predict the SE(3) vector field.
             include_interactions (bool): Flag to include interactions in the model.
             sigma_min is a parameter currently mostly set to 0, but implemented as part of SE3_FlowMatcher
             rot_vector_field_method (Literal["space", "vector_field"]): Method for rotation vector_field calculation.
@@ -60,7 +62,6 @@ class SigmaDockDenoiser(nn.Module):
         # Note: any R_1_i gives the exact same vector_field-matching loss in Rt!
         self.model = model
         self.include_interactions = include_interactions
-        # Denoiser
         self.flow_matcher = SE3_FlowMatcher(sigma_min)
 
         # Cutoffs (these are only for graph-constriction, no radial basis here only on model forward...)
@@ -84,7 +85,7 @@ class SigmaDockDenoiser(nn.Module):
 
         # Print Kwargs if unused with WARNING
         # if len(kwargs) > 0:
-        #     print(f"[WARN] Unused kwargs in SigmaDockDenoiser: {kwargs}")
+        #     print(f"[WARN] Unused kwargs in SigmaFlowGenerator: {kwargs}")
 
         # Misc
         self.verbose = verbose
@@ -1168,8 +1169,8 @@ class SigmaDockDenoiser(nn.Module):
 
     def __repr__(self) -> str:
         """
-        String representation of the SigmaDockDenoiser class.
+        String representation of the SigmaFlowGenerator class.
         Returns:
             str: The string representation of the class.
         """
-        return f"SigmaDockDenoiser({self.model.__class__.__name__})"
+        return f"SigmaFlowGenerator({self.model.__class__.__name__})"

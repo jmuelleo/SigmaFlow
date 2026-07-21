@@ -8,7 +8,7 @@ from typing import Any
 import torch
 import wandb
 
-from sigmadock.diff.denoiser import SigmaDockDenoiser
+from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
 from sigmadock.net.model import EquiformerV2
 from sigmadock.trainer import SigmaLightningModule
 
@@ -101,7 +101,7 @@ def build_equiformer_from_config(cfg: dict[str, Any]) -> EquiformerV2:
     return EquiformerV2(**cfg)
 
 
-def load_from_checkpoint(checkpoint: dict[str, Any], load_ema: bool = True) -> SigmaDockDenoiser:
+def load_from_checkpoint(checkpoint: dict[str, Any], load_ema: bool = True) -> SigmaFlowGenerator:
     configs: dict[str, Any] = get_config_from_checkpoint(checkpoint)
     model = build_equiformer_from_config(configs["equiformer"])
     state_name = "ema_state_dict" if load_ema else "state_dict"
@@ -109,8 +109,7 @@ def load_from_checkpoint(checkpoint: dict[str, Any], load_ema: bool = True) -> S
     model.load_state_dict(state_dict, strict=True)
     print(f"Loaded model with {sum(p.numel() for p in model.parameters())} parameters.")
 
-    # Denoiser
-    denoiser = SigmaDockDenoiser(model=model, **configs["denoiser"])
+    denoiser = SigmaFlowGenerator(model=model, **configs["denoiser"])
     denoiser.eval()
     print("Set model to evaluation mode.")
     return denoiser
@@ -154,7 +153,7 @@ def load_from_scratch(  # noqa: C901
     strict: bool = True,
 ) -> SigmaLightningModule:
     """
-    Load from checkpoint: build EquiformerV2 and SigmaDockDenoiser from
+    Load from checkpoint: build EquiformerV2 and SigmaFlowGenerator from
     hyper_parameters, load Lightning module; optionally load EMA into model.ema_model.
     """
     assert os.path.isfile(ckpt), f"Checkpoint {ckpt} does not exist or is not a file."
@@ -181,7 +180,7 @@ def load_from_scratch(  # noqa: C901
             equiformer_cfg: dict = configs["equiformer"]
 
     if configs["denoiser"] is None:
-        denoiser_cfg: dict = filter_cfg_for_cls(SigmaDockDenoiser, configs["all"], ignore=["model"])
+        denoiser_cfg: dict = filter_cfg_for_cls(SigmaFlowGenerator, configs["all"], ignore=["model"])
     else:
         if denoiser_cfg is None:
             # Denoiser config from checkpoint
@@ -206,7 +205,7 @@ def load_from_scratch(  # noqa: C901
 
     # 6) instantiate submodules
     equi = build_equiformer_from_config(equiformer_cfg)
-    denoiser = SigmaDockDenoiser(model=equi, **denoiser_cfg)
+    denoiser = SigmaFlowGenerator(model=equi, **denoiser_cfg)
 
     # 7) load LightningModule once, supplying denoiser
     model = SigmaLightningModule.load_from_checkpoint(str(ckpt), denoiser=denoiser, strict=strict, map_location="cpu", weights_only=False)

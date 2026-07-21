@@ -4,7 +4,179 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #5 (2026-07-21) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #6 (2026-07-21, später am selben Tag) — AKTUELL, zuerst lesen
+
+**Auftrag dieser Runde:** vor dem großen Trainingslauf ausführlich prüfen,
+ob wirklich alles funktioniert und was noch fehlt. Ergebnis: Code-seitig
+alles verifiziert lauffähig, aber der große Lauf selbst ist noch nicht
+startbereit (Infrastruktur/Konfiguration fehlt, keine Code-Bugs).
+
+### ✅ Bestätigt funktionierend
+
+- **Trainings-Pipeline**, frisch lokal getestet mit dem Code-Stand nach
+  allen PAUSE-PUNKT-#5-Fixes (`scripts/train.py`, 5 Schritte, `dummy_train`,
+  CPU, `--offline_run --debug`): läuft sauber durch, endliche Loss-Werte
+  (`loss_train/total=8.96`, `loss_train/loss_R=8.81`,
+  `loss_train/loss_trans=4.56`), kein NaN, kein Crash. Bestätigt: die
+  `denoiser.py`-Änderungen aus PAUSE-PUNKT #5 (nur `_compute_true_vector_field`
+  betroffen, wird beim Training nicht aufgerufen) haben den Trainingspfad
+  nicht beeinträchtigt.
+- Sampling-Pipeline: siehe PAUSE-PUNKT #5 (End-to-End-Test mit echten Daten,
+  weiterhin gültig).
+- Repo-weite Suche (`src/`, nicht nur die 5 Kerndateien) nach
+  `self.diffuser`/`_so3_diffuser`/`IGSO3`/`forward_marginal`/
+  `reverse_marginal`: keine weiteren funktionalen Diffusions-Reste gefunden.
+  Einzige Fundstelle: eine veraltete Docstring-Erwähnung von
+  `forward_marginal` in `denoiser.py` (Zeile ~652, Kommentartext, kein Code)
+  — rein kosmetisch, nicht behoben (nicht dringend).
+
+### ⚠️ Neuer Fund: totes/fehlgeleitetes Config-Feld (`rot_score_method`/`rot_score_scaling`)
+
+`conf/training/slurm.yaml` (Referenz-Config für den großen Lauf) setzt
+`rot_score_method: space` und `rot_score_scaling: rms`. Der
+`SigmaDockDenoiser`-Konstruktor erwartet aber `rot_vector_field_method`/
+`rot_vector_field_scaling` (bei der Flow-Matching-Konversion umbenannt,
+`config.py`s `RunConfig`-Dataclass-Felder und die `--rot_score_method`-CLI-
+Flag in `config.py` wurden dabei nie mit umbenannt).
+
+Da `scripts/train.py:200-212` die komplette Config per `**args.__dict__` in
+den `SigmaDockDenoiser`-Konstruktor entpackt, landet `rot_score_method` im
+`**kwargs`-Auffangbecken (`denoiser.py`s `__init__`, "ignored but can be
+used for future extensions") und wird **stillschweigend ignoriert** — der
+Denoiser nutzt immer seinen Default `rot_vector_field_method="vector_field"`,
+unabhängig vom Config-Wert.
+
+**Zweite, unabhängige Bestätigung, dass das ohnehin folgenlos ist:**
+`self.rot_vector_field_method`/`self.rot_vector_field_scaling` werden in
+`__init__` nur validiert und gespeichert, aber **nirgends sonst im ganzen
+`denoiser.py` abgefragt** — die "space"-Alternative (im Original-
+Diffusions-Code eine echte, andere Berechnung) wurde beim Umbau nie für
+Flow Matching implementiert. Der Parameter ist komplett wirkungslos, ganz
+unabhängig vom Namens-Mismatch.
+
+**Einordnung:** nicht blockierend — das tatsächlich laufende Verhalten
+(`vector_field`-Modus, einzige real implementierte Option) ist exakt das,
+was in allen bisherigen Tests (Überanpassung PAUSE-PUNKT #4, heutiger
+Smoke-Test) bereits erfolgreich validiert wurde. Aber die Config täuscht
+eine nicht existierende Wahlmöglichkeit vor. **Entscheidung mit User noch
+nicht getroffen:** Feld aus `config.py`/`conf/training/slurm.yaml`/CLI
+entfernen (ehrlicher) oder `rot_vector_field_method`/`_scaling` als echten,
+funktionierenden Kwarg-Pfad nachrüsten (mehr Aufwand, nur nötig falls
+"space"-Modus je gebraucht wird)?
+
+### ❌ Bestätigt: fehlt noch für den großen Lauf (Infrastruktur, keine Code-Bugs)
+
+1. **Kein SLURM-Skript für den großen Lauf.** `conf/training/slurm.yaml`
+   verweist im Kopfkommentar auf `slurm/train.sh` — diese Datei existiert
+   nicht. `slurm/` enthält bisher nur `train_dummy_test.sh` und
+   `train_dummy_overfit_gpu.sh` (beide klein, Dummy-Datensatz).
+2. `rot_score_weight` final festlegen (weiterhin offen, siehe PAUSE-PUNKT
+   #4: `0.5` Baseline, `2.0` im Diagnose-Test besser für Rotation aber
+   schlechter für Translation, `1.0` als ungetesteter Mittelweg
+   vorgeschlagen).
+3. Partition/Zeitlimit für einen Mehrtages-Job auf ARC — weiterhin nicht
+   geklärt (Partition `short` ist auf Stunden gedeckelt, User kennt die
+   richtige Partition, muss nur noch besprochen werden).
+4. `--offline_run` vs. echtes W&B-Online-Logging (bräuchte API-Key-Setup)
+   für den "richtigen" Lauf — weiterhin nicht entschieden.
+5. **Nicht lokal prüfbar, braucht ARC-Zugriff:** ob die echten
+   Datensatz-Ordnerstrukturen (`/data/stat-cadd/shug8458/data/{pdbbind,
+   astex,posebusters}`) tatsächlich zu den Regex-Mustern in
+   `conf/experiments/pdbbind-general.yaml` (`dataset: "pdbbind/general-set/"`,
+   `pdb_regex: ".*pocket\.pdb$"`, `sdf_regex: ".*ligand.*\.sdf$"`) und den
+   Geschwister-Configs (`pdbbind-refined`, `pdbbind-core`, `posebusters`,
+   `astex`) passen. Configs selbst wurden gelesen und sehen intern
+   konsistent aus, aber ohne Zugriff auf die echten ARC-Ordner nicht
+   verifizierbar.
+
+### ✅ Nachtrag (noch selbe Session): `SigmaDockDenoiser` → `SigmaFlowGenerator` umbenannt
+
+User-Frage: "denoiser.py" beinhaltet ja gar kein Denoising mehr, passender
+Name? Klasse tut heute zweierlei: (a) generische Starrkörper-/Graph-Infra
+(Fragment-Masse/Trägheitstensor, COM/Rotation, Kraft→Drehmoment via
+`linear_mechanics`/`newton_maruyama`, Graph-Kanten pflegen), (b) die
+eigentliche Flow-Matching-Prozess-Orchestrierung (Zeit sampeln, vom
+`flow_matcher` interpolieren lassen, Netzwerk aufrufen, Kraft/Drehmoment in
+Vektorfeld übersetzen, Loss berechnen). "Denoiser" trifft nur noch den
+historischen Diffusions-Teil.
+
+Checkpoint-Kompatibilität vorher geprüft und bestätigt unkritisch: Laden
+läuft über `state_dict` (Parameter-Namen), nicht über volles
+Objekt-Pickling — ein reiner Rename bricht keine bestehenden/künftigen
+Checkpoints.
+
+**Neuer Name: `SigmaFlowGenerator`** (passt zur bestehenden `Sigma*`-
+Konvention im Rest des Codes — `SigmaDataset`, `SigmaDataModule`,
+`SigmaLightningModule` —, kollidiert nicht mit `R3_FlowMatcher`/
+`SO3_FlowMatcher`/`SE3_FlowMatcher`, da die Klasse deren Objekt über
+`self.flow_matcher` benutzt statt selbst eine zu sein).
+
+**Umgesetzt (7 Fundstellen, alle geprüft — kein `SigmaDockDenoiser`/
+`diff.denoiser`-Rest mehr im ganzen `SigmaFlow_Development`-Baum):**
+- `src/sigmadock/diff/denoiser.py` → `sigma_flow_generator.py` (`git mv`,
+  Historie erhalten), Klasse + Docstrings/Kommentare/`__repr__` angepasst.
+- Aufrufer aktualisiert: `sampling.py`, `trainer.py`, `utils.py`,
+  `scripts/train.py`, `04_diffusion.ipynb`, `05_crossdock_sampling.ipynb`.
+- Bewusst NICHT angefasst: lokale Variablen-/Parameternamen wie `denoiser`
+  (z.B. `def sample_notebook(denoiser: SigmaFlowGenerator, ...)`) — nur der
+  Klassen-/Dateiname war irreführend, nicht jeder Variablenname, der eine
+  Instanz davon hält. Kleinstmögliche Änderung, kein Scope-Creep.
+
+**Verifiziert:** Imports laden sauber, CPU-Dummy-Trainingslauf (5 Schritte)
+läuft nach dem Rename bit-identisch zu vorher (`loss_train/total=8.96053`,
+gleicher Seed) — kein Crash, keine Verhaltensänderung.
+
+### 🔜 Nächstes großes Vorhaben (besprochen, noch nicht begonnen): `scripts/sample.py` + SDF-Export
+
+User will: auf den 10 Dummy-Proteinen trainieren, dann eine `.sdf`-Datei der
+gedockten Pose bekommen (zum Anschauen in PyMOL). Rechercheergebnis:
+
+- Original-SigmaDock speichert beim Sampling **keine** SDF, sondern
+  `predictions.pt` (rohe Tensoren: `x0`, `x0_hat`, `trajectory`, `lig_ref`-
+  RDKit-Mol) — `SamplingModule.save_results` in `SigmaDock/scripts/sample.py`.
+  Die Bausteine für einen echten SDF-Export existieren schon, sind aber nie
+  verbunden: `sigmadock.chem.statistics.get_mol_from_coords(coords, ref_mol)`
+  (baut ein RDKit-Mol mit den vorhergesagten Koordinaten) +
+  `sigmadock.chem.parsing.write_sdf(mols, path)` (fertiger `Chem.SDWriter`-
+  Wrapper).
+- `SigmaFlow_Development/scripts/sample.py` **existiert komplett noch
+  nicht** (nur `train.py` liegt in `scripts/`). Alle Abhängigkeiten dafür
+  sind aber schon vorhanden und diffusionsfrei: `sampling_setup.py` (rein
+  generischer Hydra-/Datafront-Code, geprüft), `SampleCycleWrapper`
+  (`core/data.py`), `compute_gnina_score` (`chem/postprocessor.py`),
+  `compact_posebusting` (`chem/statistics.py`), `conf/sampling/base.yaml`.
+- **Entscheidung getroffen:** volles `scripts/sample.py` von SigmaDock
+  portieren (nicht nur ein Mini-Skript), da für PoseBusters im großen Stil
+  ohnehin gebraucht wird. Zwei mechanische Fixes nötig beim Portieren
+  (gleiches Muster wie die Notebook-Fixes): `denoiser.diffuser._so3_diffuser
+  .set_device(...)` entfernen, `use_true_scores` → `use_true_vector_field`
+  (auch in `conf/sampling/base.yaml`: `use_true_scores: false` →
+  `use_true_vector_field: false`).
+- **SDF-Export-Design (besprochen, User zugestimmt):** in
+  `SamplingModule.save_results` integrieren (dort, wo `predictions.pt`
+  entsteht, gleiche Stelle wie künftiges Vina-Scoring/PoseBusters), nur die
+  finale Pose (`x0_hat` + `lig_ref`), keine ganze Trajektorie (reicht für
+  "passt die Pose" in PyMOL, Trajektorie wäre optionale spätere Erweiterung).
+- **Noch nicht begonnen:** weder das mechanische Portieren von `sample.py`
+  noch die neue SDF-Export-Funktion selbst.
+
+### Nächste Schritte (mit User zu klären, Priorität von oben nach unten)
+
+1. `scripts/sample.py` portieren + SDF-Export-Funktion bauen (s.o., als
+   Nächstes geplant).
+2. Entscheidung zum toten `rot_score_method`-Feld (PAUSE-PUNKT #6 oben).
+3. `rot_score_weight` final festlegen.
+4. Partition/Zeitlimit klären, dann `slurm/train.sh` für den großen Lauf
+   schreiben (Basis: `conf/training/slurm.yaml`, analog zu den
+   Dummy-Skripten aber mit `--strategy ddp --devices 4` o.ä. und
+   Mehrtages-`--time`).
+5. W&B-Logging-Entscheidung.
+6. Datensatz-Pfade/Regex auf ARC verifizieren (User oder nächste Session
+   mit ARC-Zugriff).
+
+---
+
+## 🔖 PAUSE-PUNKT #5 (2026-07-21) — älter, siehe #6 oben für aktuellen Stand
 
 **Der Sampling-Pfad (kritischer Fund aus PAUSE-PUNKT #3, "komplett kaputt")
 ist in dieser Session vollständig repariert und Schritt für Schritt

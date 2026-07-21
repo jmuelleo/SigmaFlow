@@ -11,12 +11,12 @@ from tqdm import tqdm
 
 from sigmadock.diff.se3_flow_matcher import SE3_FlowMatcher
 from sigmadock.oracle import HPARAMS
-from sigmadock.diff.denoiser import SigmaDockDenoiser
+from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
 
 
 # NOTE this function evaluates given true pose exists (ReDocking Scenario) -> Not generic (yet)
 def sample_notebook(
-    denoiser: SigmaDockDenoiser,
+    denoiser: SigmaFlowGenerator,
     batch: Batch,
     t_min: float = 1e-3,
     rho: float = 3.0,
@@ -252,7 +252,7 @@ def sample_notebook(
 
 # Keeping for versioning JIC.
 def sampler(
-    denoiser: SigmaDockDenoiser,
+    denoiser: SigmaFlowGenerator,
     batch: Batch,
     t_min: float = 1e-3,
     rho: float = 3.0,
