@@ -4,7 +4,100 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #6 (2026-07-21, später am selben Tag) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #7 (2026-07-21, später am selben Tag) — AKTUELL, zuerst lesen
+
+### `scripts/sample.py` portiert + SDF-Export gebaut — fertig, verifiziert
+
+**`scripts/sample.py`** existiert jetzt (portiert von `SigmaDock/scripts/sample.py`,
+vorher komplett fehlend in `SigmaFlow_Development`). Mechanische Fixes wie
+geplant: `denoiser.diffuser._so3_diffuser.set_device(...)`-Zeile entfernt,
+`use_true_scores` → `use_true_vector_field` (auch in `conf/sampling/base.yaml`),
+`SigmaDockDenoiser` → `SigmaFlowGenerator`. Alle übrigen Abhängigkeiten
+(`sampling_setup.py`, `SampleCycleWrapper`, `compute_gnina_score`,
+`compact_posebusting`) waren schon diffusionsfrei vorhanden, keine Änderung
+nötig. Importiert sauber (lokal getestet, brauchte `spyrmsd` nachinstalliert).
+
+**`SamplingModule.export_predictions_to_sdf`** (neue Methode, User-geschrieben,
+von Claude durchs Schreiben begleitet): schreibt pro Komplex+Seed die finale
+gedockte Pose (`x0_hat` + `lig_ref`, schon in echten Weltkoordinaten, keine
+weitere Umrechnung nötig) als eigene `.sdf`-Datei, via `get_mol_from_coords`
++ `write_sdf`. Aufgerufen aus `save_results`, direkt nach `predictions.pt`.
+
+Zwei Bugs beim ersten Entwurf gefunden und vom User selbst gefixt:
+1. Tippfehler `from sigmadock.chem.parsing import write_sdf.` (Punkt am Ende) → Syntaxfehler.
+2. Fehlendes `self`: Methode wurde zunächst als eigene Klassenmethode
+   geschrieben (guter Instinkt — sauberer als die ursprünglich vorgeschlagene
+   verschachtelte Funktion), aber ohne `self`-Parameter, obwohl über
+   `self.export_predictions_to_sdf(...)` aufgerufen. Gefixt mit `self` als
+   erstem Parameter (Alternative gewesen wäre `@staticmethod`, da der
+   Funktionskörper `self` nie benutzt — User hat sich für `self` entschieden).
+
+**Verifiziert mit echten Daten** (nicht nur Syntax-Check): reales
+Ligand-Molekül (25 Atome) aus dem Dummy-Datensatz geladen, `export_predictions_to_sdf`
+mit synthetischen `x0_hat`-Koordinaten (bekannter Offset vom Original)
+aufgerufen, geschriebene `.sdf` zurückgelesen — Atomanzahl korrekt,
+Koordinaten-Rundtrip-Fehler `2e-6` (reine Text-Rundung des SDF-Formats).
+Dateiname korrekt saniert (`::` → `__`, Seed-Index enthalten, kein
+Windows-Pfadproblem).
+
+**Nebenbei gefunden und bereinigt:** eine nicht getrackte `denoiser.py`
+tauchte während dieser Arbeit wieder auf — bestätigt (per `git show`-Diff
+gegen den Stand direkt vor der Umbenennung) **byte-identisch** zur
+vor-Rename-Version, reines Editor-Artefakt (alter Tab, beim Speichern neu
+angelegt), keine verlorene Arbeit. Gelöscht.
+
+### Nächstes Vorhaben (gerade besprochen): 2-3h-Überanpassungslauf auf ARC + Sampling zur visuellen Kontrolle in PyMOL
+
+User-Ziel: auf den 10 Dummy-Komplexen für ~2-3h trainieren (länger/gründlicher
+als die bisherigen ~300-Epochen-Tests aus PAUSE-PUNKT #3/#4), dann mit dem
+neuen `scripts/sample.py` eine `.sdf` der gedockten Pose erzeugen und in
+PyMOL ansehen, ob es passt.
+
+**Geprüft, was dafür bereit ist:**
+- Checkpointing läuft unabhängig von `--debug`
+  (`scripts/train.py:293-319`: der Kommentar "Logging & Checkpointing if not
+  in debug mode" ist irreführend — nur WandB-Login und zwei Debug-Callbacks
+  hängen an `--debug`, `ModelCheckpoint` wird immer hinzugefügt,
+  `save_last=True` + Top-3 nach `val_loss`). Checkpoint landet unter
+  `experiments/sigmadock/<timestamp>/checkpoints/`.
+- `slurm/train_dummy_overfit_gpu.sh` existiert schon und funktioniert
+  (2× erfolgreich gelaufen, siehe PAUSE-PUNKT #3/#4) — muss nur auf
+  2-3h/mehr Epochen skaliert werden.
+- `scripts/sample.py` ist jetzt fertig (s.o.), `sampling_setup.py` unterstützt
+  `experiment=dummy_train` direkt (dieselbe Config wie fürs Training) — kein
+  Sonderfall nötig.
+- Original-SigmaDock hat ein generisches `slurm/sample.sh`-Vorbild (keine
+  Diffusions-Reste, reine Hydra-CLI-Aufrufe) — als Basis für ein
+  `SigmaFlow_Development/slurm/sample_dummy.sh` portierbar.
+
+**Wichtiger Hinweis fürs Sampling, damit der Test aussagekräftig ist:**
+`use_true_vector_field=False` (Default) benutzen, NICHT `True` — `True`
+umgeht das Netzwerk komplett (reiner ODE-ohne-Netzwerk-Selbsttest, siehe
+PAUSE-PUNKT #5) und würde unabhängig vom Trainingserfolg "funktionieren".
+Nur mit `False` testet man tatsächlich, ob das Netzwerk etwas gelernt hat.
+
+**Erwartungshaltung zum "perfekt überfitten":** mit 10 Beispielen und einem
+großen Netz ist starke Überanpassung sehr plausibel, aber "perfekt" (exakt
+Null-Loss) ist auf 2-3h (~500-600 Epochen laut bisheriger Rate ~3.4
+Epochen/Min auf GPU L40S) nicht garantiert — Runde 2 aus PAUSE-PUNKT #4
+(300 Epochen, `rot_score_weight=2.0`) kam auf `loss_R=6.76`/`loss_trans=3.5`,
+deutlich unter Baseline aber nicht Null. Erwartung: sichtbar bessere,
+wahrscheinlich schon ziemlich passende Posen, aber realistisch einschätzen,
+nicht "garantiert perfekt" versprechen.
+
+**Noch zu klären/bauen (nächster konkreter Schritt):**
+1. `rot_score_weight` für diesen Testlauf festlegen (weiterhin offene
+   Kalibrierungsfrage aus PAUSE-PUNKT #4 — für einen reinen Sichtcheck
+   pragmatisch `2.0` weiterverwenden, das war bisher am besten getestet,
+   oder `1.0` als Mittelweg probieren).
+2. `slurm/train_dummy_overfit_gpu.sh`-Kopie mit `--time`/`--max_epochs` für
+   2-3h statt bisher 1.75h/300 Epochen.
+3. `slurm/sample_dummy.sh` neu bauen (Basis: SigmaDock-Vorlage), zeigt auf
+   `experiment=dummy_train`, den frischen Checkpoint, und schaltet
+   Vina/PoseBusters-Postprocessing ab (`postprocessing.scoring=null
+   postprocessing.bust_config=null`, für einen reinen Sichtcheck nicht nötig).
+
+## 🔖 PAUSE-PUNKT #6 (2026-07-21, später am selben Tag) — älter, siehe #7 oben für aktuellen Stand
 
 **Auftrag dieser Runde:** vor dem großen Trainingslauf ausführlich prüfen,
 ob wirklich alles funktioniert und was noch fehlt. Ergebnis: Code-seitig

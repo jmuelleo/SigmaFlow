@@ -65,7 +65,7 @@ diffusion:
   noise_decay: 2.0 # controls the decay of the noise schedule (annealed)
   discretization: edm  # discretization method for noise schedule (power or edm)
   solver: euler  # solver to use for reverse diffusion (euler or heun)
-  use_true_scores: false  # whether to use true scores (if available) instead of learned scores (for evaluation only)
+  use_true_vector_field: false  # whether to use the true vector field (if available) instead of the predicted one (for evaluation only)
   verbose: false  # whether to print verbose output during sampling
 
 data:
