@@ -63,6 +63,7 @@ class SigmaFlowGenerator(nn.Module):
         self.model = model
         self.include_interactions = include_interactions
         self.flow_matcher = SE3_FlowMatcher(sigma_min)
+        self.sigma_min = sigma_min
 
         # Cutoffs (these are only for graph-constriction, no radial basis here only on model forward...)
         self.cutoff_complex_interactions = cutoff_complex_interactions

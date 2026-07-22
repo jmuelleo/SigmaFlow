@@ -526,6 +526,7 @@ def sample(global_cfg: DictConfig) -> None:
         CKPT_DIR,
         load_ema=cfg.model.use_ema,
         enforced_cfg={
+            "sigma_min": 0.0,
             "cache_path": PROJECT_ROOT / cfg.model.cached_s03_dir,
         }
         if cfg.model.cached_s03_dir is not None
