@@ -4,7 +4,137 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #8 (2026-07-21, später am selben Tag) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #9 (2026-07-22) — AKTUELL, zuerst lesen
+
+**Kontext:** Job 8238209 (`train_dummy_overfit_gpu_3h.sh`, 3h, `rot_score_weight=2.0`)
+lief nachts durch (bis Epoche 638, Zeitlimit erreicht). Diese Session: Sampling
+zum ersten Mal end-to-end mit einem echten Checkpoint getestet (nie zuvor
+gemacht) — dabei einen echten Bug gefunden+gefixt, dann die Posen in PyMOL
+angeschaut und einen ernsten Qualitätsbefund gemacht, den wir gerade mit
+einem SigmaDock-Original-Vergleichslauf einordnen.
+
+### ✅ Bug gefunden + gefixt: `sigma_min` fehlte beim Checkpoint-Laden
+
+`SigmaFlowGenerator.__init__` nahm `sigma_min` entgegen, speicherte es aber
+nie als `self.sigma_min` — nur `self.flow_matcher = SE3_FlowMatcher(sigma_min)`.
+`extract_init_kwargs`/`filter_cfg_for_cls` (nutzen `getattr`/`hasattr` auf die
+Konstruktor-Parameternamen) haben `sigma_min` deshalb beim Training **aus jeder
+bisherigen Checkpoint-`hyper_parameters`-Config stillschweigend entfernt** —
+betrifft alle Checkpoints seit Projektbeginn, nie aufgefallen, weil
+`scripts/sample.py` vorher nie mit einem echten Checkpoint durchlief.
+`load_from_scratch` crashte beim Sampling mit `TypeError: missing 1 required
+positional argument: 'sigma_min'`.
+
+**Fix (Commit `20960ee`):**
+- `sigma_flow_generator.py:66`: `self.sigma_min = sigma_min` ergänzt (behebt
+  es für alle künftigen Checkpoints).
+- `scripts/sample.py:529`: `enforced_cfg` erzwingt jetzt `sigma_min=0.0`
+  beim Laden (nötig für bereits existierende Checkpoints, deren gespeicherte
+  hparams den Key nie hatten — `0.0` ist korrekt, da nie `--sigma_min`
+  gesetzt wurde). Kleiner bekannter Schönheitsfehler: dieser Eintrag hängt an
+  derselben Bedingung wie `cache_path` (`if cfg.model.cached_s03_dir is not
+  None`) — aktuell unkritisch, da `cached_s03_dir` default `"cache"` ist,
+  aber bei Bedarf entkoppeln.
+
+### ✅ Sampling mit echtem Checkpoint zum ersten Mal erfolgreich durchgelaufen
+
+Checkpoint `experiments/sigmadock/0-07-22_05-38-04/checkpoints/last.ckpt`
+(Job 8238209, Epoche 620, `global_step=3105`). Sampling-Job 8254111
+(`slurm/sample_dummy.sh`) lief sauber durch, alle 10 Komplexe bekamen eine
+`.sdf` unter `sampling_output/results/dummy_train/last/seed_0/`.
+
+### ⚠️ Wichtiger Qualitätsbefund: Posen sehen in PyMOL stark verzerrt aus
+
+Visueller Vergleich (wahre Pose grün, Vorhersage magenta) in PyMOL: ungefähr
+richtige Bindetaschen-Region, aber der Ligand selbst wirkt "zerrissen" (lange,
+gerade Bindungen quer durchs Bild). Screenshot unter
+`Screenshots_3h_22.07.2026/`.
+
+**Diagnose-Skript** (lokal, `scratchpad/fragment_diagnostic.py`, nicht
+committet — bei Bedarf aus dieser Beschreibung rekonstruierbar): pro Molekül
+an Torsionsbindungen fragmentiert (gleiche RDKit-Logik wie im Training,
+`Chem.FragmentOnBonds` erhält Original-Atomindizes für echte Atome), dann pro
+Fragment `raw_rmsd` (unaligned, da `x0_hat`/Referenz schon im selben
+Weltkoordinatensystem sind) und `shape_rmsd` (nach Kabsch-Realignment,
+isoliert interne Geometrie von Platzierung) gemessen.
+
+**Ergebnis:** `shape_rmsd` ≈ `0.00 Å` fast überall (durch die starre
+Fragment-Architektur erzwungen, kein Erfolgssignal). `raw_rmsd` dagegen
+**8–15 Å pro Fragment UND für den ganzen Liganden**, bei allen 10 Komplexen
+— nahe Zufalls-Platzierung, kein "leicht daneben". Schließt eine einfache
+Atom-Indexierungs-/Bindungstopologie-Bug beim SDF-Export aus (Buchhaltung
+`frag_atom_idx`/`node_entity<=1`/`FragmentOnBonds`-Verhalten geprüft, korrekt
+verdrahtet) — der Fehler sitzt in der tatsächlichen SE(3)-Platzierung pro
+Fragment, nicht im Export.
+
+**Bestätigt über Checkpoint-Callback-State** (`ckpt["callbacks"]`, ohne
+Download direkt auf ARC gelesen — der bekannte `val_loss=0.0000` im
+Dateinamen ist nur ein Formatierungsartefakt, `current_score`/
+`best_model_score` sind die echten Werte): `loss_val/total` **plateaut bei
+~12.7–12.9** über die letzten ~700 Epochen (Step 2380: `12.69` (best), 2795:
+`13.00`, 3105: `12.94`) — verbessert gegenüber dem 300-Epochen-Test
+(`~18.8`, PAUSE-PUNKT #4), aber weit von "nahe Null" entfernt UND nicht mehr
+wirklich fallend. Spricht für "Training (noch) nicht konvergiert", aber das
+Plateau deutet an, dass einfach länger laufen lassen bei denselben
+Hyperparametern allein evtl. nicht reicht.
+
+### 🔄 Laufend: SigmaDock-Original-Vergleichslauf (Job 8260312, gestartet 2026-07-22)
+
+Um zu klären, ob das obige ein generelles "10-Beispiele-Überanpassung
+braucht Zeit/Tuning"-Problem ist (unabhängig vom Paradigma) oder etwas an der
+Flow-Matching-Konvertierung bremst: Original-SigmaDock (Diffusion) wird auf
+denselben 10 Komplexen mit denselben Hyperparametern trainiert
+(`rot_score_weight=2.0`, `max_epochs=700`, `batch_size=2`, `--debug
+--offline_run`, `--time=02:45:00`).
+
+**Wichtig — läuft NICHT im lokalen `SigmaDock/`-Referenzordner dieses Repos**
+(bleibt wie immer unangetastet), **sondern in einem separaten, eigenen ARC-Klon**
+des Users: `/data/stat-cadd/shug8458/SigmaDock_Reproduction_JulianMueller/sigmadock/`
+(eigenes Git-Repo, eigene Env `/data/stat-cadd/shug8458/myenv`, aktiviert via
+`module load Mamba; source activate /data/stat-cadd/shug8458/myenv`). Struktur
+dort ist NEUEUER/korrekter als der lokale Referenzordner (`src/` statt
+`src_sigmadock/`, passt zu `pyproject.toml` — der lokale Referenzordner hat an
+der Stelle eine Inkonsistenz, die ein `pip install -e .` vermutlich brechen
+würde; deshalb bewusst NICHT den lokalen Ordner kopiert+gepusht, sondern der
+ARC-Klon direkt gepatcht).
+
+**Patch dort** (nicht in diesem Git-Repo getrackt, da separater Klon —
+Diff hier dokumentiert für Reproduzierbarkeit):
+- `scripts/sample.py`: identische `export_predictions_to_sdf`-Erweiterung
+  wie bei SigmaFlow (Imports `write_sdf`/`get_mol_from_coords` ergänzt, Methode
+  vor `save_results` eingefügt, Aufruf `self.export_predictions_to_sdf(results,
+  out_dir)` vor `base_name = "predictions.pt"`). Vorher verifiziert: die Datei
+  war bis auf diese Ergänzung 1:1 identisch mit dem lokalen `SigmaDock/scripts/
+  sample.py` (Zeile für Zeile geprüft), also sicher zu patchen.
+- `conf/experiments/dummy_train.yaml` neu angelegt (rein additiv, gleicher
+  Inhalt wie `SigmaFlow_Development/conf/experiments/dummy_train.yaml` —
+  fehlte dort vorher, nur `dummy_crossdock.yaml` (Cross-Docking, andere
+  Aufgabe) war vorhanden).
+- Neues SLURM-Skript `slurm/train_sigmadock_original_dummy_overfit_gpu_3h.sh`
+  (dort, nicht in diesem Repo).
+
+### Nächste Schritte
+
+1. Warten bis Job 8260312 durch ist (~2:45h ab Start).
+2. Checkpoint finden, mit demselben gepatchten `scripts/sample.py` sampeln,
+   `.sdf`s herunterladen, in PyMOL neben die SigmaFlow-Ergebnisse legen —
+   gleiches Muster wie bei PAUSE-PUNKT #8/9 oben.
+3. Je nach Ergebnis: sieht SigmaDock (Diffusion) im selben Zeitbudget klar
+   besser aus (→ etwas an der Flow-Matching-Konvertierung bremst Konvergenz,
+   genauer hinschauen) oder ähnlich verzerrt/hoher Loss (→ generelles
+   "10 Beispiele reichen nicht in 3h"-Problem, eher Hyperparameter/Zeit-Frage
+   als Bug).
+4. Optional, noch nicht umgesetzt (besprochen): `pytorch_lightning.loggers.
+   CSVLogger` zusätzlich zu `WandbLogger` einhängen (`scripts/train.py:342`),
+   damit Losses auch ohne `wandb sync` direkt lesbar sind (aktuell nur im
+   Wandb-Offline-Verzeichnis vorhanden). Ebenfalls besprochen, nicht
+   umgesetzt: automatische Job-Verkettung Training→Sampling via `sbatch
+   --dependency=afterany:$SLURM_JOB_ID` (Haken: `CKPT_DIR` erst zur Laufzeit
+   bekannt, bräuchte eine früh geschriebene Marker-Datei in `scripts/train.py`).
+
+---
+
+## 🔖 PAUSE-PUNKT #8 (2026-07-21, später am selben Tag) — älter, siehe #9 oben für aktuellen Stand
 
 **Kontext:** Trainingsjob (`slurm/train_dummy_overfit_gpu_3h.sh`, ~2.75h,
 `rot_score_weight=2.0`) wurde vom User auf ARC gestartet (`htc-login.arc.
