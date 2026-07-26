@@ -550,15 +550,13 @@ def sample(global_cfg: DictConfig) -> None:
     sampler_fn: Callable = partial(
         sampler,
         denoiser=denoiser,
-        t_min=cfg.diffusion.t_min,
-        rho=cfg.diffusion.rho,
-        num_steps=cfg.diffusion.num_steps,
-        noise_scale=cfg.diffusion.noise_scale,
-        noise_decay=cfg.diffusion.noise_decay,
-        solver=cfg.diffusion.solver,
-        discretization=cfg.diffusion.discretization,
-        use_true_vector_field=cfg.diffusion.use_true_vector_field,
-        verbose=cfg.diffusion.verbose,
+        t_min=cfg.ode.t_min,
+        rho=cfg.ode.rho,
+        num_steps=cfg.ode.num_steps,
+        solver=cfg.ode.solver,
+        discretization=cfg.ode.discretization,
+        use_true_vector_field=cfg.ode.use_true_vector_field,
+        verbose=cfg.ode.verbose,
     )
 
     # Create Sampling Module

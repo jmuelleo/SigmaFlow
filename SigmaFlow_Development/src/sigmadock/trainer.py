@@ -55,7 +55,7 @@ class SigmaLightningModule(pl.LightningModule):
         """SigmaDock Trainer Inputs
 
         Args:
-            denoiser (nn.Module): The underlying Preconditioned Denoiser that handles forward passes.
+            denoiser (nn.Module): The underlying SigmaFlowGenerator that handles forward passes.
             fragment_scaling (float): Scaling factor for fragment-based losses.
                 Value of 0 = Average per fragment in the batch (biases large fragments).
                 Value of 1 = Average per molecule equally across all fragments (biases small fragments).

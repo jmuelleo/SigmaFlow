@@ -111,9 +111,12 @@ class TrainingConfig:
     # Flow matching (R3 probability path, see SE3_FlowMatcher / R3_FlowMatcher)
     sigma_min: float = 0.0
 
-    # Rotation components (deprecated compatibility)
-    rot_score_method: Literal["space", "score"] = "score"  # Either predict space: delta_R or score_R from the model
-    rot_score_scaling: Literal["rms", "true"] | None = "true"  # How to scale the rotation score
+    # Deprecated compatibility. NOTE: rot_score_method/rot_score_scaling (renamed
+    # rot_vector_field_method/rot_vector_field_scaling in an earlier version of this file) were
+    # removed entirely - SigmaFlowGenerator._compute_vector_field never actually applied any
+    # scaling to the rotation vector field (unlike the diffusion score, whose scale genuinely
+    # varies with the noise schedule - see denoiser.py's _compute_scores), so both fields were
+    # dead code end-to-end. See SigmaFlow_Development/STATUS.md PAUSE-PUNKT #6 and #11.
     reverse_rotations: bool = False
 
     # Losses
@@ -493,20 +496,6 @@ def parse_args() -> Namespace:
         help="R3 flow-matching noise floor (see SE3_FlowMatcher). Currently unused, reserved.",
     )
     # Rotation
-    parser.add_argument(
-        "--rot_score_method",
-        type=str,
-        choices=["space", "score"],
-        default=None,
-        help="Method for rotation score: 'space' for delta_R, 'score' for score_R.",
-    )
-    parser.add_argument(
-        "--rot_score_scaling",
-        type=str,
-        choices=["rms", "true", None],
-        default=None,
-        help="How to scale the rotation score. 'rms' for RMS scaling, 'true' for true scaling, None for no scaling.",
-    )
     parser.add_argument(
         "--reverse_rotations",
         action="store_true",

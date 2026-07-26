@@ -48,8 +48,6 @@ radial_type: bessel
 # --- Loss weights ---
 trans_score_weight: 2.0
 rot_score_weight: 0.5
-rot_score_method: space
-rot_score_scaling: rms
 
 # --- Optimizer ---
 weight_decay: 0.1

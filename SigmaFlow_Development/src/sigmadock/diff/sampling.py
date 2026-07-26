@@ -18,7 +18,7 @@ from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
 def sample_notebook(
     denoiser: SigmaFlowGenerator,
     batch: Batch,
-    t_min: float = 1e-3,
+    t_min: float = HPARAMS.general.epsilon_t,
     rho: float = 3.0,
     t_max: float = 1.0,
     num_steps: int = 18,
@@ -30,23 +30,27 @@ def sample_notebook(
     use_true_vector_field: bool = False,
     verbose: bool = False,
 ) -> tuple[Batch, list[np.ndarray]]:
-    """Evaluate the SE3Diffuser by performing a reverse sampling process.
+    """Integrate the flow-matching ODE forward (t_min -> t_max, noise -> data) with
+    SigmaFlowGenerator's predicted vector field, via SE3_FlowMatcher.euler_step.
     Args:
-        denoiser: Instance of SE3Diffuser to use for sampling.
+        denoiser: SigmaFlowGenerator instance whose predicted vector field drives the ODE.
         batch: Batch of data containing the initial states and other necessary information.
-        num_steps: Number of steps in the reverse sampling process.
+        num_steps: Number of steps in the forward ODE integration.
         solver: Solver type for the ODE. Choices are:
             - euler (1x inference)
             - heun (2x inference)
             defaults to "euler".
         rho: Exponent for the time step discretization.
-        noise_scale: Scale of noise to apply during the reverse sampling process.
-        t_min: Minimum time step for the reverse sampling process.
-        t_max: Maximum time step for the reverse sampling process.
+        noise_scale: kept for notebook call-site compatibility; the ODE integration here is
+            deterministic and does not currently inject any noise (see STATUS.md PAUSE-PUNKT #11).
+        t_min: Minimum time step for the ODE integration. Defaults to oracle.py's epsilon_t,
+            the same floor used when sampling t during training - the network was never trained
+            on t below this value.
+        t_max: Maximum time step for the ODE integration.
         seed: Random seed for reproducibility.
-        use_true_vector_field: If True, uses true vector_field for the reverse step instead of predicted vector_field from the denoiser.
+        use_true_vector_field: If True, uses the true vector field for the ODE step instead of the denoiser's predicted vector field.
     Returns:
-        A tuple containing the updated batch and a list of positions at each step of the reverse sampling process.
+        A tuple containing the updated batch and a list of positions at each step of the ODE integration.
     Raises:
         AssertionError: If noise_scale is not in the range [0, 1].
     """
@@ -97,7 +101,7 @@ def sample_notebook(
 
     if verbose:
         print(
-            f"Using {num_steps} steps for reverse sampling with: \n \
+            f"Using {num_steps} steps for forward ODE integration with: \n \
             seed={seed} \n \
             rho={rho} \n \
             solver={solver} \n \
@@ -107,7 +111,7 @@ def sample_notebook(
         )
 
     @torch.no_grad
-    def _reverse_step(
+    def _predict_vector_field_step(
         batch: Batch,
         t: float,
         R_t: torch.Tensor,
@@ -153,14 +157,9 @@ def sample_notebook(
         }
     ]
     all_losses = []
-    # Quadratic noise scaling reduction for reverse sampling
-    noise_scales = torch.linspace(noise_scale ** (1 / noise_decay), 0.0, num_steps, device=batch.x.device) ** (
-        noise_decay
-    )  # [N]
-    # Iterate across timesteps in reverse order
+    # Iterate forward across timesteps (t_min -> t_max, noise -> data)
     for i, t in tqdm(enumerate(timesteps[:-1])):
         dt = timesteps[i+1] - timesteps[i]
-        noise_scale = noise_scales[i]  # [1]
         t = torch.tensor(t, device=batch.x.device)  # [1]
         t_batch = t.repeat_interleave(sum(num_fragments))  # [B x F]
 
@@ -176,8 +175,8 @@ def sample_notebook(
         grad_R_t = true_vector_field["u_t_R"]
         # Use True or Predicted vector_field
         if not use_true_vector_field:
-            # Deepcopy because reverse step modifies the batch in-place (removes masked edges)
-            pred_vector_field = _reverse_step(deepcopy(batch), t, R_t=R_t, trans_t=trans_t, R_0=R_0)
+            # Deepcopy because this step modifies the batch in-place (removes masked edges)
+            pred_vector_field = _predict_vector_field_step(deepcopy(batch), t, R_t=R_t, trans_t=trans_t, R_0=R_0)
             grad_T_p = pred_vector_field["pred_u_t_trans"]
             grad_R_p = pred_vector_field["pred_u_t_R"]
         else:
@@ -194,7 +193,7 @@ def sample_notebook(
                 "t_batch": t_batch,  # [B x F]
             }
         )
-        # Reverse step (use discretization & ODE solver)
+        # ODE step (use discretization & solver)
         step_result = denoiser.flow_matcher.euler_step(
             trans_t=trans_t,
             R_t=R_t,
@@ -204,7 +203,7 @@ def sample_notebook(
         )
         trans_next, R_next = step_result["trans_new"], step_result["R_new"]
 
-        # Update positions according to transformations from reverse step.
+        # Update positions according to transformations from this ODE step.
         pos_t = denoiser._apply_transformations(
             batch=batch,
             # Refererence
@@ -215,7 +214,7 @@ def sample_notebook(
             trans_t=trans_next,
             R_t=R_next,
         )
-        # Update roto-translations with reverse kinematics for next step.
+        # Advance the fragment roto-translations for the next step.
         trans_t = trans_next
         R_t = R_next
         # Update batch with new positions (pos_t) and remove prev local interactions
@@ -250,44 +249,42 @@ def sample_notebook(
     return batch, all_pos, all_edges, all_losses
 
 
-# Keeping for versioning JIC.
+# Used by scripts/sample.py.
 def sampler(
     denoiser: SigmaFlowGenerator,
     batch: Batch,
-    t_min: float = 1e-3,
+    t_min: float = HPARAMS.general.epsilon_t,
     rho: float = 3.0,
     t_max: float = 1.0,
     num_steps: int = 18,
-    noise_scale: float = 0.1,
-    noise_decay: float = 2.0,
     solver: Literal["euler", "heun"] = "euler",
     discretization: Literal["power", "edm"] = "power",
     use_true_vector_field: bool = False,
     verbose: bool = False,
+    debug_first_step: bool = False,
 ) -> tuple[Batch, list[np.ndarray]]:
-    """Evaluate the SE3Diffuser by performing a reverse sampling process.
+    """Integrate the flow-matching ODE forward (t_min -> t_max, noise -> data) with
+    SigmaFlowGenerator's predicted vector field, via SE3_FlowMatcher.euler_step.
     Args:
-        denoiser: Instance of SE3Diffuser to use for sampling.
+        denoiser: SigmaFlowGenerator instance whose predicted vector field drives the ODE.
         batch: Batch of data containing the initial states and other necessary information.
-        num_steps: Number of steps in the reverse sampling process.
+        num_steps: Number of steps in the forward ODE integration.
         solver: Solver type for the ODE. Choices are:
             - euler (1x inference)
             - heun (2x inference)
             defaults to "euler".
-        rho: Exponent for the time step discretization.
-        noise_scale: Scale of noise to apply during the reverse sampling process.
-        t_min: Minimum time step for the reverse sampling process.
-        t_max: Maximum time step for the reverse sampling process.
-        seed: Random seed for reproducibility.
-        use_true_vector_field: If True, uses true vector_field for the reverse step instead of predicted vector_field from the denoiser.
+        rho: Exponent for the time step discretization (only used by discretization="edm").
+        t_min: Minimum time step for the ODE integration. Defaults to oracle.py's epsilon_t,
+            the same floor used when sampling t during training - the network was never trained
+            on t below this value.
+        t_max: Maximum time step for the ODE integration.
+        use_true_vector_field: If True, uses the true vector field for the ODE step instead of the denoiser's predicted vector field.
+        debug_first_step: If True, prints per-fragment rotation angle (R_0 vs R_1) and isnan/isinf
+            checks on the predicted and true vector fields at i==0, to diagnose numerical blowups
+            at the very start of sampling. No effect on the returned trajectory.
     Returns:
-        A tuple containing the updated batch and a list of positions at each step of the reverse sampling process.
-    Raises:
-        AssertionError: If noise_scale is not in the range [0, 1].
+        A tuple containing the updated batch and a list of positions at each step of the ODE integration.
     """
-
-    assert noise_scale >= 0, "Noise scale must be non-negative."
-    assert noise_scale <= 1, "Noise scale must be less than or equal to 1."
 
     # TODO For each seed clone the batch and repeat the data items!
     batch = denoiser._prepare_batch(batch)
@@ -312,7 +309,7 @@ def sampler(
         timesteps = torch.linspace(t_min, t_max, num_steps, device=batch.x.device)
     elif discretization == "edm":
         timesteps = (
-            t_max ** (1 / rho) + step_indices / (num_steps - 1) * (t_min ** (1 / rho) - t_max ** (1 / rho))
+            t_min ** (1 / rho) + step_indices / (num_steps - 1) * (t_max ** (1 / rho) - t_min ** (1 / rho))
         ) ** rho
     else:
         raise ValueError(f"Unknown discretization {discretization}. Choose 'power' or 'edm'.")
@@ -329,16 +326,15 @@ def sampler(
 
     if verbose:
         print(
-            f"Using {num_steps} steps for reverse sampling with: \n \
+            f"Using {num_steps} steps for forward ODE integration with: \n \
             rho={rho} \n \
             solver={solver} \n \
-            noise_scale={noise_scale} \n \
             t_min={t_min} \n \
             "
         )
 
     @torch.no_grad
-    def _reverse_step(
+    def _predict_vector_field_step(
         batch: Batch,
         t: float,
         R_t: torch.Tensor,
@@ -376,20 +372,15 @@ def sampler(
         return pred_vector_field
 
     all_losses = []
-    # Quadratic noise scaling reduction for reverse sampling
-    noise_scales = torch.linspace(noise_scale ** (1 / noise_decay), 0.0, num_steps, device=batch.x.device) ** (
-        noise_decay
-    )  # [N]
 
     # Get ligand indices
     is_lig = torch.where(batch.frag_idx_map != -1)[0]
     # Initialize with Stationary sample
 
     all_pos = [pos_t[is_lig]]
-    # Iterate across timesteps in reverse order
+    # Iterate forward across timesteps (t_min -> t_max, noise -> data)
     for i, t in tqdm(enumerate(timesteps[:-1])):
         dt = timesteps[i+1] - timesteps[i]
-        noise_scale = noise_scales[i]  # [1]
         t = torch.tensor(t, device=batch.x.device)  # [1]
         t_batch = t.repeat_interleave(sum(num_fragments))  # [B x F]
 
@@ -405,13 +396,30 @@ def sampler(
         grad_R_t = true_vector_field["u_t_R"]
         # Use True or Predicted vector_field
         if not use_true_vector_field:
-            # Deepcopy because reverse step modifies the batch in-place (removes masked edges)
-            pred_vector_field = _reverse_step(deepcopy(batch), t, R_t=R_t, trans_t=trans_t, R_0=R_0)
+            # Deepcopy because this step modifies the batch in-place (removes masked edges)
+            pred_vector_field = _predict_vector_field_step(deepcopy(batch), t, R_t=R_t, trans_t=trans_t, R_0=R_0)
             grad_T_p = pred_vector_field["pred_u_t_trans"]
             grad_R_p = pred_vector_field["pred_u_t_R"]
         else:
             grad_T_p = grad_trans_t
             grad_R_p = grad_R_t
+
+        if debug_first_step and i == 0:
+            tr = R_t.diagonal(dim1=-2, dim2=-1).sum(-1)
+            angle_deg = torch.rad2deg(torch.arccos(((tr - 1) / 2).clamp(-1.0, 1.0)))
+            print(f"[debug_first_step] t={t.item():.6f}")
+            for f in range(R_t.shape[0]):
+                print(f"  fragment {f}: angle(R_t, R_1) = {angle_deg[f].item():.4f} deg")
+            for name, x in [
+                ("grad_trans_t (true)", grad_trans_t),
+                ("grad_R_t (true)", grad_R_t),
+                ("grad_T_p (pred, drives trajectory)", grad_T_p),
+                ("grad_R_p (pred, drives trajectory)", grad_R_p),
+            ]:
+                nan_mask = torch.isnan(x).reshape(x.shape[0], -1).any(dim=-1)
+                inf_mask = torch.isinf(x).reshape(x.shape[0], -1).any(dim=-1)
+                bad = torch.nonzero(nan_mask | inf_mask).flatten().tolist()
+                print(f"  {name}: nan_count={int(nan_mask.sum())} inf_count={int(inf_mask.sum())} bad_fragments={bad}")
 
         # Log the losses
         losses: dict[str, torch.Tensor] = denoiser.compute_losses(
@@ -423,7 +431,7 @@ def sampler(
                 "t_batch": t_batch,  # [B x F]
             }
         )
-        # Reverse step (use discretization & ODE solver)
+        # ODE step (use discretization & solver)
         step_result = denoiser.flow_matcher.euler_step(
             trans_t=trans_t,
             R_t=R_t,
@@ -432,7 +440,7 @@ def sampler(
             dt=dt)
         trans_next, R_next = step_result["trans_new"], step_result["R_new"]
 
-        # Update positions according to transformations from reverse step.
+        # Update positions according to transformations from this ODE step.
         pos_t = denoiser._apply_transformations(
             batch=batch,
             # Refererence
@@ -443,7 +451,7 @@ def sampler(
             trans_t=trans_next,
             R_t=R_next,
         )
-        # Update roto-translations with reverse kinematics for next step.
+        # Advance the fragment roto-translations for the next step.
         trans_t = trans_next
         R_t = R_next
         # Update batch with new positions (pos_t) and remove prev local interactions

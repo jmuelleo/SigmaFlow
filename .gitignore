@@ -5,3 +5,12 @@
 # Python
 __pycache__/
 *.pyc
+
+# Generated sampling outputs, checkpoints, and benchmark results (never
+# committed per CLAUDE.md §9 - regenerable from a checkpoint + sample.py)
+/SigmaFlow_Development/experiments/
+/SigmaFlow_Development/sampling_output*/
+/SigmaFlow_Development/posebusters_results/
+/SigmaFlow_Development/pymol_scripts/
+/SigmaFlow_Development/Screenshots_3h_22.07.2026/
+/SigmaFlow_Development/rmsd_summary_all_runs.csv

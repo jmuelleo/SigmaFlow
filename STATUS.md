@@ -4,7 +4,574 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #9 (2026-07-22) — AKTUELL, zuerst lesen
+## 🔖 PAUSE-PUNKT #13 (2026-07-26) — AKTUELL, zuerst lesen
+
+**Kontext:** Direkte Fortsetzung von PAUSE-PUNKT #12. Zwei Dinge diese
+Session: (1) der L40S-GPU-Engpass auf ARC (`short`-Partition, 5h+ Wartezeit
+für einen einzelnen `gpu:l40s:1`-Job, siehe unten) zwang zu einem
+V100-Sampling-Test, der nebenbei einen sauberen Cross-GPU-Konsistenzbeweis
+lieferte; (2) der PAUSE-PUNKT-#12-Cleanup wurde nachträglich verifiziert
+(Diff-Review + repo-weiter Grep + echter End-to-End-Lauf), und der
+Gesamtstand vor dem nächsten großen Schritt (voller Trainingslauf) wurde
+präzisiert.
+
+### ✅ V100-GPU-Fallback getestet: Cross-GPU-Konsistenz bestätigt
+
+**Auslöser:** `sample_dummy.sh` fordert hart `--gres=gpu:l40s:1` an;
+`squeue`/`sinfo` zeigten alle L40S-Nodes (`htc-g061`-`084`) als `mix`/`alloc`,
+kein einziger frei — SLURMs eigene Prognose (`scontrol show job`) nannte
+`StartTime` ca. 24h nach Submit für einen 20-Minuten-Job. Fix: Sampling mit
+`--gres=gpu:v100:1` überschrieben (zwei genutzte, komplett `idle` V100-Nodes
+in `sinfo` gefunden), Checkpoint `experiments/sigmadock/0-07-25_21-40-56/
+checkpoints/last.ckpt` (der PAUSE-PUNKT-#11-Produktions-Hyperparameter-Lauf).
+
+**Zwischenfall, gefunden+erklärt, kein Bug:** erster V100-Versuch (Job
+8338069) meldete `sacct`-Status `COMPLETED, ExitCode=0:0`, aber das `.out`-Log
+zeigte einen Python-Traceback (`FileExistsError`, weil `sample_dummy.sh` ohne
+`OUTPUT_DIR`-Override immer denselben Default-Pfad
+`sampling_output/results/dummy_train/last/seed_0/` benutzt — der existierte
+noch von Job 8254111 aus PAUSE-PUNKT #9). SLURM meldete trotzdem Erfolg, weil
+`sample_dummy.sh` kein `set -e` hat und die letzte Skriptzeile ein
+immer-erfolgreiches `echo` ist — der fehlgeschlagene Python-Exitcode wird
+überschrieben. **Lehre, noch nicht umgesetzt:** `set -euo pipefail` sollte in
+allen `slurm/*.sh`-Skripten nach der Shebang ergänzt werden, damit sowas
+künftig als `FAILED` auffällt statt sich als falscher Erfolg zu tarnen.
+
+**Korrekter Re-Run** (Job 8338077, `OUTPUT_DIR=sampling_output_v100_prodhparams`,
+sonst identisch) lief sauber durch. RMSD gegen wahre Pose (raw/aligned,
+Kabsch, alle 10 Komplexe, lokales Skript, nicht committet):
+
+| | raw (Mittel/Median) | aligned (Mittel/Median) |
+|---|---|---|
+| V100 (dieser Lauf) | 4.32 / 3.70 Å | 2.87 / 2.82 Å |
+| L40S (`sampling_output_prodhparams/`, PAUSE-PUNKT #11, dokumentiert) | 4.31 / 3.67 Å | 2.86 / 2.81 Å |
+
+Direkter Koordinatenvergleich V100 vs. L40S (identischer Checkpoint, Seed 0):
+mittlere Abweichung **0.04 Å**, max **0.10 Å** über alle 10 Komplexe — reine
+Fließkomma-/Kernel-Unterschiede zwischen GPU-Architekturen, keine
+strukturelle Divergenz. **Ergebnis: Sampling ist GPU-architektur-unabhängig
+korrekt**, nicht zufällig nur auf L40S richtig.
+
+### ✅ PAUSE-PUNKT-#12-Cleanup nachträglich verifiziert (nicht nur behauptet)
+
+Drei unabhängige Prüfungen, alle bestanden:
+1. `git diff` der 8 geänderten Dateien Zeile für Zeile gegen die
+   `STATUS.md`-Beschreibung abgeglichen — deckungsgleich, keine
+   Überraschungen.
+2. Repo-weiter Grep (nicht nur die 8 Dateien) nach `get_fragment_com`,
+   `_reverse_step`, `cfg.diffusion.*`, `rot_score_method`/`_scaling`,
+   `rot_vector_field_method`/`_scaling` — keine Treffer außer einem
+   erklärenden Kommentar in `config.py`. Keine Karteileichen, auch nicht in
+   den SLURM-Skripten mit Hydra-Overrides.
+3. Der V100-Sampling-Lauf oben ist gleichzeitig ein echter
+   End-to-End-Smoke-Test des umbenannten Codes (`cfg.ode.*`,
+   `HPARAMS.general.epsilon_t`, Konstruktor ohne die toten
+   Rotations-Parameter) — Checkpoint-Laden, Modellaufbau, ODE-Integration
+   liefen fehlerfrei durch.
+
+**Nebenbei geklärt (User-Frage):** `epsilon_t=0.01` als `t_min`-Untergrenze
+ist **keine** Singularitäts-Fix (per Grep bestätigt: kein `/t` oder `log(t)`
+irgendwo in `diff/`) — das Trainingsziel (`conditional_probability_path`,
+`u_t = x_1-x_0` bzw. `log(R_0^T R_1)`) ist konstant in `t`, auch bei `t=0`.
+Die einzige echte Singularität (`1/(1-t)` in `calc_trans_vector_field`/
+`calc_rot_vector_field`) sitzt bei `t→1` und betrifft nur die geschlossenen
+Marginalfeld-Formeln (`use_true_vector_field`-Debug-Pfad), nicht das
+Trainingsziel. Der eigentliche Grund für `t_min == epsilon_t`:
+Verteilungs-Konsistenz zwischen Training und Sampling (Netzwerk soll nie
+außerhalb seines trainierten `t`-Bereichs abgefragt werden) — nicht
+numerische Notwendigkeit. Ob `epsilon_t=0.01` selbst (statt z.B. kleiner)
+gut gewählt ist, bleibt offen/unverifiziert (geerbte SigmaDock-Konvention).
+
+### 📋 Präzisierter Status vor dem großen Trainingslauf (User-Frage beantwortet)
+
+User-Annahme "Code ist fertig, nur noch 7 Tage trainieren" korrigiert. Was
+tatsächlich noch fehlt, bevor der volle Trainingslauf überhaupt starten
+kann (alles unverändert offen, hier nur nochmal geprüft/bestätigt):
+
+1. **`slurm/train.sh` existiert nicht** (per `ls` bestätigt) — nur
+   `train_dummy_*.sh` für den 10-Komplexe-Test. `conf/training/slurm.yaml`
+   verweist im Kopfkommentar selbst darauf ("4-GPU DDP, 7-Tage-Lauf").
+2. **ARC-Partition/Zeitlimit für Mehrtages-Jobs nie geklärt** — `short` ist
+   auf Stunden gedeckelt (heute live erlebt: 5h+ Wartezeit für einen
+   einzelnen 20-Minuten-L40S-Job auf `short`), für einen 7-Tage-Job
+   ungeeignet. Welche Partition passt, mit User/ARC-Support zu klären.
+3. **4-GPU DDP nie getestet** — jeder bisherige echte Lauf lief mit
+   `--devices 1`. `devices: auto, strategy: ddp` steht in der Config, aber
+   Multi-GPU-Device-Placement/Gradienten-Sync ist unverifiziertes Neuland.
+4. **Datensatzpfade für den vollen Datensatz nie gegen die Config-Regex
+   verifiziert** — bisher lief alles nur gegen die 10 Dummy-Komplexe.
+5. **W&B-Logging-Entscheidung offen** — `--offline_run` reicht vermutlich
+   nicht für einen unbeaufsichtigten 7-Tage-Lauf.
+6. Bereits geprüft und **nicht mehr offen** (alter `STATUS.md`-Punkt
+   gegengecheckt): der `_so3_diffuser.set_device(...)`-Bug in `sample.py`
+   ist weg (per Grep bestätigt, `_so3_diffuser`/`set_device` kommt nirgends
+   mehr im Code vor) — war schon in einer früheren Session gefixt.
+
+**Und danach ist auch noch nicht "fertig":** laut `CLAUDE.md` §11 steht nach
+dem großen Lauf noch die volle PoseBusters-Auswertung auf dem vollen
+Datensatz aus (bisher nur der kleine Redock-Check auf den 10
+Dummy-Komplexen, PAUSE-PUNKT #10/#11).
+
+### Nächste Schritte
+
+1. **Zuerst:** ARC-Partition/Zeitlimit für Mehrtages-DDP-Jobs klären (User
+   oder ARC-Support/-Doku — nicht von hier aus beantwortbar).
+2. Danach `slurm/train.sh` schreiben (nutzt `conf/training/slurm.yaml`),
+   Datensatzpfade verifizieren, W&B-Entscheidung treffen.
+3. Optional, unabhängig: `set -euo pipefail` in `slurm/*.sh` ergänzen, damit
+   stille Fehlschläge (siehe oben) künftig als `FAILED` auffallen.
+4. `.gitignore` wurde diese Session um generierte Verzeichnisse
+   (`experiments/`, `sampling_output*/`, `posebusters_results/`,
+   Screenshots, `rmsd_summary_all_runs.csv`, `pymol_scripts/`) ergänzt, um
+   Checkpoints/Benchmark-Outputs dauerhaft aus dem Repo-Verlauf
+   herauszuhalten (siehe `CLAUDE.md` §9).
+
+---
+
+## 🔖 PAUSE-PUNKT #12 (2026-07-26) — älter, siehe #13 oben für aktuellen Stand
+
+**Kontext:** Direkte Fortsetzung von PAUSE-PUNKT #11 — nachdem SigmaFlow
+quantitativ auf SigmaDock-Niveau validiert war, wurde aufgeräumt: toter Code
+entfernt, Diffusions-Sprachreste umbenannt, `t_min`/`epsilon_t` vereinheit-
+licht. **Wichtig für Checkpoint-Kompatibilität:** alle Änderungen betreffen
+nur lokale Variablen, Kommentare, oder Konstruktor-Parameter, die dank
+`**kwargs`-Auffangbecken in `SigmaFlowGenerator` beim Laden alter Checkpoints
+folgenlos ignoriert werden — die wertvollen Checkpoints aus PAUSE-PUNKT
+#10/#11 (kompletter HP-Sweep + 3h-Bestätigungslauf) laden weiterhin
+unverändert.
+
+### ✅ Entfernter toter Code (verifiziert per Grep, nicht geraten)
+
+- **`rot_vector_field_method`/`rot_vector_field_scaling`** — komplett raus aus
+  `SigmaFlowGenerator.__init__`, `config.py` (Dataclass-Feld + CLI-Flag),
+  `conf/training/slurm.yaml`. Grund: wirkungslos (siehe PAUSE-PUNKT #11 —
+  `_compute_vector_field` hat nie eine `alpha`-Reskalierung angewendet,
+  anders als die Diffusions-Score-Berechnung). Die theoretische Frage, ob
+  Flow Matching so eine Reskalierung bräuchte, bleibt offen — falls je
+  gebraucht, sollte sie neu und bewusst implementiert werden, nicht als
+  Plumbing-Leiche herumliegen.
+- **`noise_scale`/`noise_decay` in `sampler()`** (`sampling.py`) — komplett
+  raus (Parameter + `noise_scales`-Berechnung), inkl. `conf/sampling/base.yaml`.
+  Nur `scripts/sample.py` und die zwei Diagnose-Skripte riefen `sampler()`
+  auf, alle drei entsprechend angepasst (kein `cfg.diffusion.noise_scale`
+  mehr).
+  **Bei `sample_notebook()` bewusst NICHT entfernt** — alle vier
+  Notebook-Aufrufstellen (`04_diffusion.ipynb`, `05_crossdock_sampling.ipynb`,
+  `extensions/sampling.ipynb`) übergeben `noise_scale`/`noise_decay` explizit
+  als Keyword-Argument; Entfernen hätte die Notebooks mit `TypeError`
+  zerstört. Nur die intern nie wirksame `noise_scales`-Berechnung wurde dort
+  entfernt, die Parameter selbst bleiben (jetzt im Docstring als inert
+  dokumentiert).
+- **`get_fragment_com`** (`sigma_flow_generator.py`) — komplett raus, nie
+  aufgerufen (per Grep bestätigt), hatte zudem einen vergessenen Debug-`print`.
+- **Toter `if False:`-Kovarianz-Rotationsblock** in `get_fragment_com_and_rot`
+  (~30 Zeilen, nie ausgeführt) — auf die tatsächlich laufende Zeile
+  (`rots.append(I3)`) reduziert.
+
+**Bewusst NICHT entfernt** (kein echter toter Code):
+- `sigma_min` — Docstring sagt ehrlich "reserved for future use", riesiger
+  Blast-Radius (viele Aufrufer, `enforced_cfg`-Overrides in mehreren
+  Skripten), zu riskant für zu wenig Nutzen.
+- `reverse_rotations` — hat bei `True` echten Effekt in `newton_maruyama`,
+  nur standardmäßig aus.
+- `sample_notebook()` selbst — wird von drei Notebooks benutzt, ist Duplikat
+  von `sampler()`, aber kein toter Code.
+
+**Nebenbefund beim Prüfen der Notebook-Aufrufstellen (nicht behoben, nur
+dokumentiert):** drei der vier Aufrufe übergeben `discretization="edm"` an
+`sample_notebook()` — das ist dort aber nie implementiert (nur `sampler()`
+hat den `edm`-Zweig). Diese Notebook-Zellen würden schon mit `ValueError`
+abstürzen, unabhängig von dieser Session. Vorbestehend, separates Thema.
+
+### ✅ Umbenennungen (inhaltlich sinnfreie SigmaDock-Reste)
+
+- `sampling.py`: Docstrings ("Evaluate the SE3Diffuser by performing a
+  reverse sampling process" → "Integrate the flow-matching ODE forward..."),
+  Kommentare ("Reverse step" → "ODE step", "reverse kinematics" →
+  "roto-translations"), lokale Funktion `_reverse_step` → `_predict_vector_field_step`
+  (rein intern, keine Aufrufer außerhalb der Datei).
+- `sigma_flow_generator.py`: "Output of forward_marginal" →
+  "Output of conditional_probability_path", "Forward pass for the denoiser"
+  → "...for the flow-matching generator", "Noise the current denoised
+  states" → "Interpolate the conditional probability path...".
+- `trainer.py`: "Preconditioned Denoiser" → "SigmaFlowGenerator".
+- `oracle.py`: `epsilon_t`-Kommentar korrigiert (war "avoid division by zero
+  in diffusion process" — sachlich falsch/irreführend für Flow Matching;
+  jetzt präzise beschrieben als Trainings-Zeit-Untergrenze).
+- `conf/sampling/base.yaml`: Config-Gruppe `diffusion:` → `ode:` (betraf 3
+  Skripte: `scripts/sample.py`, `scripts/diagnose_vector_field.py`,
+  `scripts/diagnose_step0.py`, plus 2 SLURM-Skripte mit Hydra-Overrides —
+  alle mitgezogen).
+- **Bewusst nicht angefasst:** `net/`-Verzeichnis (EquiformerV2-Backbone,
+  z.B. `AtomDiffusionEncoder`) — laut `CLAUDE.md` §9 tabu, auch für reine
+  Umbenennungen.
+
+### ✅ `t_min`/`epsilon_t` vereinheitlicht
+
+`sampler()`/`sample_notebook()`s `t_min`-Default zeigt jetzt direkt auf
+`HPARAMS.general.epsilon_t` (`0.01`) statt einem separaten, kleineren
+hartkodierten Wert (`1e-3` im Funktions-Default, `0.005` in
+`conf/sampling/base.yaml` — beide jetzt `0.01`, einheitliche Quelle der
+Wahrheit). Begründung: Training sampelt `t` nie unter `epsilon_t` — das
+Netzwerk sollte beim Sampling nie außerhalb seines trainierten Zeitbereichs
+abgefragt werden. Kostenlos: der tatsächliche Startzustand (`trans_0`, `R_0`,
+reines Rauschen) ändert sich dadurch nicht, nur das `t`-Label beim ersten
+Integrationsschritt — kein Retraining nötig, kein Risiko für bestehende
+Checkpoints.
+
+### Nächste Schritte
+
+1. Offen: ob `sample_notebook()`s `edm`-Diskretisierung (von 3 Notebook-Zellen
+   erwartet, aber nie implementiert) nachgerüstet werden soll.
+2. Ansonsten: siehe PAUSE-PUNKT #11 — großer Trainingslauf auf vollem
+   Datensatz ist der nächste inhaltliche Schritt.
+
+---
+
+## 🔖 PAUSE-PUNKT #11 (2026-07-26) — älter, siehe #12 oben für aktuellen Stand
+
+**Kontext:** Direkte Fortsetzung von PAUSE-PUNKT #10 — nachdem der
+`edm`-Sampling-Bug gefixt war und SigmaFlow ungefähr auf SigmaDock-Niveau
+lag, wurde geprüft, ob SigmaDock nur deshalb "gewinnt", weil es mit seinen
+eigenen Produktions-Hyperparametern verglichen wurde, während SigmaFlow noch
+mit Ad-hoc-Werten lief. Ergebnis: **ja**, und nach Angleichung liegt
+SigmaFlow jetzt mindestens gleichauf mit SigmaDock — teils sogar leicht
+davor.
+
+### ✅ Zweiter toter Hyperparameter-Pfad gefunden + gefixt: `rot_score_method`/`rot_score_scaling`
+
+Exakt dasselbe Namens-Mismatch-Problem wie in PAUSE-PUNKT #6 für SigmaDock
+dokumentiert, aber diesmal bei SigmaFlow: `config.py` nannte die Felder
+`rot_score_method`/`rot_score_scaling`, der `SigmaFlowGenerator`-Konstruktor
+erwartet aber `rot_vector_field_method`/`rot_vector_field_scaling` — landete
+im `**kwargs`-Auffangbecken, wurde beim Training komplett ignoriert.
+**Gefixt** (`config.py`: Dataclass-Feld + CLI-Flag umbenannt, inkl. der
+falschen `"score"`-Option, die eigentlich `"vector_field"` heißen muss, um
+zum Denoiser zu passen; `conf/training/slurm.yaml` zur Konsistenz
+mitgezogen). Damit ist `--rot_vector_field_scaling` jetzt über die CLI
+tatsächlich erreichbar.
+
+**Wichtiger Nachtrag, beim genaueren Hinschauen entdeckt:** `rot_vector_field_scaling`
+ist bei SigmaFlow trotz des Fixes **aktuell komplett wirkungslos** — nicht
+wegen eines Namens-Bugs, sondern weil `_compute_vector_field` in
+`sigma_flow_generator.py` das rohe Newton-Maruyama-`omega` **direkt** als
+Vektorfeld zurückgibt, ohne die `alpha`-Reskalierung, die die
+Original-Diffusion in `_compute_scores` durchführt (Kommentar im Code: "no
+time dependent scaling needed, unlike the diffusion score" — eine bewusste,
+plausible Design-Entscheidung aus einer früheren Session, aber sie lässt den
+Parameter seitdem ins Leere laufen). Der `rms`-vs-`true`-Unterschied im
+Sweep unten war folglich **Trainings-Rauschen, kein echter Effekt** — beide
+Einstellungen durchlaufen exakt denselben Code. Offene Frage für eine
+spätere Session: ob Flow Matching überhaupt eine analoge Reskalierung
+braucht (SigmaFlows CFM-Ziel ist zeit-konstant, anders als der
+Diffusions-Score — die Design-Entscheidung könnte also berechtigt sein,
+wurde aber nie explizit hergeleitet/verifiziert).
+
+### ✅ Breiter Hyperparameter-Sweep (10 Kombinationen, 1-2h/Job) + Lehre über Auswertungs-Rauschen
+
+`trans_score_weight ∈ {1.0, 2.0}` × `rot_score_weight ∈ {0.5, 1.0, 2.0, 3.0}`
+(mit `rot_vector_field_scaling=rms`), plus 2 Stichproben mit `scaling=true`
+bei `trans=2.0`. **Wichtige Methodik-Lektion unterwegs:** eine einzelne
+Validierungs-Auswertung pro Checkpoint ist zu verrauscht, um Kombinationen
+verlässlich zu vergleichen — derselbe Checkpoint zeigte in verschiedenen
+Einzelmessungen `loss_trans`-Werte von `1.27` bis `1.95` (Flow-Matching-Zeit
+`t` und Rauschen werden bei jeder Validierung neu zufällig gezogen, nicht
+fixiert). Gelöst durch **8-fache Wiederholung pro Checkpoint + Mittelwert**
+(`eval_unweighted_losses.py`, nicht committet) — zwei unabhängige
+8-fach-Durchläufe stimmten danach gut überein.
+
+**Ergebnis (korrigiert eine frühere Annahme):** höheres `rot_score_weight`
+(2 oder 3) verschlechtert `loss_trans` spürbar, **ohne** `loss_R` überhaupt
+zu verbessern — reiner Nachteil. Die ursprüngliche Hypothese (aus einem
+frühen, kleinen Diagnose-Test), SigmaFlow bräuchte ein höheres
+Rotations-Gewicht als SigmaDock, hat sich nicht bestätigt. Beste
+Kombination: **`trans_score_weight=2.0, rot_score_weight=0.5,
+rot_vector_field_scaling=rms`** — deckungsgleich mit SigmaDocks eigener
+Produktions-Empfehlung (`conf/training/slurm.yaml`).
+
+Auch hier: Ordnernamens-Kollisionen bei parallel gestarteten Jobs traten
+mehrfach auf (Zeitstempel nur sekundengenau, `get_exp_dir` hat inzwischen
+einen `-v2`-Fallback, der aber bei >2 gleichzeitigen Kollisionen nicht
+ausreicht) — betroffene Kombinationen wurden einzeln mit zeitlichem Abstand
+nachgeholt.
+
+### ✅✅ 3h-Bestätigungslauf: SigmaFlow jetzt auf/über SigmaDock-Niveau
+
+Job mit obiger Kombination, `slurm/train_dummy_overfit_gpu_3h_prodhparams.sh`,
+2:45h, dieselben 10 Komplexe. `best_model_score` (`loss_val/total`) = **5.23**
+bei Epoche 614 — grob halbiert gegenüber dem ursprünglichen Lauf mit den
+Ad-hoc-Gewichten (`12.69`, PAUSE-PUNKT #9). Anschließend gesampelt und
+gegen alle bisherigen Läufe verglichen (RMSD + PoseBusters, alle 10
+Komplexe):
+
+| | roh (Mittel/Median) | nach Kabsch-Ausrichtung (Mittel/Median) |
+|---|---|---|
+| SigmaFlow, alt (Ad-hoc-Gewichte, `edm`-Bug) | 10.21 / 10.37 Å | 7.54 / 7.76 Å |
+| SigmaFlow, `edm`-Fix, Ad-hoc-Gewichte | 6.04 / 5.72 Å | 3.09 / 3.06 Å |
+| **SigmaFlow, `edm`-Fix + Produktions-Gewichte** | **4.31 / 3.67 Å** | **2.86 / 2.81 Å** |
+| SigmaDock, eigene (Ad-hoc-)Gewichte | 6.90 / 6.85 Å | 2.85 / 2.90 Å |
+| SigmaDock, Produktions-Gewichte | 5.08 / 4.76 Å | 2.59 / 2.60 Å |
+
+**SigmaFlow liegt jetzt bei der rohen Abweichung vor SigmaDocks eigenem
+Produktionslauf** (4.31 Å vs. 5.08 Å), bei den ausgerichteten Werten
+praktisch gleichauf (2.86 vs. 2.59 Å). Dieselbe gemeinsame architektonische
+Schwäche bei beiden (`bond_lengths`/`bond_angles`/`minimum_distance_to_protein`:
+`0.0` bei **allen** fünf verglichenen Varianten, hyperparameter-unabhängig —
+bestätigt erneut, dass das eine geerbte Architektur-Eigenschaft ist, keine
+Methoden-Schwäche).
+
+**PoseBusters im Detail, `sigmaflow_prodhparams` vs. `sigmadock_prodhparams`
+(nachträglich präzisiert — die erste Zusammenfassung hatte das zu grob als
+"SigmaFlow leicht vorne" dargestellt, was so nicht stimmt):** von 28 Checks
+sind 23 exakt identisch. Bei den 5, wo es einen Unterschied gibt, gewinnt
+**durchgehend SigmaDock** (nie SigmaFlow):
+
+| Check | SigmaFlow | SigmaDock | Differenz |
+|---|---|---|---|
+| `double_bond_stereochemistry` | 0.9 | 1.0 | 1/10 Komplexe |
+| `tetrahedral_chirality` | 0.8 | 0.9 | 1/10 Komplexe |
+| `volume_overlap_with_protein` | 0.1 | 0.2 | 1/10 Komplexe |
+| `volume_overlap_with_organic_cofactors` | 0.9 | 1.0 | 1/10 Komplexe |
+| `internal_energy` | 0.0 | 0.2 | 2/10 Komplexe |
+
+Vier der fünf Unterschiede sind nur 1 von 10 Komplexen — bei dieser
+Stichprobengröße (und der bereits nachgewiesenen Auswertungs-Stochastizität,
+siehe oben) kein verlässliches Signal. Einzige Ausnahme mit doppelt so
+großem Unterschied: `internal_energy` (2/10) — passt mechanistisch zum
+schon unabhängig gefundenen kleinen Rest-Unterschied bei der ausgerichteten
+RMSD (SigmaDock 2.59 Å vs. SigmaFlow 2.86 Å, siehe Tabelle oben), also
+vermutlich etwas konsistentere relative Fragment-Platzierung bei SigmaDock
+— aber bei n=2/10 nicht als bewiesener struktureller Vorteil zu werten,
+eher ein schwacher, plausibler, unbestätigter Hinweis.
+
+**Zusammengefasst, präziser:** RMSD-Positionsgenauigkeit spricht leicht für
+SigmaFlow, PoseBusters-Struktur-Plausibilität leicht für SigmaDock — in
+Summe wirklich **gleichwertig**, keine Methode dominiert die andere.
+
+**Einordnung:** die Flow-Matching-Konversion (das eigentliche Projektziel
+laut `CLAUDE.md` §1) ist damit auf dem 10-Komplexe-Überanpassungstest
+**validiert** — bei identischen Daten, identischer Architektur und fair
+verglichenen Hyperparametern erreicht SigmaFlow mindestens die Qualität der
+Original-Diffusions-Implementierung, in mehreren Metriken sogar leicht
+darüber.
+
+### Nächste Schritte
+
+1. Offene Frage von oben: braucht Flow Matching eine eigene, theoretisch
+   hergeleitete Reskalierung analog zu `rot_score_scaling`/`alpha(t)`? Aktuell
+   nicht dringend, da SigmaFlow bereits auf SigmaDock-Niveau ist — aber
+   könnte die verbleibende kleine Lücke schließen, falls später relevant.
+2. Gemeinsame Fragment-Übergangs-Schwäche (Bindungslängen/-winkel an
+   Torsionsbindungs-Schnittstellen, `PoseBusters`: `0.0` bei allen Varianten)
+   — potenzieller Verbesserungspunkt für beide Methoden, nicht Teil des
+   ursprünglichen Konversions-Auftrags.
+3. Grünes Licht für den nächsten großen Schritt: Training auf dem vollen
+   Datensatz vorbereiten (siehe PAUSE-PUNKT #8 "Wichtige Klarstellung" —
+   Partition/Zeitlimit für Mehrtages-Lauf klären, `slurm/train.sh` schreiben,
+   Datensatz-Pfade auf ARC verifizieren, W&B-Logging-Entscheidung).
+4. `t_min`-Default (`0.005`) liegt weiterhin knapp unter `epsilon_t=0.01` —
+   kleiner, nicht als kritisch bestätigter Rest-Mismatch (siehe PAUSE-PUNKT #10).
+5. `noise_scale`/`noise_decay` in `sampling.py` weiterhin totes Feature
+   (siehe PAUSE-PUNKT #10).
+
+---
+
+## 🔖 PAUSE-PUNKT #10 (2026-07-24) — älter, siehe #11 oben für aktuellen Stand
+
+**Kontext:** Direkte Fortsetzung von PAUSE-PUNKT #9 — der dort dokumentierte
+Qualitätsbefund ("Ligand komplett zerschossen") wurde in dieser Session bis
+zur Ursache zurückverfolgt, ein echter Bug gefunden und gefixt, und der Fix
+quantitativ über alle 10 Komplexe verifiziert (nicht nur visuell an einem
+Beispiel).
+
+### ✅ Root Cause gefunden + gefixt: `edm`-Zeitplan lief rückwärts
+
+`sampling.py::sampler()`s `discretization="edm"`-Zweig (Karras et al. 2022,
+1:1 aus dem Original-Diffusions-Code übernommen) baute den Zeitplan als
+`(t_max^(1/rho) + i/(N-1)*(t_min^(1/rho)-t_max^(1/rho)))^rho` — das läuft von
+`t_max` (i=0) **absteigend** zu `t_min` (i=N-1). Für echte Diffusion ist das
+richtig (Rückwärtsprozess geht von maximalem Rauschen zu wenig Rauschen). Für
+unsere Flow-Matching-Konvention (`0→1`, Rauschen→Daten, aufsteigend, seit dem
+`dt`-Vorzeichenfix in PAUSE-PUNKT #5) ist das **rückwärts** — und `edm` ist
+der tatsächliche Default in `conf/sampling/base.yaml` (nicht `power`!), lief
+also in **jedem** bisherigen echten Sampling-Lauf, inklusive Job 8254111 (die
+`.sdf`s aus PAUSE-PUNKT #9).
+
+**Gefunden über:** ein neues Debug-Skript (`scripts/diagnose_step0.py`, lokal
+nicht committet, siehe unten) + ein temporärer `debug_first_step`-Parameter
+in `sampler()` (`sampling.py`, standardmäßig `False`, keine
+Verhaltensänderung), der bei `i==0` `t` sowie NaN/Inf-Status von
+vorhergesagtem und wahrem Vektorfeld ausgibt. Zeigte: `t=1.000000` bei
+Schritt 0 (statt `t_min=0.005`) — daraus folgt zwingend `t_min==t_max` in der
+tatsächlich benutzten Zeitfolge, was nur mit dem `edm`-Zweig zusammenpasst.
+
+**Zwischenzeitlich verworfene Hypothesen** (der Reihe nach getestet, alle per
+echtem Experiment widerlegt, nicht nur angenommen):
+- `epsilon_t`-Mismatch (Training nie `t<0.01`, Sampling-Default `t_min=1e-3`
+  darunter): mit `t_min=0.02` erneut getestet — identisches `inf`/`nan`,
+  widerlegt.
+- Stillschweigend genullte NaN-Losses während des Trainings
+  (`trainer.py`-Sicherheitsnetz): `grep -c "NaN/Infs in loss"` im
+  Trainings-Log von Job 8238209 → **0** Treffer, widerlegt.
+- SO(3)-Log-Map-Singularität nahe 180°-Rotationen als Ursache: ein
+  unabhängiger Testlauf zeigte bei `179.56°` noch endliche Werte, widerlegt
+  als generelle Erklärung (die eigentliche Ursache war die simple
+  `1/(1-t)`-Division bei `t=1.0` exakt, nicht ein Rotationswinkel-Sonderfall).
+- Triangulations-Mechanismus (`get_triangle_equality_mapping`,
+  Fragment-Anker-Kanten): `data.py`/`chem/processing.py`/`chem/fragmentation.py`
+  Byte-für-Byte identisch zwischen `SigmaDock/` und `SigmaFlow_Development/`
+  verglichen (`diff`, keine Unterschiede in der Logik), `ignore_triangulation:
+  false` in beiden echten Trainingskonfigurationen bestätigt — kein
+  Unterschied, keine Erklärung.
+
+**Fix** (2 Zeilen, `sampling.py::sampler()`, nur der `edm`-Zweig — `power`
+und `sample_notebook()` waren nicht betroffen): `t_min`/`t_max` in der Formel
+vertauscht, sodass sie jetzt aufsteigend läuft (`t_min` bei `i=0`, `t_max`
+bei `i=N-1`), konsistent mit `power` und der restlichen Schleife.
+`conf/sampling/base.yaml`: Default zusätzlich von `edm` auf `power`
+umgestellt (die einzige bisher durch PAUSE-PUNKT #5 tatsächlich verifizierte
+Variante — `edm`s theoretische Rechtfertigung, ungleichmäßige Krümmung
+auszugleichen, stammt aus Karras' Diffusions-SDE und wurde nie für den
+linearen Flow-Matching-Pfad neu hergeleitet, siehe Diskussion in dieser
+Session).
+
+**Wichtige Klarstellung, mit User besprochen:** das Training selbst ist von
+diesem Bug **nicht** betroffen — `_sample_time`/`conditional_probability_path`
+sampeln `t` direkt und unabhängig von der `discretization`/`num_steps`/`rho`-
+Logik, die nur beim iterativen Sampling (Inferenz) eine Rolle spielt. Der
+Checkpoint aus Job 8238209 ist also unter normalen Bedingungen entstanden;
+nur das **Auslesen** (Sampling) war kaputt.
+
+### ✅ Fix quantitativ über alle 10 Komplexe verifiziert (nicht nur 1 Komplex visuell)
+
+Neuer Sampling-Lauf mit Fix (Job 8283171, `slurm/sample_dummy.sh`,
+`OUTPUT_DIR=sampling_output_after_edm_fix`, gleicher Checkpoint wie
+PAUSE-PUNKT #9). Anschließend lokales Analyse-Skript (RDKit,
+Rotationsbindungs-Fragmentierung wie im Training, `Chem.FragmentOnBonds`,
+über alle 10 Komplexe, nicht committet, bei Bedarf aus dieser Beschreibung
+rekonstruierbar) verglich rohe und nach optimaler starrer Ausrichtung
+(Kabsch) verbleibende RMSD gegen die wahre Pose, für drei Sätze: SigmaFlow
+alt (Job 8254111, kaputt), SigmaFlow neu (Job 8283171, gefixt), SigmaDock
+(Job 8260312-Checkpoint, Original-Vergleichslauf aus PAUSE-PUNKT #9).
+
+| | roh (Mittel/Median) | nach Kabsch-Ausrichtung (Mittel/Median) |
+|---|---|---|
+| SigmaFlow alt | 10.21 / 10.37 Å | 7.54 / 7.76 Å (nur 26 % Reduktion) |
+| **SigmaFlow neu** | **6.04 / 5.72 Å** | **3.09 / 3.06 Å (49 % Reduktion)** |
+| SigmaDock | 6.90 / 6.85 Å | 2.85 / 2.90 Å (59 % Reduktion) |
+
+**Ergebnis:** SigmaFlow (neu) liegt über alle 10 Komplexe gemittelt sogar
+minimal **besser** als SigmaDock (roh), und zeigt jetzt **dieselbe Fehlerart**
+(größtenteils reine Rotations-/Translations-Abweichung, keine intern
+zerrissene Struktur mehr — Reduktion durch Ausrichtung fast so groß wie bei
+SigmaDock). Der ursprüngliche visuelle Eindruck aus einem einzelnen
+PyMOL-Vergleich (`1G9V_RQ3`, wo SigmaDock zufällig etwas näher an der wahren
+Pose lag) war **nicht repräsentativ** für den ganzen Datensatz.
+
+Zusätzlich geprüft und **verworfen**: ein gemeinsames, für beide Methoden
+"schwieriges" Fragment als Erklärung für den optischen Eindruck — nur 2 von
+10 Komplexen haben dasselbe fehleranfälligste Fragment bei SigmaFlow-neu und
+SigmaDock (bei ~7 Fragmenten/Komplex im Schnitt ist das nahe am
+Zufallsniveau, kein Beleg für einen strukturellen gemeinsamen Schwachpunkt).
+
+Vier Konkurrenz-Hypothesen für den (jetzt kleinen, ~3 Å) Restunterschied
+durchgegangen: Vergleichbarkeit der Läufe (✅ bestätigt vergleichbar —
+Trainingsskripte bis auf Pfade wortgleich, kein Pretrained-Checkpoint-Laden,
+keine unterschiedlichen Hyperparameter), Dropout/Regularisierung (identisch
+in beiden, `attention_dropout=0.3`/`edge_dropout=0.1`, kein Override in
+beiden Trainings-Skripten — erklärt eher generell "warum überfittet keins
+perfekt", nicht den Methodenunterschied), Sampling-Schrittzahl (beide `25`,
+identisch), Architektur/Trainings-Loss-Gewichtung (SigmaDock gewichtet den
+Score zeitabhängig `1/T_score_scaling²` etc., SigmaFlow nutzt eine rohe,
+ungewichtete MSE — plausibelste verbleibende, aber **unbestätigte**
+Erklärung für den kleinen Restunterschied, noch nicht getestet).
+
+### Neue, nicht committete Hilfsskripte dieser Session (bei Bedarf rekonstruierbar)
+
+- `scripts/diagnose_vector_field.py` + `slurm/diagnose_vector_field.sh`:
+  ruft `sampler()` direkt auf einem echten Checkpoint+Batch auf, druckt
+  `all_losses` pro Schritt (die `scripts/sample.py` bisher berechnet, aber
+  wegwirft) sowie die finale Positions-Abweichung in Å.
+- `scripts/diagnose_step0.py` + `slurm/diagnose_step0.sh`: baut Schritt 0
+  manuell nach, prüft NaN/Inf getrennt an jeder Zwischenstufe (Rohe
+  Netzwerk-Ausgabe / aggregierte Kraft-Drehmoment / vorhergesagtes Feld /
+  wahres Feld) — führte am Ende NICHT zur eigentlichen Ursache (andere
+  Zufallsziehung als der Original-Bug-Lauf, RNG-Stream divergierte leicht
+  zwischen Skripten), der `debug_first_step`-Parameter direkt in `sampling.py`
+  war der Weg, der tatsächlich funktionierte.
+- Lokales Fragment-RMSD-Vergleichsskript (RDKit, s.o.) für die
+  10-Komplexe-Auswertung.
+
+### ✅ Chemische Plausibilität geprüft (PoseBusters, lokal, `redock`-Konfiguration, alle 10 Komplexe)
+
+Lokal ausführbar ohne ARC (posebusters bereits lokal installiert, siehe
+PAUSE-PUNKT #5). Alle drei Sätze (SigmaFlow alt/neu, SigmaDock) gegen die
+wahre Pose + Protein gebustet.
+
+**Kernergebnis:** die größten Probleme (`bond_lengths`, `bond_angles`: **0 %
+Pass-Rate bei allen drei Methoden**; `minimum_distance_to_protein`,
+`volume_overlap_with_protein`: ebenfalls 0 % bei allen drei) sind eine
+**gemeinsame** Eigenschaft der geerbten Fragment-Architektur — jedes Fragment
+wird starr unabhängig platziert, nichts erzwingt eine chemisch sinnvolle
+Bindungslänge/-winkel genau an der Torsionsbindungs-Schnittstelle zwischen
+zwei Fragmenten, und nichts verhindert Protein-Ligand-Überlappung. Betrifft
+SigmaDock genauso wie SigmaFlow — kein Unterschied zwischen den Methoden,
+sondern eine Lücke in der ursprünglichen (unverändert übernommenen)
+Architektur selbst.
+
+Bei den Checks, wo es Unterschiede gibt, liegt **SigmaFlow (neu) leicht vor**
+SigmaDock, nie schlechter: `double_bond_stereochemistry` (1.0 vs. 0.9),
+`tetrahedral_chirality` (0.9 vs. 0.8), `internal_energy` (0.1 vs. 0.0).
+Kein Komplex besteht bei irgendeiner der drei Methoden **alle** Checks
+(0/10 überall) — `rmsd_≤_2Å` (Standard-Erfolgskriterium) liegt bei 0.0 für
+alle drei, konsistent mit den ~3-6 Å Restfehlern von oben.
+
+**Fazit:** chemisch ist SigmaFlow (neu) mindestens gleichauf, tendenziell
+minimal besser als SigmaDock. Die eigentlich interessantere Erkenntnis ist
+die gemeinsame Fragment-Übergangs-Schwäche (Bindungslängen/-winkel,
+Protein-Kollisionen) — ein potenzieller Verbesserungspunkt für **beide**
+Methoden, nicht Teil des ursprünglichen Konversions-Auftrags.
+
+Analyseskript nicht committet (RDKit-basiert, `posebusters.PoseBusters`
+direkt auf die lokal vorliegenden `.sdf`s angewendet, `config="redock"`,
+bei Bedarf aus dieser Beschreibung rekonstruierbar).
+
+### Computational Cost: im Prinzip identisch bei gleicher Schrittzahl
+
+Original-Diffusions-`sampling.py` (`SigmaDock/src_sigmadock/src_sigmadock_diff/
+sampling - UMBAUEN.py`) geprüft: ruft das Netzwerk ebenfalls **genau einmal
+pro Schritt** auf (`solver="euler"` Default in beiden), identische
+EquiformerV2-Architektur/Parameterzahl, identischer `num_steps=25`-Default
+in beiden `conf/sampling/base.yaml`. Kein struktureller Kostenunterschied
+zwischen Diffusion und Flow Matching in dieser Implementierung. Gemessene
+Job-Laufzeiten unterschieden sich zwar sichtbar (SigmaFlow-Sampling-Job:
+4:14 gesamt/18s reines Predicting; SigmaDock-Sampling-Job: 59s gesamt),
+aber ohne Aufschlüsselung für SigmaDock nicht sauber von
+Umgebungs-Overhead (unterschiedliche Conda-Envs) zu trennen — eher kein
+echter Algorithmus-Kostenunterschied.
+
+### Nächste Schritte
+
+1. **Optional, unbestätigte Hypothese testen:** zeitabhängige Loss-Gewichtung
+   für Flow Matching ausprobieren (analog zu Diffusions-Score-Scaling, aber
+   für Flow Matching theoretisch neu herzuleiten, nicht blind kopieren) —
+   könnte den verbleibenden `~3 Å`-Unterschied schließen. Nicht dringend, da
+   SigmaFlow bereits auf Augenhöhe mit SigmaDock ist.
+2. `t_min`-Default (`0.005`) liegt weiterhin knapp unter `epsilon_t=0.01`
+   (Trainings-Untergrenze) — kleiner, nicht als kritisch bestätigter
+   Rest-Mismatch, könnte bei Gelegenheit angeglichen werden.
+3. `noise_scale`/`noise_decay`-Parameter in `sampling.py` sind totes Feature
+   (werden berechnet, aber nie zur Trajektorie addiert) — entweder
+   implementieren oder ehrlich entfernen/dokumentieren.
+4. Mit diesem Erfolg: grünes Licht, um über den nächsten großen Schritt
+   nachzudenken (großer Trainingslauf auf dem vollen Datensatz, siehe
+   PAUSE-PUNKT #8 "Wichtige Klarstellung" — Überanpassung auf 10 Beispielen
+   ist jetzt aber tatsächlich sauber validiert, nicht mehr durch einen
+   Sampling-Bug verzerrt).
+
+---
+
+## 🔖 PAUSE-PUNKT #9 (2026-07-22) — älter, siehe #10 oben für aktuellen Stand
 
 **Kontext:** Job 8238209 (`train_dummy_overfit_gpu_3h.sh`, 3h, `rot_score_weight=2.0`)
 lief nachts durch (bis Epoche 638, Zeitlimit erreicht). Diese Session: Sampling

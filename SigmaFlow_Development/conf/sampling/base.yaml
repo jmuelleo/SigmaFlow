@@ -57,14 +57,12 @@ graph:
   ignore_conjugated_torsion: false # whether to ignore conjugated bonds when defining rotatable bonds
   ignore_triangulation: false # whether to ignore triangulation when defining rotatable bonds
 
-diffusion:
-  num_steps: 25 # number of diffusion steps
-  t_min: 0.005  # minimum noise level (see Karras et al. 2022)
-  rho: 3.0 # controls the spacing of the noise schedule (see Karras et al. 2022)
-  noise_scale: 0.0  # scale of the noise to add at each step (0=no noise better fidelity, 1=full noise better diversity)
-  noise_decay: 2.0 # controls the decay of the noise schedule (annealed)
-  discretization: edm  # discretization method for noise schedule (power or edm)
-  solver: euler  # solver to use for reverse diffusion (euler or heun)
+ode:
+  num_steps: 25 # number of forward ODE integration steps
+  t_min: 0.01  # minimum time (see oracle.py's epsilon_t - keep these equal, training never sees t<epsilon_t)
+  rho: 3.0 # controls the spacing of the time discretization (used by discretization=edm; see Karras et al. 2022)
+  discretization: power  # time discretization method (power or edm)
+  solver: euler  # ODE solver (euler or heun)
   use_true_vector_field: false  # whether to use the true vector field (if available) instead of the predicted one (for evaluation only)
   verbose: false  # whether to print verbose output during sampling
 

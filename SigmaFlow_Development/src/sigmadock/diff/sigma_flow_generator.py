@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any
 
 import torch
 from torch import nn
@@ -30,11 +30,6 @@ class SigmaFlowGenerator(nn.Module):
         sigma_min: float,
         # Graph Parameters
         include_interactions: bool = True,
-        # Rot Score Options
-        rot_vector_field_method: Literal[
-            "space", "vector_field"
-        ] = "vector_field",  # Either predict space: delta_R or vector_field_R from the model
-        rot_vector_field_scaling: Literal["rms", "true"] | None = "rms",  # How to scale the rotation vector_field
         reverse_rotations: bool = False,  # Deprecated compatibility.
         # Cutoffs for local dynamic edges
         cutoff_complex_interactions: float = -1,
@@ -51,8 +46,6 @@ class SigmaFlowGenerator(nn.Module):
             model (nn.Module): The model used to predict the SE(3) vector field.
             include_interactions (bool): Flag to include interactions in the model.
             sigma_min is a parameter currently mostly set to 0, but implemented as part of SE3_FlowMatcher
-            rot_vector_field_method (Literal["space", "vector_field"]): Method for rotation vector_field calculation.
-            rot_vector_field_scaling (Literal["rms", "true"]): How to scale the rotation vector_field.
             reverse_rotations (bool): Deprecated flag for reverse rotations.
             verbose (bool): Flag to enable verbose output.
         kwargs: Additional keyword arguments for future extensions.
@@ -72,17 +65,6 @@ class SigmaFlowGenerator(nn.Module):
 
         # Reverse Rotations
         self.reverse_rotations: bool = reverse_rotations
-        self.rot_vector_field_method: str = rot_vector_field_method
-        if rot_vector_field_method not in ["space", "vector_field"]:
-            raise ValueError(f"Invalid rot_vector_field_method: {rot_vector_field_method}. Must be 'space' or 'vector_field'.")
-        if rot_vector_field_scaling not in ["rms", "true", None]:
-            raise ValueError(f"Invalid rot_vector_field_scaling: {rot_vector_field_scaling}. Must be 'rms', 'true', or None.")
-        if rot_vector_field_method == "vector_field" and rot_vector_field_scaling is None:
-            raise ValueError(
-                "rot_vector_field_scaling must be specified when rot_vector_field_method is 'vector_field'. "
-                "Use 'rms' or 'true' to scale the rotation vector_field."
-            )
-        self.rot_vector_field_scaling: str = rot_vector_field_scaling
 
         # Print Kwargs if unused with WARNING
         # if len(kwargs) > 0:
@@ -134,55 +116,6 @@ class SigmaFlowGenerator(nn.Module):
 
     @staticmethod
     @torch.no_grad()
-    def get_fragment_com(pos: torch.Tensor, batch: Data | Batch) -> list[torch.Tensor]:
-        """
-        Compute per-sample fragment centers of mass (COM), excluding virtual nodes
-        and masked dummies. Returns a list of length B (batch size), where each
-        entry is a tensor of shape [F_b, 3] containing the COMs for that sample's
-        F_b fragments.
-        """
-        frag_map = batch.frag_idx_map
-        node_entity = batch.node_entity
-        mask = batch.mask
-
-        # Determine batch splits
-        ptr = batch.ptr if isinstance(batch, Batch) else torch.tensor([0, pos.size(0)], device=pos.device)
-
-        com_list = []
-        for b in range(ptr.size(0) - 1):
-            s, e = int(ptr[b]), int(ptr[b + 1])
-            pos_b = pos[s:e]  # [N_b, 3]
-            frag_map_b = frag_map[s:e]  # [N_b]
-            mask_b = mask[s:e]  # [N_b]
-            virt_b = node_entity[s:e] == HPARAMS.get_node_idx("ligand_virtual")  # is_ligand_virtual flag
-
-            # Select real ligand atoms (frag_counter >= 0), excluding virtual and masked dummies
-            is_ligand = frag_map_b >= 0
-            is_valid = mask_b & (~virt_b)
-            if not is_ligand.any():
-                com_list.append(torch.empty((0, 3), device=pos.device, dtype=pos.dtype))
-                continue
-
-            # Gather positions and corresponding fragment IDs
-            pos_sel = pos_b[is_ligand]  # [N_ligand, 3]
-            frag_idx_sel = frag_map_b[is_ligand]  # [N_ligand]
-
-            # Unique fragment IDs
-            unique_frags = torch.unique(frag_idx_sel)
-            # Compute COM per fragment
-            coms = []
-            for idx in unique_frags:
-                # Select atoms belonging to the current fragment
-                atom_idx_sel = (frag_idx_sel == idx) & is_valid[is_ligand]
-                print(idx, pos_sel[atom_idx_sel].shape)
-                # Compute COM for the selected atoms
-                coms.append(pos_sel[atom_idx_sel].mean(dim=0))
-            com_list.append(torch.stack(coms, dim=0))  # [F_b, 3])
-
-        return com_list
-
-    @staticmethod
-    @torch.no_grad()
     def get_fragment_com_and_rot(
         pos: torch.Tensor, batch: Data | Batch
     ) -> tuple[list[torch.Tensor], list[torch.Tensor]]:
@@ -226,43 +159,9 @@ class SigmaFlowGenerator(nn.Module):
             for f in fragments:
                 pts = p_sel[f_sel == f]
                 com = pts.mean(0)
-                X = pts - com
                 coms.append(com)
-
-                # Note defining rotation matrix S as identity as it is (and should be) independent in the vector_field.
-                if False:
-                    if X.size(0) < 3:
-                        print(f"[WARN] Fragment {f} has less than 3 atoms. Cannot compute rotation matrix.")
-                        rots.append(I3)
-                    else:
-                        # Compute the covariance matrix
-                        C = X.T @ X
-
-                        # Eigenvalue decomposition
-                        E, V = torch.linalg.eigh(C)
-
-                        # Sort eigenvalues and corresponding eigenvectors in descending order
-                        _, idx = torch.sort(E, descending=True)
-                        V = V[:, idx]
-
-                        # Ensure the eigenvectors have the correct sign
-                        for k in range(3):
-                            col = V[:, k]
-                            if col[torch.argmax(col.abs())] < 0:
-                                V[:, k] = -col
-
-                        # SVD cleanup to ensure orthogonality and determinant = +1
-                        U, S, Vt = torch.linalg.svd(V, full_matrices=False)
-                        V = U @ Vt  # Now guaranteed orthonormal with det=+1
-
-                        # Correct for negative determinant if necessary
-                        if torch.det(V) < 0:
-                            V[:, -1] *= -1
-
-                        rots.append(V)
-                else:
-                    # Use the identity matrix as a placeholder for rotation
-                    rots.append(I3)
+                # Rotation matrix is identity: it is (and should be) independent in the vector field.
+                rots.append(I3)
 
             # Stack the lists of COMs and rotations
             com_list.append(torch.stack(coms))
@@ -651,7 +550,7 @@ class SigmaFlowGenerator(nn.Module):
             batch (Batch): Original batch.
             trans_1 (torch.Tensor): Initial fragment centers [B*F,3].
             R_1 (torch.Tensor): Initial rotations [B*F,3,3].
-            sampled_flow (dict): Output of forward_marginal ('R_t','trans_t').
+            sampled_flow (dict): Output of conditional_probability_path ('R_t','trans_t').
 
         Returns:
             pos_t (torch.Tensor): Transformed positions [N,3].
@@ -1023,7 +922,7 @@ class SigmaFlowGenerator(nn.Module):
         **model_kwargs: dict[str, Any],
     ) -> dict[str, torch.Tensor]:
         """
-        Forward pass for the denoiser. Used only for training.
+        Forward pass for the flow-matching generator. Used only for training.
         Args:
             batch (Data | Batch): The input data batch.
             model_kwargs (dict[str, Any]): Additional keyword arguments for the model.
@@ -1034,15 +933,15 @@ class SigmaFlowGenerator(nn.Module):
         # Move batch to the same device as the model
         batch = self._prepare_batch(batch)
 
-        # Sample time and get sigmas
-        t = self._sample_time(batch)  # [B], [B], {T: [B], R: [B]}
+        # Sample time
+        t = self._sample_time(batch)  # [B]
 
-        # Normalize coordinates and compute initial fragment COM & rotations
+        # Normalize coordinates and compute fragment COM & rotations at t=1 (data)
         pos_0, trans_1, R_1, num_fragments = self._get_initial_states(batch)  # [N,3], [BxF,3], [BxF,3,3]
         # Broadcast time to all fragments
         t_batch = t.repeat_interleave(num_fragments)  # [BxF]
 
-        # Noise the current denoised states and get the vector_field. Broadcast time to all fragments.
+        # Interpolate the conditional probability path at time t and get the target vector field.
         sampled_flow = self._sample_flow(trans_1 = trans_1,
                                          R_1 = R_1,
                                          t_batch = t_batch)

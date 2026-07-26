@@ -24,7 +24,10 @@ class EdgeSpec:
 class GeneralConfig:
     # STD scale for dimensionality reduction (Å)
     dimensional_scale: float
-    # Small value to avoid division by zero in diffusion process.
+    # Lower floor for the flow-matching time t: training's sample_time never samples t below
+    # this. Sampling's t_min should match it, so the network is never queried on a t it never
+    # saw during training. (Not related to the separate 1/(1-t) singularity near t=1 in
+    # calc_trans_vector_field/calc_rot_vector_field - that's an upper-bound concern.)
     epsilon_t: float = 0.01
 
 
