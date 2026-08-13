@@ -12,6 +12,7 @@ import torch
 from Bio import PDB
 from posebusters import PoseBusters
 from rdkit import Chem
+from rdkit.Geometry import Point3D
 from torch_geometric.data import Data, Dataset
 from torch_geometric.loader import DataLoader
 
@@ -390,6 +391,126 @@ class SigmaDataset(Dataset):
             },
         )
 
+    def build_reference_conformer_block(
+        self,
+        bound_ligand: Chem.Mol,
+        frag_mol: Chem.Mol,
+        frag_torchdata: dict,
+        frag_info: dict,
+        frag_graph: dict,
+        idx: int,
+    ) -> torch.Tensor:
+        """EXP-100: Referenzgeometrie fuer den GESAMTEN Ligandenblock.
+
+        Liefert `ref_conf_pos` fuer den Ligandenteil des Graphen, also einen
+        leakage-freien, an der Inferenz verfuegbaren 3D-Konformer in EXAKT der
+        Knotenreihenfolge, die `get_global_ligand_graph` erzeugt:
+
+            [ frag_mol-Atome 0..M-1 | virtuelle Knoten 0..V-1 ]
+
+        Der Konformer entsteht ueber `ConformerOptimizer._generate_conformer`,
+        also genau den Pfad, den `sample_conformer=True` an der Inferenz schon
+        benutzt: `RemoveAllConformers()` -> `AddHs` -> ETKDGv3 mit festem Seed
+        -> `EmbedMolecule` -> MMFF -> `RemoveHs`. Es gibt bewusst KEINE zweite,
+        parallele Konformergenerierung.
+
+        Die Indexabbildung ist empirisch nachgewiesen (tests/validate_mapping.py):
+          * `frag_mol`-Atom i mit i < n_orig IST Originalatom i (gleicher Index)
+          * `frag_mol`-Atom k mit k >= n_orig ist ein Dummy (Ordnungszahl 0),
+            genau ein Nachbar, und sein ISOTOP traegt den Index des Partneratoms
+            jenseits der geschnittenen Bindung. Der Dummy liegt exakt auf diesem
+            Partner. Er bekommt hier deshalb dessen Konformerposition - das ist
+            die bestehende geometrische Definition, keine erfundene Koordinate.
+          * virtuelle Knoten sind Ringmittelpunkte bzw. Fragment-Schwerpunkte.
+            Sie werden mit derselben Funktion aus der Konformergeometrie neu
+            berechnet, nicht uebernommen.
+
+        Jede Abweichung von dieser Struktur ist ein harter Fehler. Ein falsches
+        Mapping wuerde plausibel aussehende, aber falsche Kabsch-Rotationen
+        erzeugen - der gefaehrlichste denkbare stille Fehler in EXP-100.
+        Deshalb: keine try/except-Rueckfaelle, kein Index-Clamping.
+        """
+        n_orig = bound_ligand.GetNumAtoms()
+        n_frag = frag_mol.GetNumAtoms()
+
+        # --- 1) Leakage-freier Referenzkonformer -------------------------
+        conf_mol = ConformerOptimizer(deepcopy(bound_ligand), seed=self.seed + idx)._generate_conformer()
+
+        if conf_mol.GetNumAtoms() != n_orig:
+            raise ValueError(
+                f"[EXP-100] Referenzkonformer hat {conf_mol.GetNumAtoms()} Atome, "
+                f"das Originalmolekuel {n_orig}. Atomreihenfolge nicht abbildbar."
+            )
+        z_conf = [a.GetAtomicNum() for a in conf_mol.GetAtoms()]
+        z_orig = [a.GetAtomicNum() for a in bound_ligand.GetAtoms()]
+        if z_conf != z_orig:
+            raise ValueError("[EXP-100] Referenzkonformer hat eine andere Atomreihenfolge als das Original.")
+        bonds_conf = {tuple(sorted((b.GetBeginAtomIdx(), b.GetEndAtomIdx()))) for b in conf_mol.GetBonds()}
+        bonds_orig = {tuple(sorted((b.GetBeginAtomIdx(), b.GetEndAtomIdx()))) for b in bound_ligand.GetBonds()}
+        if bonds_conf != bonds_orig:
+            raise ValueError("[EXP-100] Bindungsmenge des Referenzkonformers weicht vom Original ab.")
+
+        # --- 2) Koordinaten in frag_mol-Reihenfolge ----------------------
+        conf_pos = np.asarray(conf_mol.GetConformer().GetPositions(), dtype=np.float32)  # [n_orig,3]
+        frag_pos = np.asarray(frag_mol.GetConformer().GetPositions(), dtype=np.float32)  # [n_frag,3]
+        out = np.zeros((n_frag, 3), dtype=np.float32)
+
+        z_frag_real = [frag_mol.GetAtomWithIdx(i).GetAtomicNum() for i in range(n_orig)]
+        if z_frag_real != z_orig:
+            raise ValueError(
+                "[EXP-100] Die ersten n_orig Atome von frag_mol entsprechen nicht dem Originalmolekuel. "
+                "Die Annahme rdkit_idx == frag_idx ist verletzt."
+            )
+        out[:n_orig] = conf_pos
+
+        for k in range(n_orig, n_frag):
+            atom = frag_mol.GetAtomWithIdx(k)
+            if atom.GetAtomicNum() != 0:
+                raise ValueError(f"[EXP-100] frag_mol-Atom {k} hinter dem Originalblock ist kein Dummy.")
+            partner = atom.GetIsotope()
+            neighbours = [n.GetIdx() for n in atom.GetNeighbors()]
+            if partner >= n_orig or len(neighbours) != 1:
+                raise ValueError(
+                    f"[EXP-100] Dummy {k}: Isotop={partner} (n_orig={n_orig}), Nachbarn={neighbours}. "
+                    "Erwartet: genau ein Nachbar und ein Isotop, das auf ein Originalatom zeigt."
+                )
+            offset = float(np.linalg.norm(frag_pos[k] - frag_pos[partner]))
+            if offset > 1e-3:
+                raise ValueError(
+                    f"[EXP-100] Dummy {k} liegt {offset:.4f} A von seinem Partneratom {partner} entfernt. "
+                    "Die Dummy-Definition (Dummy sitzt auf dem Partner) gilt hier nicht."
+                )
+            out[k] = conf_pos[partner]
+
+        # --- 3) Virtuelle Knoten aus der Konformergeometrie --------------
+        conf_frag_mol = deepcopy(frag_mol)
+        conformer = conf_frag_mol.GetConformer()
+        for i in range(n_frag):
+            conformer.SetAtomPosition(i, Point3D(float(out[i, 0]), float(out[i, 1]), float(out[i, 2])))
+
+        conf_info = dict(frag_info)
+        conf_info["virtual_nodes"] = get_all_virtual_nodes_per_fragment(
+            conf_frag_mol,
+            frag_info["fragment_ids"],
+            atom_mask=frag_torchdata["mask"].numpy(),
+        )
+        conf_graph = get_global_ligand_graph(conf_frag_mol, **frag_torchdata, **conf_info)
+
+        # --- 4) Der Graph muss STRUKTURELL identisch sein ----------------
+        # Nur die Koordinaten duerfen abweichen. Waere die Topologie anders,
+        # wuerden ref_pos und ref_conf_pos verschiedene Knoten meinen.
+        if conf_graph["pos"].shape != frag_graph["pos"].shape:
+            raise ValueError(
+                f"[EXP-100] Konformer-Ligandenblock {tuple(conf_graph['pos'].shape)} != "
+                f"Referenzblock {tuple(frag_graph['pos'].shape)}."
+            )
+        if not torch.equal(conf_graph["edge_index"], frag_graph["edge_index"]):
+            raise ValueError("[EXP-100] Kantenstruktur des Konformergraphen weicht ab.")
+        if not torch.equal(conf_graph["node_entity"], frag_graph["node_entity"]):
+            raise ValueError("[EXP-100] node_entity des Konformergraphen weicht ab.")
+
+        return conf_graph["pos"].to(torch.float32)
+
     def __len__(self) -> int:
         return len(self.datafront)
 
@@ -501,6 +622,27 @@ class SigmaDataset(Dataset):
             # Build Ligand Graph & Add Virtual Nodes
             frag_graph = get_global_ligand_graph(frag_mol, **frag_torchdata, **frag_info)
 
+            # EXP-100: Referenzgeometrie fuer den Ligandenblock.
+            # Muss VOR dem Virtual-Node-Padding unten stehen, weil
+            # `frag_torchdata["mask"]` dort auf N+V verlaengert wird, waehrend
+            # `get_all_virtual_nodes_per_fragment` die ungepaddete Maske (Laenge N)
+            # erwartet - genau wie beim ersten Aufruf in `fragment_and_annotate`.
+            if self.sample_conformer:
+                # An der Inferenz IST `frag_mol` bereits der generierte Konformer.
+                # Die Referenzgeometrie ist damit die Graphgeometrie selbst; EXP-100
+                # ist hier ein exakter No-Op. Ein zweiter Konformer mit demselben
+                # Seed waere bitgleich - wir sparen ihn uns.
+                ref_conf_lig_pos = frag_graph["pos"].clone().to(torch.float32)
+            else:
+                ref_conf_lig_pos = self.build_reference_conformer_block(
+                    bound_ligand=bound_ligand,
+                    frag_mol=frag_mol,
+                    frag_torchdata=frag_torchdata,
+                    frag_info=frag_info,
+                    frag_graph=frag_graph,
+                    idx=idx,
+                )
+
             # Extend torchdata info with virtual node padding
             num_lig_virtual = sum([len(v) for k, v in frag_info["virtual_nodes"].items()])
             frag_torchdata["overconstrained_anchors"] = torch.cat(
@@ -524,10 +666,35 @@ class SigmaDataset(Dataset):
                 pocket_com=pocket_com,  # Pocket CoM used if random_rotation is True.
             )
 
+            # EXP-100: `ref_conf_pos` auf den GESAMTEN Graphen erweitern, damit es
+            # knotenweise zu `ref_pos` passt und PyG es beim Batchen automatisch
+            # entlang dim 0 konkateniert (Default-`__cat_dim__` fuer Nicht-Index-
+            # Attribute mit fuehrender Knotendimension).
+            n_total = interaction_graph["ref_pos"].shape[0]
+            n_prot = n_total - ref_conf_lig_pos.shape[0]
+            if n_prot < 0:
+                raise ValueError(
+                    f"[EXP-100] Ligandenblock ({ref_conf_lig_pos.shape[0]}) groesser als der Graph ({n_total})."
+                )
+            # Der Proteinteil wird nie gelesen (frag_idx_map == -1). Wir kopieren
+            # trotzdem die echten Proteinkoordinaten statt Nullen einzusetzen,
+            # damit das Feld durchgaengig "Referenzgeometrie" bedeutet.
+            ref_conf_pos = torch.cat(
+                [interaction_graph["ref_pos"][:n_prot].to(torch.float32), ref_conf_lig_pos.to(torch.float32)],
+                dim=0,
+            )
+            if ref_conf_pos.shape != interaction_graph["ref_pos"].shape:
+                raise ValueError(
+                    f"[EXP-100] ref_conf_pos {tuple(ref_conf_pos.shape)} != "
+                    f"ref_pos {tuple(interaction_graph['ref_pos'].shape)}."
+                )
+
             time_end = time.time()
             data = Data(
                 # Protein-Ligand Complex
                 **interaction_graph,
+                # EXP-100: inferenzverfuegbare, leakage-freie Referenzgeometrie
+                ref_conf_pos=ref_conf_pos,
                 # Frags
                 triangulation_indexes=frag_torchdata["triangulation_indexes"],
                 overconstrained_anchors=frag_torchdata["overconstrained_anchors"],

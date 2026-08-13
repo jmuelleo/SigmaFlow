@@ -121,7 +121,10 @@ def diagnose(global_cfg: DictConfig) -> None:
     print()
 
     pos_T = denoiser._apply_transformations(
-        pos_0=pos_0, batch=batch, trans_1=trans_1, R_1=R_1, trans_t=trans_0, R_t=R_0
+        pos_0=pos_0, batch=batch, trans_1=trans_1,
+        # EXP-100: pos_0 liegt im C_F-Rahmen -> Referenzrotation = Identitaet
+        R_ref=torch.eye(3, device=R_1.device, dtype=R_1.dtype).expand_as(R_1),
+        trans_t=trans_0, R_t=R_0
     )
     describe("pos_T (initial atom positions)", pos_T)
     print()
@@ -140,7 +143,7 @@ def diagnose(global_cfg: DictConfig) -> None:
 
     # --- 2) Aggregated force/torque -> predicted vector field (Newton-Maruyama) ---
     force_per_fragment, torque_per_fragment, frag_mass, frag_inertia_t = denoiser._compute_fragment_dynamics(
-        batch=batch, R_t=R_0, trans_t=trans_0, R_1=R_0, lig_forces=lig_pseudoforces, forces_idxs=forces_idxs
+        batch=batch, R_t=R_0, trans_t=trans_0, R_ref=R_0, lig_forces=lig_pseudoforces, forces_idxs=forces_idxs
     )
     print("--- 2) Per-fragment force/torque (pre Newton-Maruyama) ---")
     describe("force_per_fragment", force_per_fragment)

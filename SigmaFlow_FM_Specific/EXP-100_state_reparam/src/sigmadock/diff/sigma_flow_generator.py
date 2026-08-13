@@ -10,6 +10,7 @@ from sigmadock.chem.processing import get_lig_idxs, get_local_interactions_batch
 from sigmadock.diff import so3_utils
 from sigmadock.diff.se3_flow_matcher import SE3_FlowMatcher
 from sigmadock.diff.so3_flow_matcher import SO3_FlowMatcher
+from sigmadock.diff.state_reparam import kabsch_rotation
 from sigmadock.oracle import HPARAMS
 from sigmadock.torch_utils.utils import (
     replace_batch_edge_attribute,
@@ -168,6 +169,104 @@ class SigmaFlowGenerator(nn.Module):
             rot_list.append(torch.stack(rots))
 
         return com_list, rot_list
+
+    @staticmethod
+    @torch.no_grad()
+    def get_fragment_com_and_rot_reparam(
+        pos_1: torch.Tensor,
+        ref_conf: torch.Tensor,
+        batch: Data | Batch,
+    ) -> tuple[torch.Tensor, list[torch.Tensor], list[torch.Tensor]]:
+        """EXP-100-Variante von `get_fragment_com_and_rot`.
+
+        Statt `R_1 = I` zurueckzugeben, richtet sie den inferenzverfuegbaren
+        Referenzkonformer per Kabsch auf die gebundene Pose aus und liefert die
+        dabei entstehende ECHTE Zielrotation.
+
+        Args:
+            pos_1:    [N,3] gebundene Zielpose (zentriert und skaliert)
+            ref_conf: [N,3] Referenzkonformer (zentriert und skaliert)
+            batch:    Graph mit frag_idx_map, node_entity, mask
+        Returns:
+            pos_0:    [N,3] Referenzgeometrie im Zielrahmen, so dass
+                      pos_0[j] - trans_1[f] = C_F[j] gilt
+            com_list: Liste [F_b,3] je Graph - Ziel-COMs
+            rot_list: Liste [F_b,3,3] je Graph - Zielrotationen
+
+        Wichtige Eigenschaften, die die Tests pruefen:
+          * `com_list` ist BITGLEICH zu SigmaFlow-Minimal. Die Translation ist
+            weiterhin der COM derselben `valid`-Atome der gebundenen Pose. EXP-100
+            aendert die Translationsziele nicht.
+          * Kabsch laeuft AUSSCHLIESSLICH auf `valid`-Atomen, also echten,
+            unmaskierten Fragmentatomen. Dummies mit `mask == False` und
+            virtuelle Knoten gehen nicht ein - sie werden nur mitbewegt.
+          * Fuer JEDEN Ligandenknoten (auch Dummies und virtuelle Knoten) kommt
+            C_F aus `ref_conf`. Es werden keine Koordinaten erfunden und nichts
+            aus der Kristallpose zurueckgerechnet.
+          * Fragmente mit weniger als 3 gueltigen Atomen legen keine Rotation
+            fest; dort bleibt die Identitaet die einzige nicht willkuerliche Wahl.
+        """
+        frag_map = batch.frag_idx_map
+        node_ent = batch.node_entity
+        mask = batch.mask
+        I3 = torch.eye(3, device=pos_1.device, dtype=pos_1.dtype)
+        ptr = batch.ptr if isinstance(batch, Batch) else torch.tensor([0, pos_1.size(0)], device=pos_1.device)
+
+        pos_0 = pos_1.clone()
+        com_list, rot_list = [], []
+        for i in range(len(ptr) - 1):
+            s, e = int(ptr[i]), int(ptr[i + 1])
+            p1 = pos_1[s:e]
+            pc = ref_conf[s:e]
+            fm = frag_map[s:e]
+            ne = node_ent[s:e]
+            m = mask[s:e]
+
+            is_lig = fm >= 0
+            valid = is_lig & (ne != HPARAMS.get_node_idx("ligand_virtual")) & (m)
+            if not valid.any():
+                com_list.append(torch.empty((0, 3), device=pos_1.device))
+                rot_list.append(torch.empty((0, 3, 3), device=pos_1.device))
+                continue
+
+            fragments = torch.unique(fm[valid])
+            # Jedes Fragment, das Knoten hat, muss auch gueltige Atome haben -
+            # sonst bekaemen seine Knoten keinen Referenzrahmen und
+            # `get_transformations_from_rototranslations` wuerde die Fragmente
+            # anders durchnummerieren als wir hier.
+            if not torch.equal(fragments, torch.unique(fm[is_lig])):
+                raise ValueError(
+                    "[EXP-100] Es gibt Fragmente ohne gueltige Atome. Fragmentnummerierung "
+                    f"({torch.unique(fm[is_lig]).tolist()}) passt nicht zu den Kabsch-Fragmenten "
+                    f"({fragments.tolist()})."
+                )
+
+            block = p1.clone()
+            coms, rots = [], []
+            for f in fragments:
+                sel_v = valid & (fm == f)
+                sel_l = is_lig & (fm == f)
+
+                Y = p1[sel_v]  # gebundene Pose, nur echte Atome
+                C = pc[sel_v]  # Referenzkonformer, dieselben Atome
+                y_com = Y.mean(0)
+                c_com = C.mean(0)
+
+                if int(sel_v.sum()) >= 3:
+                    R = kabsch_rotation(C - c_com, Y - y_com)
+                else:
+                    R = I3
+
+                coms.append(y_com)
+                rots.append(R)
+                # C_F + trans_1 fuer ALLE Knoten des Fragments
+                block[sel_l] = pc[sel_l] - c_com + y_com
+
+            pos_0[s:e] = block
+            com_list.append(torch.stack(coms))
+            rot_list.append(torch.stack(rots))
+
+        return pos_0, com_list, rot_list
 
     @staticmethod
     @torch.no_grad()
@@ -483,24 +582,45 @@ class SigmaFlowGenerator(nn.Module):
         """
         Center and normalize coordinates, then compute fragment centers of mass and rotations.
 
+        EXP-100: Die Referenzgeometrie ist nicht mehr die (kristallorientierte)
+        `ref_pos`, sondern der inferenzverfuegbare Konformer `ref_conf_pos`.
+        Damit ist `R_1` eine echte, unbekannte Zielrotation statt der Identitaet.
+
+        Rueckgabekonvention - hier steckt die Falle:
+            `pos_0` ist so gebaut, dass fuer jedes Ligandenatom j im Fragment f gilt
+                pos_0[j] - trans_1[f] = C_F[j]
+            mit C_F = zentriertes Referenzfragment. Die REFERENZROTATION von `pos_0`
+            ist damit die IDENTITAET. `R_1` ist ausschliesslich das FLUSSZIEL.
+            Aufrufer duerfen `R_1` deshalb NICHT als `R_ref` an
+            `_apply_transformations` weiterreichen (siehe dort).
+
         Args:
-            batch (Batch): Input batch with ref_pos and pocket_com.
+            batch (Batch): Input batch with ref_pos, ref_conf_pos and pocket_com.
 
         Returns:
             pos_0 (torch.Tensor): Normalized initial positions [N,3].
             trans_1 (torch.Tensor): Concatenated fragment centers [B*F,3].
-            R_1 (torch.Tensor): Concatenated rotation matrices [B*F,3,3].
+            R_1 (torch.Tensor): Concatenated target rotations [B*F,3,3].
+            num_fragments (torch.Tensor): Fragments per graph [B].
         """
         if isinstance(batch, Batch):
             batch_pointer = batch.ptr[1:] - batch.ptr[:-1]  # [B]
         else:
             batch_pointer = batch.x.shape[0] * torch.ones(1, device=batch.x.device, dtype=torch.long)  # [N]
         # Remove Pocket COM from reference positions
-        pos_0 = batch.ref_pos - batch.pocket_com.repeat_interleave(batch_pointer, dim=0)
+        pos_1 = batch.ref_pos - batch.pocket_com.repeat_interleave(batch_pointer, dim=0)
         # Normalize positions
-        pos_0 = pos_0 / HPARAMS.general.dimensional_scale
-        # Reference rotations and translations
-        trans_1_list, R_1_list = self.get_fragment_com_and_rot(pos_0, batch)
+        pos_1 = pos_1 / HPARAMS.general.dimensional_scale
+
+        if not hasattr(batch, "ref_conf_pos") or batch.ref_conf_pos is None:
+            raise ValueError(
+                "[EXP-100] `ref_conf_pos` fehlt im Batch. Die Datenpipeline dieses Experiments "
+                "muss es liefern (sigmadock.data.SigmaDataset)."
+            )
+        ref_conf = batch.ref_conf_pos.to(pos_1) - batch.pocket_com.repeat_interleave(batch_pointer, dim=0)
+        ref_conf = ref_conf / HPARAMS.general.dimensional_scale
+
+        pos_0, trans_1_list, R_1_list = self.get_fragment_com_and_rot_reparam(pos_1, ref_conf, batch)
         num_fragments = torch.tensor([len(t) for t in trans_1_list], device=batch.x.device)  # [B]
         return (
             pos_0,
@@ -538,25 +658,38 @@ class SigmaFlowGenerator(nn.Module):
         pos_0: torch.Tensor,
         batch: Batch,
         trans_1: torch.Tensor,
-        R_1: torch.Tensor,
+        R_ref: torch.Tensor,
         R_t: torch.Tensor,
         trans_t: torch.Tensor,
     ) -> torch.Tensor:
         """
         Compute transformed positions from roto-translations.
 
+        ACHTUNG - Begriffsfalle, die EXP-100 aufgedeckt hat: das dritte Argument
+        hiess frueher `R_1`, ist aber NICHT das Flussziel. Es ist die
+        REFERENZROTATION der uebergebenen Geometrie `pos_0`, denn die Funktion
+        bildet `delta_R = R_t @ R_ref^T` und wendet das auf `pos_0 - trans_1` an.
+
+        In SigmaFlow-Minimal fielen Referenz- und Zielrotation zusammen (beide `I`),
+        weshalb der alte Name nie auffiel. In EXP-100 fallen sie AUSEINANDER:
+        `pos_0` liegt bereits im kanonischen C_F-Rahmen, seine Referenzrotation ist
+        also `I`, waehrend das Ziel `R_1` allgemein ist. Wer hier faelschlich `R_1`
+        uebergibt, erhaelt eine doppelt angewandte Rotation - eine Pose, die
+        plausibel aussieht und trotzdem falsch ist.
+
         Args:
-            pos_0 (torch.Tensor): Original positions [N,3].
+            pos_0 (torch.Tensor): Positions whose reference frame is `R_ref` [N,3].
             batch (Batch): Original batch.
-            trans_1 (torch.Tensor): Initial fragment centers [B*F,3].
-            R_1 (torch.Tensor): Initial rotations [B*F,3,3].
-            sampled_flow (dict): Output of conditional_probability_path ('R_t','trans_t').
+            trans_1 (torch.Tensor): Reference fragment centers of `pos_0` [B*F,3].
+            R_ref (torch.Tensor): Reference rotations OF `pos_0` [B*F,3,3].
+            R_t (torch.Tensor): Target rotations of this step [B*F,3,3].
+            trans_t (torch.Tensor): Target centers of this step [B*F,3].
 
         Returns:
             pos_t (torch.Tensor): Transformed positions [N,3].
         """
-        # Compute deltas against initial states
-        delta_R = R_t @ R_1.transpose(-1, -2)  # [B*F,3,3]
+        # Compute deltas against the reference frame of pos_0
+        delta_R = R_t @ R_ref.transpose(-1, -2)  # [B*F,3,3]
         delta_T = trans_t - trans_1  # [B*F,3]
         pos_t = self.get_transformations_from_rototranslations(pos_0, batch, trans_1, delta_R, delta_T)  # [N,3]
         return pos_t
@@ -792,7 +925,7 @@ class SigmaFlowGenerator(nn.Module):
         self,
         batch: Batch,
         R_t: torch.Tensor,  # [BF,3,3]
-        R_1: torch.Tensor,  # [BF,3,3]
+        R_ref: torch.Tensor,  # [BF,3,3]
         trans_t: torch.Tensor,  # [BF,3]
         lig_forces: torch.Tensor,  # [NL,3]
         forces_idxs: torch.Tensor,  # [NL]
@@ -805,7 +938,10 @@ class SigmaFlowGenerator(nn.Module):
             sampled_flow (dict): Diffusion outputs including 'R_t' and 'trans_t'.
             lig_forces (torch.Tensor): Ligand pseudo-forces [NL,3].
             forces_idxs (torch.Tensor): Indices of ligand nodes [NL].
-            R_1 (torch.Tensor): Initial rotations [BF,3,3].
+            R_ref (torch.Tensor): Reference rotations OF `batch["pos_0"]` [BF,3,3].
+                Nur fuer den verbose-Traegheitscheck. Siehe die Notiz in
+                `_apply_transformations`: das ist die Referenzrotation, nicht das
+                Flussziel.
 
         Returns:
             force_per_fragment (torch.Tensor): [BF,3]
@@ -824,7 +960,7 @@ class SigmaFlowGenerator(nn.Module):
 
         # Compute delta R_t for inertia transformation
         if self.verbose:
-            delta_R_t = R_t @ R_1.transpose(-1, -2)
+            delta_R_t = R_t @ R_ref.transpose(-1, -2)
             I_t_transformed = delta_R_t @ I_0 @ delta_R_t.transpose(-1, -2)
             if not torch.allclose(I_t_transformed, I_t, rtol=1e-2, atol=1e-1):
                 print(
@@ -972,12 +1108,16 @@ class SigmaFlowGenerator(nn.Module):
                                          R_1 = R_1,
                                          t_batch = t_batch)
 
+        # EXP-100: `pos_0` liegt bereits im kanonischen C_F-Rahmen, seine
+        # Referenzrotation ist deshalb die Identitaet - NICHT `R_1`.
+        R_ref = torch.eye(3, device=R_1.device, dtype=R_1.dtype).expand_as(R_1)
+
         # Apply transformations to get new positions at time t
         pos_t = self._apply_transformations(
             pos_0=pos_0,
             batch=batch,
             trans_1=trans_1,
-            R_1=R_1,
+            R_ref=R_ref,
             R_t=sampled_flow["R_t"],
             trans_t=sampled_flow["trans_t"],
         )  # [N,3]
@@ -995,7 +1135,7 @@ class SigmaFlowGenerator(nn.Module):
             batch=batch,
             R_t=sampled_flow["R_t"],  # [B x F, 3, 3]
             trans_t=sampled_flow["trans_t"],  # [B x F, 3]
-            R_1=R_1,  # [B x F, 3, 3]
+            R_ref=R_ref,  # [B x F, 3, 3] Referenzrotation von pos_0, nicht das Ziel
             lig_forces=lig_pseudoforces,
             forces_idxs=forces_idxs,
         )  # [B x F, 3], [B x F, 3], [B,F], [B x F, 3, 3]

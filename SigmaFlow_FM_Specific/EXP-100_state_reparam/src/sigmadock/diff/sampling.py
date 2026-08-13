@@ -74,11 +74,15 @@ def sample_notebook(
 
 
     # Update roto-translations to ambient space (complex)
+    # EXP-100: `_get_initial_states` liefert pos_0 bereits im kanonischen
+    # C_F-Rahmen. Dessen Referenzrotation ist die Identitaet; `R_1` ist das
+    # Flussziel und darf hier NICHT eingesetzt werden.
+    R_ref_init = torch.eye(3, device=R_1.device, dtype=R_1.dtype).expand_as(R_1)
     pos_T = denoiser._apply_transformations(
         pos_0=pos_0,
         batch=batch,
         trans_1=trans_1,
-        R_1=R_1,
+        R_ref=R_ref_init,
         trans_t=trans_0,
         R_t=R_0,
     )
@@ -129,8 +133,8 @@ def sample_notebook(
             batch=batch,
             R_t=R_t,  # [B x F, 3, 3]
             trans_t=trans_t,  # [B x F, 3]
-            # NOTE R_1 only exists as safety during training for I_t calc. not required strictly (IRL)
-            R_1=R_0,  # [B x F, 3, 3]
+            # NOTE nur fuer den verbose-Traegheitscheck; Referenzrotation, kein Ziel.
+            R_ref=R_0,  # [B x F, 3, 3]
             lig_forces=lig_pseudoforces,
             forces_idxs=forces_idxs,
         )  # [B x F, 3], [B x F, 3], [B,F], [B x F, 3, 3]
@@ -209,7 +213,7 @@ def sample_notebook(
             # Refererence
             pos_0=pos_t,
             trans_1=trans_t,
-            R_1=R_t,
+            R_ref=R_t,
             # Transformation
             trans_t=trans_next,
             R_t=R_next,
@@ -295,11 +299,15 @@ def sampler(
     trans_0, R_0 = sampled_init["trans_0"], sampled_init["R_0"]
 
     # Update roto-translations to ambient space (complex)
+    # EXP-100: `_get_initial_states` liefert pos_0 bereits im kanonischen
+    # C_F-Rahmen. Dessen Referenzrotation ist die Identitaet; `R_1` ist das
+    # Flussziel und darf hier NICHT eingesetzt werden.
+    R_ref_init = torch.eye(3, device=R_1.device, dtype=R_1.dtype).expand_as(R_1)
     pos_T = denoiser._apply_transformations(
         pos_0=pos_0,
         batch=batch,
         trans_1=trans_1,
-        R_1=R_1,
+        R_ref=R_ref_init,
         trans_t=trans_0,
         R_t=R_0,
     )
@@ -352,8 +360,8 @@ def sampler(
             batch=batch,
             R_t=R_t,  # [B x F, 3, 3]
             trans_t=trans_t,  # [B x F, 3]
-            # NOTE R_1 only exists as safety during training for I_t calc. not required strictly (IRL)
-            R_1=R_0,  # [B x F, 3, 3]
+            # NOTE nur fuer den verbose-Traegheitscheck; Referenzrotation, kein Ziel.
+            R_ref=R_0,  # [B x F, 3, 3]
             lig_forces=lig_pseudoforces,
             forces_idxs=forces_idxs,
         )  # [B x F, 3], [B x F, 3], [B,F], [B x F, 3, 3]
@@ -446,7 +454,7 @@ def sampler(
             # Refererence
             pos_0=pos_t,
             trans_1=trans_t,
-            R_1=R_t,
+            R_ref=R_t,
             # Transformation
             trans_t=trans_next,
             R_t=R_next,

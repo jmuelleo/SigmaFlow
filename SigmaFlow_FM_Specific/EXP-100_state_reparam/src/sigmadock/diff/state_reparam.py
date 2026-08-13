@@ -59,14 +59,26 @@ def kabsch_rotation(C: torch.Tensor, Y: torch.Tensor) -> torch.Tensor:
 
     Reflexion wird ausgeschlossen: faellt det(V U^T) negativ aus, wird die
     letzte Singulaerrichtung gespiegelt (Standard-Kabsch-Korrektur).
+
+    NUMERIK: Die SVD laeuft intern IMMER in float64, unabhaengig vom Eingangstyp.
+    Gemessen an 2000 Zufallsfragmenten mit C == Y, wo das exakte Ergebnis die
+    Identitaet ist, liefert float32 bis zu 6.1e-02 Grad Abweichung, float64
+    dagegen 3.0e-06 Grad. Der Grund sind fast entartete Singulaerwerte: U und V
+    sind dann einzeln schlecht bestimmt, ihr Produkt zwar gut konditioniert, aber
+    float32 verstaerkt den Fehler um mehrere Groessenordnungen. Da die Rotation
+    ein TRAININGSZIEL ist, wuerde sich dieser Fehler direkt als Rauschen auf das
+    Label legen. Die Kosten sind vernachlaessigbar - es sind 3x3-Matrizen.
     """
-    H = C.transpose(-1, -2) @ Y                       # [...,3,3]
+    dtype_in = C.dtype
+    C64 = C.to(torch.float64)
+    Y64 = Y.to(torch.float64)
+    H = C64.transpose(-1, -2) @ Y64                     # [...,3,3]
     U, _, Vh = torch.linalg.svd(H)
     V = Vh.transpose(-1, -2)
-    det = torch.linalg.det(V @ U.transpose(-1, -2))   # [...]
-    D = torch.eye(3, device=C.device, dtype=C.dtype).expand(*det.shape, 3, 3).clone()
+    det = torch.linalg.det(V @ U.transpose(-1, -2))     # [...]
+    D = torch.eye(3, device=C.device, dtype=torch.float64).expand(*det.shape, 3, 3).clone()
     D[..., 2, 2] = torch.sign(det)
-    return V @ D @ U.transpose(-1, -2)
+    return (V @ D @ U.transpose(-1, -2)).to(dtype_in)
 
 
 def kabsch_residual(C: torch.Tensor, Y: torch.Tensor, R: torch.Tensor) -> torch.Tensor:

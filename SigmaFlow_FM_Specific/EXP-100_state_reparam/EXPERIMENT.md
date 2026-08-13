@@ -76,12 +76,55 @@ ausschließlich als Flussziel dient.
 
 | Komponente | Status |
 |---|---|
-| `src/sigmadock/diff/state_reparam.py` | ✅ **implementiert und validiert** |
-| `tests/test_exp100.py` | ✅ **7 Kategorien, 0 Fehlschläge** |
-| Patch `sigma_flow_generator.py` (3 Stellen) | ⬜ offen |
-| Patch `sampling.py` (2 Stellen) | ⬜ offen |
-| `data.py`: Feld `ref_conf_pos` | ⬜ offen — **Komplikation:** der Ligandengraph enthält virtuelle Knoten (`num_lig_virtual`), Atomindizes in `pos` bilden also nicht 1:1 auf die RDKit-Molekülatome ab. Die Indexabbildung muss sauber gelöst werden, bevor der Konformer eingespeist wird |
-| SLURM-Skript | ⬜ offen |
+| `src/sigmadock/diff/state_reparam.py` | ✅ implementiert und validiert |
+| `tests/test_exp100.py` (Mathematik) | ✅ 7 Kategorien, 0 Fehlschläge |
+| `tests/validate_mapping.py` (Indexabbildung) | ✅ chemisch + geometrisch bewiesen |
+| `data.py`: `ref_conf_pos` | ✅ implementiert, rein additiv |
+| Patch `sigma_flow_generator.py` | ✅ 6 Stellen |
+| Patch `sampling.py` | ✅ 6 Stellen |
+| `tests/test_exp100_pipeline.py` (End-to-End) | ✅ T1–T6, 0 Fehlschläge |
+| `tests/test_exp100_forward.py` (echter Trainingsschritt) | ✅ inkl. beider Sampler |
+| SLURM `train_exp100_vs_minimal_12h.sh` | ✅ vorbereitet, **nicht gestartet** |
+
+### C.1 Die Indexabbildung — empirisch bewiesen, nicht angenommen
+
+```
+Graph          = [ Protein 0..P-1 | Ligandenblock ]
+Ligandenblock  = [ frag_mol-Atome 0..M-1 | virtuelle Knoten 0..V-1 ]
+frag_mol       = [ Originalatome 0..n_orig-1 | Dummies n_orig..M-1 ]
+```
+
+Nachgewiesen auf allen lokalen Komplexen:
+
+| Prüfung | Ergebnis |
+|---|---|
+| Atommerkmalsvektor Graph ↔ RDKit (Ordnungszahl, Grad, Formalladung, Hybridisierung, Aromatizität, Chiralität, Valenzen) | **0 Abweichungen** |
+| Bindungsnachbarschaft Graph ↔ RDKit | identisch |
+| Koordinaten | max 9.5e-06 Å |
+| Dummy-Isotop benennt das Partneratom | gilt für alle Dummies |
+| Dummy liegt exakt auf seinem Partner | < 1e-3 Å |
+
+**Verworfener Ansatz, mit Grund.** Naheliegend wäre, die Fragmentierung ein
+zweites Mal auf dem Konformer laufen zu lassen. Gemessen: `fragment_and_annotate`
+ist **nicht rein topologisch**. Bei gleicher Konnektivität, aber anderer
+Geometrie ergaben sich abweichende Bindungsmengen, `frag_atom_idx` und
+`dummy_frag_sizes`. Ein daraus gebautes Kabsch-Ziel wäre still falsch gewesen.
+Stattdessen wird der Graph **festgehalten** und nur die Geometrie ersetzt.
+
+### C.2 EXP-100 ist an der Inferenz ein exakter No-Op
+
+`conf/sampling/base.yaml` setzt `sample_conformer: true`. An der Inferenz **ist**
+`frag_mol` bereits der generierte Konformer, also `ref_conf_pos == ref_pos` und
+`R_1 = I` — gemessen exakt 0.00 Grad. Die Intervention wirkt ausschließlich auf
+der Trainingsseite. Genau das macht sie zu einer sauberen Einzelintervention.
+
+Der eigentliche Gehalt von EXP-100 lässt sich damit schärfer fassen als bisher:
+
+> Im Training benutzt SigmaFlow-Minimal als Referenzgeometrie die
+> **kristallnahe** Pose und supervidiert `R_1 = I`. An der Inferenz ist die
+> Referenzgeometrie ein **generierter Konformer** in beliebiger Orientierung.
+> EXP-100 schließt diese Lücke: Training benutzt dieselbe Konformerquelle wie
+> die Inferenz und supervidiert die dazu passende echte Zielrotation.
 
 ## D. Testergebnisse (lokal, alle bestanden)
 
@@ -101,6 +144,36 @@ ausschließlich als Flussziel dient.
 
 **Numerische Einordnung:** `arccos` hat in float64 eine Auflösungsgrenze von
 ~6e-7 Grad. Werte um 3e-06 Grad liegen an dieser Grenze, nicht darüber.
+
+## D.1 Pipeline-Tests (lokal, alle bestanden)
+
+| Test | Ergebnis |
+|---|---|
+| T1 Toy End-to-End, bekanntes `R*`, `p*` | `R_1 = R*` auf 0.00e+00 Grad; Kontrollprobe gegen `R*ᵀ` 126 Grad entfernt |
+| T1 Gegenprobe `R_ref = R_1` (der falsche Griff) | bricht mit 1.69 Å — der Test würde ihn bemerken |
+| T2 Real End-to-End, 48 Fragmente / 9 Komplexe | median **0.057 Å**, p90 0.102, p95 0.327, max 0.499 |
+| T3 Batch, 10 Graphen mit verschiedenen Größen | Batch == Einzelverarbeitung auf 0.00e+00 |
+| T3 Protein unverändert | 0.00e+00 |
+| T4a Leakage bei festem Graphen | **bitgleich** (0.00e+00) trotz 31.9 Å verschobener Kristallpose |
+| T5 `trans_1` identisch zu Minimal | 0.00e+00 — Translationsziele unverändert |
+| T5 `R_1` nicht-trivial | median 152.8 Grad, max 177.2 Grad |
+| T6 Sampler-Invariante über 10 Schritte | max 4.8e-07 |
+| Echter Trainingsschritt (EquiformerV2 + Loss + Backward) | Gradienten endlich, Ziele graphfrei |
+| `sampler` und `sample_notebook` mit echtem Modell | laufen durch, Posen bewegen sich |
+
+## D.2 Numerischer Befund: Kabsch muss in float64 rechnen
+
+Gemessen an 2000 Zufallsfragmenten mit `C == Y` (exakte Antwort: Identität):
+
+| Genauigkeit | größte Abweichung |
+|---|---|
+| float32 | **6.1e-02 Grad** |
+| float64 | 3.0e-06 Grad |
+
+Ursache sind fast entartete Singulärwerte: `U` und `V` sind einzeln schlecht
+bestimmt. Da `R_1` ein **Trainingslabel** ist, hätte sich das direkt als Rauschen
+auf das Ziel gelegt. `kabsch_rotation` promoviert deshalb intern immer auf
+float64 und castet zurück. Kosten: vernachlässigbar, es sind 3×3-Matrizen.
 
 ## E. Rekonstruktionsfehler (Analysephase, 674 starre Fragmente / 209 Komplexe)
 
@@ -135,6 +208,29 @@ p95 = 1.08 Å.
 geschnitten. Für den Methodenvergleich fair (beide Seiten identisch), aber für
 absolute Blind-Docking-Aussagen relevant.
 
+**Die Fragmentierung selbst bleibt kristallabgeleitet (geerbt).** Im Training
+wird der Graph — Fragmentzerlegung, Anker, Dummies, virtuelle Knoten — weiterhin
+aus der gebundenen Pose gebaut. Test T4b zeigt, dass diese Zerlegung bei stark
+veränderter Geometrie in einem von fünf Fällen abweicht. Das ist
+SigmaFlow-Minimal-Verhalten und von EXP-100 **unverändert**; EXP-100 ersetzt nur
+die *Geometrie*, nicht die *Topologie*. Eine Behebung wäre eine eigene,
+separate Intervention und gehört nicht in dieses Experiment.
+> EXP-100 removes the crystal dependence of the reference *geometry*, not of the
+> fragment *decomposition*.
+
+**Kosten.** Pro Trainingsbeispiel kommt eine ETKDGv3+MMFF-Konformergenerierung
+hinzu. Bei `num_workers=6` läuft das im Dataloader parallel zur GPU; ob es zum
+Engpass wird, ist auf ARC zu messen — lokal nicht entscheidbar.
+> `PENDING ARC VALIDATION`: Durchsatz Schritte/s gegen SigmaFlow-Minimal.
+
 ## Status
 
-`IMPLEMENTING` — mathematischer Kern validiert, Pipeline-Anbindung offen.
+`LOCALLY VALIDATED — READY FOR ARC`
+
+Vier Testskripte, 0 Fehlschläge. Diff gegen `SigmaFlow_Minimal`: drei Dateien,
+alle Änderungen Kategorie A (für EXP-100 notwendig), `data.py` rein additiv,
+keine Datei außerhalb der Interventionsfläche berührt. `SigmaFlow_Minimal`
+selbst ist unverändert.
+
+Offen und nur auf ARC entscheidbar: der eigentliche Trainingsvergleich sowie
+der Durchsatz. Das SLURM-Skript liegt bereit und wurde **nicht** gestartet.
