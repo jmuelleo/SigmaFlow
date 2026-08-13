@@ -1,0 +1,866 @@
+================================================================================
+SIGMAFLOW (mit Frame-Fix) vs. SIGMADOCK — 6h- UND 12h-Läufe
+volles PoseBusters-Set (209 Komplexe)
+Stand: 2026-08-12
+================================================================================
+
+Diese Datei fasst den Vergleich von SigmaFlow (nach dem Frame-Fix) und
+SigmaDock zusammen und enthält am Ende fertigen PyMOL-Code zum Anschauen der
+Moleküle. Aufbau:
+
+  Abschnitt 2   6h-Stufe
+  Abschnitt 2b  12h-Stufe, doppelte Rechenzeit auf beiden Seiten
+  Abschnitt 2c  Direktvergleich bei gleicher Rechenzeit  <- wichtigster Teil
+  Abschnitt 2d  chemische Plausibilität der Moleküle + symmetriekorrigierter
+                RMSD (korrigiert die Zahlen aus 2 und 2b nach oben)
+  Abschnitt 2e  Warum SigmaFlow statt SigmaDock? Ehrliche Bestandsaufnahme
+
+Alle Zahlen stammen aus EINEM Skript mit EINER Methodik:
+  SigmaFlow_Variants/posebusters_full_comparison/full_metrics.py
+  SigmaFlow_Variants/posebusters_full_comparison/fragment_locality.py
+
+Sie dürfen NICHT mit älteren Einzelwerten aus früheren Sessions gemischt
+werden — die wurden anders berechnet.
+
+
+================================================================================
+0. WIDERRUF UND NACHTRAG (2026-08-13) — VOR ALLEM ANDEREN LESEN
+================================================================================
+
+Zwei Dinge haben sich seit dem 12.08. geändert. Das erste streicht ein
+Argument, das zweite fügt eines hinzu.
+
+--------------------------------------------------------------------------------
+0a) DIE 42 SIGMADOCK-AUSREISSER HABEN NIE EXISTIERT
+--------------------------------------------------------------------------------
+
+Überall in diesem Bericht, wo "42 Komplexe jenseits 20 Å" oder "SigmaDock ist
+bimodal" steht, ist die Aussage FALSCH. Es war ein Auswertungsartefakt.
+
+Ursache: 84 der 209 Dateien <complex>_ligands.sdf enthalten MEHRERE
+kristallographische Kopien desselben Liganden (bis zu 6, alle mit identischer
+Topologie). Unsere Auswertungsskripte nahmen stillschweigend die erste Kopie
+("nimm das erste Molekül aus dem SDF"). Der SigmaDock-Lauf las per
+experiments.sdf_regex=".*ligands.sdf$" diese Plural-Datei und lieferte für 44
+Komplexe eine Pose, die zu einer ANDEREN Kopie gehört. Gemessen wurde sie
+gegen Kopie 0 — also gegen die falsche Bindungsstelle.
+
+Belege, jeder einzeln gemessen:
+  - Alle 42 Ausreißer stammen aus Mehrkopie-Dateien, keiner aus einer
+    Einkopie-Datei. Der Zusammenhang ist perfekt, nicht statistisch.
+  - Bei 42 von 42 liegt die beste Übereinstimmung auf einer anderen Kopie
+    als Nummer 0.
+  - Gegen die richtige Kopie: Median 3.44 Å statt 45-80 Å; 29 der 42 unter
+    5 Å. Normaler Leistungsbereich.
+  - Fehlerzerlegung: 99% des rohen Fehlers ist reine VERSCHIEBUNG
+    (Schwerpunktabstand Median 36.5 Å), RMSD nach Ausrichtung 1.71 Å — also
+    BESSER als die 1.91 Å der unauffälligen Komplexe. Gute Posen, falscher Ort.
+
+Korrigiert (Minimum über Kopien, ligand_reference.py):
+
+                          >10 Å   >20 Å   >50 Å      max
+  SigmaFlow 12h               8       0       0    13.8 Å
+  SigmaDock 12h               0       0       0     9.8 Å
+
+Über 10 Sampling-Seeds bestätigt: 0 von 2090 Posen jenseits 20 Å, bei BEIDEN
+Methoden.
+
+NICHT ÜBERKORRIGIEREN: der SigmaDock-Lauf war nicht kaputt. Er wurde falsch
+gemessen. Das Modell lieferte durchgehend vernünftige Posen.
+
+Korrigierte RMSD-Zahlen (die SigmaFlow-Zeilen sind unverändert, SigmaFlow
+liest die Singular-Datei mit genau einer Kopie und war nie betroffen):
+
+                       roh (mean/med)   ausgerichtet   <2 Å    <5 Å
+  SigmaFlow 6h            5.43 / 5.10    2.17 / 2.07   1.0%   48.8%
+  SigmaFlow 12h           5.38 / 4.78    2.03 / 2.00   1.9%   52.2%
+  SigmaDock 6h            4.80 / 4.51    2.08 / 1.94   4.8%   57.9%
+  SigmaDock 12h           4.62 / 4.23    1.92 / 1.80   6.7%   60.3%
+
+NICHT betroffen ist Abschnitt 2d: PoseBusters rechnet symmetriekorrigiert und
+behandelt die Kopien bereits richtig. Nachgeprüft durch A/B-Test — bei 44
+umgestellten Referenzen kippte das <2-Å-Urteil bei 0. Die Signifikanztabelle
+und p=0.035 bleiben unverändert gültig.
+
+--------------------------------------------------------------------------------
+0b) DAS SEED-RAUSCHEN IST ~10x SO GROSS WIE DER METHODENUNTERSCHIED
+--------------------------------------------------------------------------------
+
+10 unabhängige Sampling-Seeds pro Methode, 2090 Posen je Seite:
+
+                                   SigmaFlow      SigmaDock
+  Median-RMSD je Seed             4.56-5.70 Å    4.15-4.87 Å
+  Anteil <2 Å je Seed              1.4-6.7%       5.7-13.4%
+  Mittel <2 Å über 10 Seeds          4.4%           9.8%
+  Spannweite EINES Komplexes        4.46 Å         4.59 Å
+
+SigmaFlows bester Seed (6.7%) liegt ÜBER SigmaDocks schlechtestem (5.7%). Mit
+Seed-Glück hätte man in beide Richtungen "gewinnen" können. Jeder
+Einzelziehungs-Vergleich in diesem Bericht las daher überwiegend Rauschen.
+
+Sauber gemittelt und gepaart: SigmaFlow minus SigmaDock +0.47 Å,
+Bootstrap-CI [+0.36, +0.59], SigmaFlow besser bei 29% der Komplexe. SigmaDock
+ist gesichert besser, um einen kleinen Betrag.
+
+Best-of-10 (Obergrenze dessen, was ein Confidence-Ranking erreichen könnte):
+SigmaFlow 1.9% -> 29.2%, SigmaDock 9.1% -> 45.9% unter 2 Å. Ein erheblicher
+Teil des Abstands zu den 79.9% des Papers liegt also im fehlenden Ranking.
+
+
+================================================================================
+1. WAS VERGLICHEN WIRD
+================================================================================
+
+  6h-Stufe (max_epochs=3, 7050 Schritte):
+    SigmaFlow (Frame-Fix)  Job 8530243   COMPLETED, 5:44:59
+    SigmaDock              Job 8512922   COMPLETED, 5:29:23
+    SigmaFlow (ohne Fix)   Job 8512798   COMPLETED, 5:52:02
+                                         (Referenz: Zustand vor dem Fix)
+
+  12h-Stufe (max_epochs=6, 13.750 Schritte):
+    SigmaFlow (Frame-Fix)  Job 8541310   COMPLETED, 11:05:40
+    SigmaDock              Job 8541439   COMPLETED, 10:52:16
+
+  Loss-Varianten auf dem Frame-Fix, je 6h:
+    a time weighting       Job 8540758   COMPLETED, 5:45:48
+    b rot-data-space       Job 8534746   COMPLETED, 5:45:31
+    c anchor-atom-distance Job 8534747   COMPLETED, 5:43:03
+
+Bedingungen identisch: pdbbind-general als Trainingsdaten, posebusters als
+Validierung/Test, Batch-Size 8, eine L40S-GPU, Seed 0, LR-Schedule jeweils
+auf das Zeitbudget kalibriert (max_epochs=3 bzw. 6).
+
+Die beiden SigmaFlow-6h-Läufe sind exakt COMPUTE-GEMATCHT: beide 7050
+Schritte, einziger Unterschied zwischen 8512798 und 8530243 ist der
+Frame-Fix.
+
+ACHTUNG, das gilt für das 12h-PAAR nur näherungsweise: SigmaFlow endete bei
+13.750 Schritten, SigmaDock bei 13.200 — 4.2% Unterschied trotz gleicher
+Epochenzahl, weil die beiden Codebasen unterschiedlich viele Batches pro
+Epoche erzeugen. Die Richtung begünstigt SigmaFlow. Siehe Abschnitt 2c.
+
+WAS DER FRAME-FIX IST
+---------------------
+Eine Zeile in sigma_flow_generator.py::_compute_vector_field:
+
+    pred_u_t_R = R_t.transpose(-1,-2) @ updates["omega"] @ R_t
+
+Die Rotationsausgabe des Netzwerks lag im WELT-Rahmen, das Trainingsziel und
+der ODE-Integrationsschritt aber im KÖRPER-Rahmen. Verglichen wurden also
+zwei Größen in verschiedenen Koordinatensystemen. Der Adjoint-Transport
+schließt die Lücke.
+
+
+================================================================================
+2. ERGEBNISSE
+================================================================================
+
+--------------------------------------------------------------------------------
+A. RMSD gegen die Kristallpose (alle 209 Komplexe)
+--------------------------------------------------------------------------------
+
+                              roh            ausgerichtet     <2 Å    <5 Å
+                        (Mittel/Median)     (Mittel/Median)
+  SigmaFlow ohne Fix     5.09 / 4.70         2.47 / 2.44       1.0%   54.1%
+  SigmaFlow FRAME FIX    5.43 / 5.10         2.17 / 2.07       1.0%   48.8%
+  SigmaDock              4.80 / 4.51         2.08 / 1.94       4.8%   57.9%
+                     [korrigiert 2026-08-13; vorher 12.19/5.32, 3.8%, 45.9%]
+
+"roh"          = direkt gegen die Kristallpose, misst Platzierung + Geometrie
+"ausgerichtet" = nach optimaler Starrkörper-Überlagerung (Kabsch), misst nur
+                 noch die INNERE Geometrie des Moleküls
+
+LESART: Der Fix verbessert die innere Geometrie (2.47 -> 2.17, fast auf
+SigmaDock-Niveau) und lässt die globale Platzierung unverändert bis leicht
+schlechter. Das ist genau die erwartete Signatur — der Fix betrifft die
+Rotation der Fragmente zueinander, nicht das Finden der Bindetasche.
+
+--------------------------------------------------------------------------------
+A2. Die beiden Methoden scheitern UNTERSCHIEDLICH
+--------------------------------------------------------------------------------
+
+*** DIESER ABSCHNITT WAR FALSCH — siehe Abschnitt 0a. ***
+
+Die urspruengliche Fassung lautete: SigmaDock 45 / 42 / 8 Ausreisser bei
+>10 / >20 / >50 Å, max 80.3 Å, "verlegt etwa jeden fuenften Liganden komplett
+aus dem Bindungsbereich heraus". Das war ein Auswertungsartefakt durch
+Mehrkopie-Referenzdateien, kein Verhalten von SigmaDock.
+
+Korrigiert (Minimum ueber Kristallkopien):
+
+                        >10 Å   >20 Å   >50 Å      max
+  SigmaFlow ohne Fix        5       0       0    14.0 Å
+  SigmaFlow FRAME FIX       7       0       0    14.2 Å
+  SigmaDock 6h              2       0       0    10.3 Å
+  SigmaDock 12h             0       0       0     9.8 Å
+
+BEIDE Methoden verlegen KEINEN Liganden aus dem Bindungsbereich. Ueber 10
+Sampling-Seeds bestaetigt: 0 von 2090 Posen jenseits 20 Å, auf beiden Seiten.
+SigmaDocks schlechtester Fall ist mit 9.8 Å sogar besser als SigmaFlows 14.2 Å.
+
+Es gibt also KEINE zwei verschiedenen Fehlermodi. Die Verteilungen haben
+dieselbe Form; SigmaDock liegt durchgehend etwas naeher an der Wahrheit und
+trifft oefter exakt (6.7% gegen 1.9% unter 2 Å bei 12h).
+
+--------------------------------------------------------------------------------
+C. Übergangsbindungen (Bindungen an Fragmentgrenzen)
+--------------------------------------------------------------------------------
+94 Komplexe, 271 Schnittbindungen. Wahre Länge im Mittel 1.49 Å.
+
+                        vorhergesagte Länge     absoluter Fehler
+  SigmaFlow ohne Fix          2.49 Å                1.20 Å
+  SigmaFlow FRAME FIX         1.62 Å                0.36 Å
+  SigmaDock                   1.36 Å                0.37 Å
+
+[Gegen das Kopien-Artefakt geprueft 2026-08-13: HAELT STAND. Auf der
+korrigierten Teilmenge (jetzt 118 statt 94 Komplexe, 323 Schnittbindungen)
+ergibt sich SigmaFlow Frame-Fix 0.36 Å gegen SigmaDock 0.38 Å - praktisch
+identisch zu den Werten oben. Uebergangsbindungen sind innermolekulare
+Distanzen und daher gegen die Kopienwahl weitgehend unempfindlich.]
+
+*** DAS IST DAS DEUTLICHSTE ERGEBNIS. ***
+
+Die Erzählung "SigmaFlow baut systematisch zu lange Übergangsbindungen", die
+dieses Projekt wochenlang begleitet und drei Loss-Varianten motiviert hat, ist
+damit widerlegt. Es war kein Merkmal von Flow Matching, sondern eine direkte
+Folge des Rahmenfehlers. Nach dem Einzeiler ist der Fehler gleichauf mit
+SigmaDock (0.36 gegen 0.37 Å).
+
+Interessant auch die Richtung: SigmaFlow liegt jetzt leicht zu lang (1.62),
+SigmaDock leicht zu kurz (1.36) — bei praktisch gleichem Betrag.
+
+--------------------------------------------------------------------------------
+B/D. Orientierung der Fragmente (94 Komplexe)
+--------------------------------------------------------------------------------
+
+                    absoluter      relativ         relativ        Lücke
+                  Rotationsfehler  GEBUNDEN      UNGEBUNDEN   (geb. - ungeb.)
+  SigmaFlow o.Fix     118.2°        121.5°         126.9°     -3.7° [-12.3,+5.1]
+  SigmaFlow FIX       128.1°        115.3°         126.4°    -14.2° [-22.4,-5.9]
+  SigmaDock           115.4°        103.8°         131.2°    -26.3° [-34.2,-18.4]
+  Zufallsgrenze       126.5°        126.5°         126.5°      0°
+
+Die "Lücke" ist die eigentliche Erfolgsmetrik. Erklärung:
+
+Der RELATIVE Rotationsfehler zwischen zwei Fragmenten wird als R_f^T R_g
+berechnet. Ein Orientierungsfehler, den BEIDE Fragmente teilen, kürzt sich
+dabei exakt heraus. Übrig bleibt nur, ob die beiden ZUEINANDER stimmig
+ausgerichtet sind.
+
+Trennt man diese Paare in "durch eine Bindung verbunden" und "nicht
+verbunden", hat man eine eingebaute Kontrolle im selben Molekül: gebundene
+Paare sollten gekoppelt sein, ungebundene zufällig.
+
+  ohne Fix:  Lücke -3.7°, Konfidenzintervall enthält die Null
+             -> KEINE Lokalität, reiner Münzwurf
+  mit Fix:   Lücke -14.2°, Intervall schließt die Null aus
+             -> Lokalität nachweislich vorhanden
+  SigmaDock: Lücke -26.3°
+
+Der Fix schließt damit rund 60% des Abstands zur SigmaDock-Referenz.
+
+Wichtig ist die STRUKTUR des Effekts: der ungebundene Wert bleibt bei 126.4°
+auf der Zufallsgrenze, nur der gebundene fällt. Wäre beides gesunken, hätte
+das lediglich bedeutet, dass die globale Orientierung besser wird — etwas
+ganz anderes.
+
+*** OFFENER PUNKT, NICHT WEGGLÄTTEN ***
+Der ABSOLUTE Rotationsfehler ist durch den Fix SCHLECHTER geworden
+(118.2° -> 128.1°) und liegt über der Zufallsgrenze von 126.5°. Gleichzeitig
+wurde die relative Orientierung klar besser. Das ist in sich stimmig — die
+relative Orientierung ist eine innermolekulare Größe, die absolute erfordert
+Kenntnis der Bindetasche. Deutung: das Modell hat innere Geometrie gelernt,
+die Verankerung im Protein nicht. Das passt zu den unveränderten 1.0% unter
+2 Å. Sicher ist diese Deutung aber nicht.
+
+
+================================================================================
+2b. DIE 12h-STUFE — doppelte Rechenzeit auf beiden Seiten
+================================================================================
+
+  SigmaFlow 12h Frame-Fix   Job 8541310   COMPLETED, 11:05:40, 13.750 Schritte
+  SigmaDock 12h             Job 8541439   COMPLETED, 10:52:16
+
+Beide mit max_epochs=6 (der 6h-Lauf hatte 3), also doppelt so viele
+Optimierungsschritte. Beide erreichten ihre 6 Epochen VOR dem Zeitlimit, der
+LR-Schedule lief also vollstaendig durch.
+
+--------------------------------------------------------------------------------
+RMSD (alle 209 Komplexe)
+--------------------------------------------------------------------------------
+
+                              roh            ausgerichtet     <2 Å    <5 Å
+  SigmaFlow  6h          5.43 / 5.10         2.17 / 2.07       1.0%   48.8%
+  SigmaFlow 12h          5.38 / 4.78         2.03 / 2.00       1.9%   52.2%
+  SigmaDock  6h          4.80 / 4.51         2.08 / 1.94       4.8%   57.9%
+  SigmaDock 12h          4.62 / 4.23         1.92 / 1.80       6.7%   60.3%
+
+  [SigmaDock-Zeilen korrigiert 2026-08-13, Abschnitt 0a. Vorher:
+   6h 12.19/5.32, 3.8%, 45.9%  |  12h 12.11/5.35, 4.8%, 45.5%.
+   SigmaFlow war nie betroffen.]
+
+--------------------------------------------------------------------------------
+Lokalitaetsluecke (volles Set, n ~ 133 Komplexe)
+--------------------------------------------------------------------------------
+
+  SigmaFlow  6h ohne Fix      +1.1°   [-4.2, +6.6]    keine Lokalitaet
+  SigmaFlow  6h Frame-Fix    -12.8°   [-18.3, -7.2]
+  SigmaFlow 12h Frame-Fix    -15.0°   [-21.6, -8.1]
+  SigmaDock  6h              -22.0°   [-27.3, -16.8]
+  SigmaDock 12h              -20.4°   [-26.0, -14.5]
+  + Variante a (time weight) -12.8°   [-19.0, -6.6]   Nullergebnis
+  + Variante b (rot-data)    -12.8°   [-18.9, -6.8]   Nullergebnis
+  + Variante c (anchor-dist) -12.8°   No-Op, nie getestet
+
+--------------------------------------------------------------------------------
+WAS DARAUS FOLGT
+--------------------------------------------------------------------------------
+
+1) DOPPELTE RECHENZEIT HILFT BEIDEN, ABER WENIG.
+   <2 Å: SigmaFlow 1.0 -> 1.9%, SigmaDock 3.8 -> 4.8%. Der ausgerichtete
+   RMSD verbessert sich um je rund 0.1 Å. Auf die 79.9% des Papers waere
+   das eine Extrapolation ueber zwei Groessenordnungen — die Kurve traegt
+   das nicht. Mehr Laufzeit allein loest das Problem nicht.
+
+2) SIGMAFLOW SCHLIESST AUF, SIGMADOCK STAGNIERT.
+   Luecke -12.8 -> -15.0 gegen -22.0 -> -20.4. Letzteres ist flach, die
+   Bewegung ist Rauschen. VORBEHALT: die Konfidenzintervalle ueberlappen
+   stark. Das ist eine Tendenz, kein Nachweis.
+
+3) [GESTRICHEN 2026-08-13] SIGMADOCKS AUSREISSERPROBLEM IST STRUKTURELL.
+   Lautete: roher RMSD-Mittelwert 12.11 nach 12h gegen 12.19 nach 6h, also
+   ein strukturelles Ausreisserproblem. Es gab keins. Die Mittelwerte von
+   ~12 Å waren das Kopien-Artefakt (Abschnitt 0a); korrigiert liegen sie bei
+   4.80 (6h) und 4.62 (12h), bei null Komplexen jenseits 20 Å.
+
+4) ALLE DREI LOSS-VARIANTEN SIND ERLEDIGT.
+   a und b landen exakt auf der Kontrollzahl -12.8°. Bei a ist das ein
+   ECHTES Nullergebnis (seine Vorhersagen unterscheiden sich in allen 209
+   Dateien von der Kontrolle, es hat also wirklich anders trainiert), bei c
+   ein No-Op: sein Zusatz-Loss hatte wegen einer @torch.no_grad()-Dekoration
+   im Basiscode nie einen Gradientenpfad und war damit wirkungslos — auch
+   schon im frueheren 12h-Lauf.
+
+5) DER ENGPASS IST JETZT DIE ABSOLUTE ORIENTIERUNG.
+   Die relative Orientierung zwischen gebundenen Fragmenten funktioniert
+   nach dem Frame-Fix. Die absolute Fragment-Orientierung liegt bei
+   SigmaFlow ueber alle Budgets an der Zufallsgrenze. Das Modell hat innere
+   Geometrie gelernt, aber keine Verankerung in der Bindetasche. Genau das
+   erklaert, warum der ausgerichtete RMSD gut ist und der rohe nicht.
+
+--------------------------------------------------------------------------------
+*** WICHTIGER VORBEHALT ZU DEN FRAGMENT- UND BINDUNGSMETRIKEN ***
+--------------------------------------------------------------------------------
+
+Diese Metriken stehen nur auf Komplexen, bei denen ALLE verglichenen Laeufe
+dieselbe Fragmentierung rekonstruieren. Diese Teilmenge schrumpft mit jedem
+zusaetzlichen Lauf: bei 3 Laeufen 94 Komplexe, bei 4 Laeufen nur noch 57.
+
+ZAHLEN AUS VERSCHIEDENEN TEILMENGEN DUERFEN NICHT VERGLICHEN WERDEN.
+Beispiele, jeweils DERSELBE Lauf (SigmaFlow 6h Frame-Fix):
+    Uebergangsbindungsfehler   0.36 Å (94er-Teilmenge)  vs  0.40 Å (57er)
+    absoluter Rotationsfehler  128.1° (94er-Teilmenge)  vs  126.1° (57er)
+
+Ohne die Teilmenge dazuzuschreiben liest sich so etwas wie Fortschritt.
+
+Die Lokalitaetsluecke ist davon NICHT betroffen — sie wird innerhalb jedes
+Laufs berechnet und steht auf n ~ 133.
+
+================================================================================
+2c. DIREKTVERGLEICH BEI GLEICHER RECHENZEIT: SigmaFlow 12h vs. SigmaDock 12h
+================================================================================
+
+Dies ist der belastbarste Vergleich des Projekts: gleiche Daten, gleiche
+Hyperparameter, gleiches Zeitbudget, LR-Schedule auf beiden Seiten korrekt.
+
+  SigmaFlow 12h  Job 8541310  13.750 Schritte
+  SigmaDock 12h  Job 8541439  13.200 Schritte
+
+*** ASYMMETRIE, DIE MAN KENNEN MUSS ***
+SigmaFlow hat 4.2% MEHR Optimierungsschritte gemacht, obwohl beide 6 Epochen
+liefen. Die beiden Codebasen erzeugen unterschiedlich viele Batches pro
+Epoche - die Datenpipelines filtern offenbar leicht verschieden. Die Richtung
+begünstigt SigmaFlow. Der Effekt ist klein und kehrt keines der Ergebnisse
+unten um, aber "gleiche Bedingungen" stimmt damit nicht ganz.
+
+--------------------------------------------------------------------------------
+RMSD, alle 209 Komplexe
+--------------------------------------------------------------------------------
+
+                      roh (Mittel/Median)   ausgerichtet   <2 Å    <5 Å
+  SigmaFlow 12h          5.38 / 4.78        2.03 / 2.00    1.9%   52.2%
+  SigmaDock 12h          4.62 / 4.23        1.92 / 1.80    6.7%   60.3%
+
+  Ausreisser:          >10 Å   >20 Å   >50 Å     max
+  SigmaFlow 12h            8       0       0   13.8 Å
+  SigmaDock 12h            0       0       0    9.8 Å
+
+  [korrigiert 2026-08-13, Abschnitt 0a. Vorher: SigmaDock 12.11/5.35,
+   4.8%, 45.5% und 43/42/9 Ausreisser bei max 80.0 Å.]
+
+--------------------------------------------------------------------------------
+*** DER WICHTIGSTE BEFUND: PAARWEISER VERGLEICH, KOMPLEX FÜR KOMPLEX ***
+--------------------------------------------------------------------------------
+Alle 209 Komplexe, jeweils dieselbe Struktur bei beiden Methoden verglichen.
+
+                     SigmaFlow besser   Median der Diff.   Mittel der Diff.
+  RMSD roh                 37%              +0.48 Å        +0.77 Å [+0.44,+1.10]
+  RMSD ausgerichtet        41%              +0.11 Å        +0.11 Å [+0.01,+0.22]
+  (negativ = SigmaFlow besser)
+
+  Treffer <2 Å:  beide 0  |  nur SigmaFlow 4  |  nur SigmaDock 14
+
+  [korrigiert 2026-08-13, Abschnitt 0a. Vorher stand hier: SigmaFlow besser
+   bei 51%, Median -0.03 Å, Mittel -6.73 Å [-9.01,-4.61]. Der scheinbare
+   Mittelwert-Vorsprung von SigmaFlow bestand VOLLSTAENDIG aus dem
+   Kopien-Artefakt.]
+
+*** DIESE PASSAGE WURDE 2026-08-13 KOMPLETT REVIDIERT ***
+
+Sie lautete: "SigmaFlows mittlerer Vorsprung beim rohen RMSD betraegt 6.73 Å,
+der Median aber nur 0.03 Å ... AUF EINEM TYPISCHEN KOMPLEX SIND BEIDE
+GLEICHAUF." Beides war das Kopien-Artefakt.
+
+KORRIGIERT: SigmaDock ist auch auf dem typischen Komplex besser. Median der
+Differenz +0.48 Å, Mittel +0.77 Å mit CI [+0.44, +1.10] - schliesst Null aus.
+SigmaFlow gewinnt nur bei 37% der Komplexe.
+
+Unabhaengig bestaetigt durch das 10-Seed-Experiment, das ueber Seeds mittelt
+statt eine Einzelziehung zu nehmen: Median +0.39 Å, Mittel +0.47 Å,
+CI [+0.36, +0.59], SigmaFlow besser bei 29%. Zwei getrennte Rechenwege,
+dieselbe Richtung und Groessenordnung. Die 10-Seed-Zahl ist die belastbarere,
+weil sie das Ziehungsrauschen herausmittelt.
+
+Was bestehen bleibt: der Unterschied ist KLEIN. Rund 0.5 Å auf einem
+Fehlerniveau von ~4.5 Å, und das Ziehungsrauschen eines einzelnen Seeds
+betraegt ein Vielfaches davon (Spannweite desselben Komplexes 4.5 Å).
+
+Wer nur "-6.73 Å im Mittel" zitiert, verkauft SigmaFlow deutlich zu gut.
+Diese Zahl gehört nie ohne den Median daneben genannt. Umgekehrt ist
+SigmaDock beim ausgerichteten RMSD auf 58% der Komplexe besser, im Median um
+0.11 Å - klein, aber konsistent; das Konfidenzintervall berührt gerade die
+Null.
+
+--------------------------------------------------------------------------------
+Fragmentmetriken, 90 gemeinsame Komplexe
+--------------------------------------------------------------------------------
+
+                  Schwerpunktfehler   Rotation absolut  Übergangs-  Bindungs-
+                   (Mittel/Median)                       bindung     fehler
+  SigmaFlow 12h      4.34 / 3.86          125.4°         1.60 Å      0.27 Å
+  SigmaDock 12h      8.73 / 3.96          118.5°         1.34 Å      0.31 Å
+  (wahre Bindungslänge 1.49 Å, Zufallsgrenze 126.5°)
+
+Auch hier sind die MEDIANE der Schwerpunktfehler praktisch gleich (3.86 gegen
+3.96); nur die Mittelwerte trennen sich durch SigmaDocks Ausreisser.
+
+--------------------------------------------------------------------------------
+*** WIDERSPRUCH BEI DER LOKALITÄTSLÜCKE - NICHT AUFGELÖST ***
+--------------------------------------------------------------------------------
+
+                   volles Set, je eigene    90er-Teilmenge, gemeinsame
+                   Fragmentierung (n~133)   Fragmentierung (n=50)
+  SigmaFlow 12h     -15.0° [-21.6, -8.1]     -11.3° [-21.8, -0.5]
+  SigmaDock 12h     -20.4° [-26.0,-14.5]     -12.5° [-22.3, -2.2]
+
+Nach der ersten Rechnung liegt SigmaDock klar vorn, nach der zweiten sind
+beide NICHT unterscheidbar. Grund: die gepaarte Teilmenge enthält nur
+Komplexe, bei denen BEIDE Läufe dieselbe Fragmentierung rekonstruieren - das
+selektiert Fälle, in denen sich beide ähnlich verhalten, und halbiert die
+Stichprobe.
+
+Keine der beiden Zahlen ist "die richtige". Belastbar ist nur: SigmaFlow hat
+nach dem Frame-Fix eine echte Lokalität, und ob SigmaDock dort noch vorn
+liegt, ist bei dieser Datenmenge NICHT entschieden.
+
+================================================================================
+2d. CHEMISCHE PLAUSIBILITÄT DER ERZEUGTEN MOLEKÜLE (PoseBusters-Checks)
+================================================================================
+
+Bisher wurde nur gemessen, WO das Molekül liegt. Hier geht es darum, ob es
+ueberhaupt ein chemisch sinnvolles Molekuel ist. Gerechnet mit posebusters
+0.6.5 ueber alle 209 Komplexe, Konfiguration redock_noprotein.yml (die 8
+proteinabhaengigen Module entfallen, weil die Rezeptor-PDBs lokal nicht
+vorliegen). Reproduzierbar mit run_posebusters_ligandonly.py.
+
+  Check (Anteil bestanden)        SigmaFlow 12h   SigmaDock 12h   Delta
+  ---------------------------------------------------------------------
+  Bindungslaengen                     55.5%           48.8%       +6.7
+  Bindungswinkel                      48.3%           41.6%       +6.7
+  interne sterische Clashes           47.8%           46.4%       +1.4
+  tetraedrische Chiralitaet           93.8%           90.9%       +2.9
+  interne Energie                     57.4%           59.8%       -2.4
+  ---------------------------------------------------------------------
+  ALLE 15 ligandinternen Checks       37.3%           32.5%       +4.8
+
+Zehn weitere Checks bestehen BEIDE zu 100%: Aromatenplanaritaet, Planaritaet
+der Doppelbindungen, Nicht-Planaritaet nichtaromatischer Ringe, Konnektivitaet
+aller Atome, Summenformel, Bindungsgeruest, Stereochemie der Doppelbindungen,
+keine Radikale, Sanitisierbarkeit, InChI-Konvertierbarkeit.
+
+*** ACHTUNG: KEINER DIESER VORSPRUENGE IST STATISTISCH GESICHERT ***
+
+Die Prozentzahlen oben laden zum Ueberlesen ein. Beide Methoden werden auf
+DENSELBEN 209 Komplexen ausgewertet, der Vergleich ist also GEPAART, und
+aussagekraeftig ist allein, bei wie vielen Komplexen sich die beiden
+UNTERSCHEIDEN. Exakter McNemar-Test (validity_significance.py):
+
+  Check                    nur SigmaFlow   nur SigmaDock      p    Urteil
+  ------------------------------------------------------------------------
+  Bindungslaengen               37              23         0.093   n.s.
+  Bindungswinkel                34              20         0.076   n.s.
+  sterische Clashes             27              24         0.780   n.s.
+  interne Energie               29              34         0.615   n.s.
+  Chiralitaet                   14               8         0.286   n.s.
+  ALLE 15 Checks                28              18         0.184   n.s.
+  ------------------------------------------------------------------------
+  RMSD <= 2 Å                    6              17         0.035   SIGMADOCK
+
+ERGEBNIS: Bei der chemischen Plausibilitaet sind die beiden Methoden
+NICHT UNTERSCHEIDBAR. Der 6.7-Punkte-Vorsprung bei den Bindungslaengen
+entspricht 37 gegen 23 diskordanten Komplexen - das produziert eine faire
+Muenze in 60 Wuerfen ohne Weiteres.
+
+Was sich sagen laesst: die Richtung ist bei vier von fuenf Checks dieselbe,
+und Bindungslaengen/-winkel liegen mit p ~ 0.08-0.09 nahe an der Schwelle.
+Das ist ein Hinweis auf einen echten kleinen Effekt zugunsten von SigmaFlow,
+kein Nachweis.
+
+Der EINZIGE gesicherte Unterschied in dieser Tabelle ist die Erfolgsquote -
+und die geht an SigmaDock (p = 0.035).
+
+Zwei Vorbehalte, die kein Test behebt:
+  - Ein Trainingslauf und ein Sampling-Seed pro Methode. Der Test deckt die
+    Streuung zwischen KOMPLEXEN ab, nicht die zwischen LAEUFEN. Dafuer
+    laeuft das 10-Seed-Experiment.
+  - 37% gegen 32% "alle Checks bestanden" heisst: bei BEIDEN Methoden sind
+    rund zwei Drittel der erzeugten Molekuele chemisch fehlerhaft. Das ist
+    ein Vergleich zweier unbrauchbarer Modelle, kein Qualitaetssiegel.
+
+--------------------------------------------------------------------------------
+*** KORREKTUR: SYMMETRIEKORRIGIERTER RMSD ***
+--------------------------------------------------------------------------------
+
+PoseBusters rechnet den RMSD SYMMETRIEKORRIGIERT (aequivalente Atome, etwa
+gedrehte Phenylringe, werden optimal zugeordnet). Unser eigenes full_metrics.py
+rechnet indexbasiert und ueberschaetzt den Fehler dadurch.
+
+                        indexbasiert (unser)   symmetriekorrigiert (PoseBusters)
+  SigmaFlow 12h  <2 Å          1.9%                        2.9%
+  SigmaDock 12h  <2 Å          4.8%                        8.1%
+
+Beide Werte steigen, aber SigmaDocks Vorsprung WAECHST von Faktor 2.5 auf 2.8.
+Unsere indexbasierten Zahlen waren also zu pessimistisch — an der Rangfolge
+aendert das nichts, an ihrer Deutlichkeit schon. Fuer VERGLEICHE zwischen den
+Methoden bleiben beide Maße gueltig, weil identisch angewandt; fuer den
+Vergleich mit publizierten Zahlen ist nur der symmetriekorrigierte brauchbar.
+
+================================================================================
+2e. WARUM SIGMAFLOW STATT SIGMADOCK? — ehrliche Bestandsaufnahme
+================================================================================
+
+Diese Frage wird kommen, und sie verdient eine Antwort, die einer Nachfrage
+standhaelt. Stand 2026-08-12, auf Basis der Laeufe in dieser Datei.
+
+--------------------------------------------------------------------------------
+DIE UNBEQUEME KURZFASSUNG
+--------------------------------------------------------------------------------
+Einen BELEGTEN Qualitaetsvorteil von SigmaFlow gibt es derzeit nicht.
+
+Der einzige statistisch gesicherte Unterschied im gesamten Vergleich ist die
+Erfolgsquote unter 2 Å - 8.1% gegen 2.9%, p = 0.035 - und der geht an
+SIGMADOCK. Wer heute die beste Pose braucht, nimmt nach dieser Datenlage
+SigmaDock.
+
+Alles Weitere ist entweder statistisch ununterscheidbar oder noch nicht
+gemessen.
+
+--------------------------------------------------------------------------------
+WAS SICH SERIOES VERTRETEN LAESST
+--------------------------------------------------------------------------------
+
+1) [GESTRICHEN 2026-08-13] ROBUSTHEIT
+   Lautete: "0 gegen 42 Komplexe jenseits von 20 Å ... SigmaDock ist bimodal".
+   Das 10-Seed-Experiment hat es nicht bestaetigt, sondern die Grundlage
+   widerlegt: die 42 Ausreisser waren ein Auswertungsartefakt (Abschnitt 0a).
+   Beide Methoden haben NULL Komplexe jenseits 20 Å, ueber je 2090 Posen.
+   Dieses Argument existiert nicht mehr. Ersatzlos.
+
+2) SAMPLING-KOSTEN - GEMESSEN, und es traegt
+   Ergebnis des Schritt-Sweeps (7 Schrittzahlen x 3 Seeds, 209 Komplexe):
+   DIE KURVE IST FLACH.
+
+     Schritte      Median roh (+- SD)    <2 Å    ausgerichtet
+            5         4.61 +- 0.06       3.7%        2.11
+           25         4.76 +- 0.19       4.1%        2.01
+          100         5.17 +- 0.18       4.8%        1.99
+          200         4.93 +- 0.24       3.7%        1.99
+
+   Gepaart gegen den geerbten Default von 25 Schritten sind 10/15/50/100/200
+   alle nicht signifikant - jedes Bootstrap-CI schliesst Null ein. Auch der
+   ausgerichtete RMSD bleibt bei ~2 Å; nicht einmal die innere Geometrie
+   profitiert. 5 Schritte sind formal signifikant besser (-0.199 Å,
+   CI [-0.391, -0.007]), aber die obere Grenze liegt praktisch auf Null und
+   bei sechs Vergleichen ueberlebt das keine Korrektur fuer multiples Testen.
+
+   KORREKTE AUSSAGE: keine Schrittzahl zwischen 5 und 200 ist nachweisbar
+   besser als eine andere. SigmaFlow liefert bei 5 Schritten dasselbe wie bei
+   25 und kann damit 5x billiger sampeln. Das ist die theoretisch erwartete
+   Signatur einer ODE mit gerader bedingter Bahn.
+
+   EINSCHRAENKUNG, nicht ueberdehnen: SigmaDock wurde NICHT mit 5 Schritten
+   getestet. Belegt ist "SigmaFlow braucht die geerbten 25 nicht", NICHT
+   "SigmaFlow braucht weniger Schritte als SigmaDock". Fuer Letzteres fehlt
+   der Gegen-Sweep - billig nachzuholen, ~10 min GPU.
+
+   Nebenbefund: damit ist die Sampling-Aufloesung als Ursache fuer SigmaFlows
+   Rueckstand AUSGESCHLOSSEN. Das Modell integriert sein Vektorfeld sauber;
+   das Vektorfeld zeigt nur nicht auf die richtige Stelle.
+
+3) WENIGER STELLSCHRAUBEN - Engineering-Argument
+   Kein Rauschplan, keine Score-Skalierung, kein noise_scale/noise_decay,
+   deterministische ODE. Weniger Hyperparameter, die man falsch einstellen
+   kann. Kein Metrik-Argument, aber in der Praxis relevant - dieses Projekt
+   hat mehrere Laeufe an genau solchen Einstellungen verloren.
+
+4) ERWEITERBARKEIT - Forschungsargument, kein Ergebnis
+   Flow Matching erlaubt eine FREI WAEHLBARE Quellverteilung. Man koennte
+   statt aus reinem Rauschen aus einer physikalisch plausiblen
+   Startkonformation starten; bei Diffusion ist die Quelle durch den
+   Vorwaertsprozess festgelegt. Dazu exakte Likelihood ueber die ODE.
+   Beides sind Moeglichkeiten, keine gemessenen Vorteile.
+
+--------------------------------------------------------------------------------
+WAS MAN NICHT BEHAUPTEN SOLLTE
+--------------------------------------------------------------------------------
+- "SigmaFlow baut chemisch bessere Molekuele."  -> nicht gesichert (p >= 0.08)
+- "SigmaFlow ist genauer."                      -> falsch, SigmaDock ist es
+- "Flow Matching gewinnt bei Konvergenz."       -> keinerlei Evidenz; beide
+  Laeufe stehen bei ~1/16 der Paper-Rechenzeit, zwei Drittel der Molekuele
+  sind bei BEIDEN chemisch fehlerhaft.
+
+--------------------------------------------------------------------------------
+DIE EINORDNUNG, DIE ICH FUER DIE WICHTIGSTE HALTE
+--------------------------------------------------------------------------------
+Das Projektziel war eine MINIMALINVASIVE Ersetzung des generativen Prozesses,
+nicht, SigmaDock zu schlagen. Daran gemessen ist das Ergebnis solide: eine
+Diffusions-Pipeline wurde auf Riemannsches Flow Matching umgestellt, laeuft
+end-to-end, ist bei festem Seed bitgenau reproduzierbar, und liefert bei
+gleicher Rechenzeit Posen derselben Groessenordnung.
+
+[Praezisiert 2026-08-13. Hier stand "auf dem typischen Komplex statistisch
+ununterscheidbar (Median der RMSD-Differenz 0.03 Å)". Das war das
+Kopien-Artefakt. Korrekt: SigmaDock ist auch auf dem typischen Komplex
+besser, um +0.39 bis +0.48 Å Median. Der Abstand ist klein - rund 0.5 Å bei
+einem Fehlerniveau von ~4.5 Å, und deutlich kleiner als das Rauschen einer
+einzelnen Ziehung -, aber er ist da und darf nicht als Gleichstand
+dargestellt werden.]
+
+Bei chemischer Plausibilitaet sind die Methoden weiterhin statistisch
+ununterscheidbar (alle p >= 0.076); der einzige gesicherte Unterschied bleibt
+die Quote der exakten Treffer, und die geht an SigmaDock.
+
+"Wir haben den generativen Prozess ausgetauscht und dabei nichts
+kaputtgemacht" ist ein legitimes, verteidigbares Ergebnis.
+Es ist etwas anderes als "unsere Methode ist besser" - und sollte strikt so
+und nicht anders formuliert werden.
+
+================================================================================
+3. EINORDNUNG UND VORBEHALTE
+================================================================================
+
+RECHENZEIT. Beide Läufe hatten ~12 GPU-Stunden. Das publizierte SigmaDock
+(79.9% Top-1 RMSD<2Å) stammt aus 4 Tagen auf 4 A100 mit Batch-Size 32,
+also ~384 GPU-Stunden — etwa das 32-fache bei 4-facher Batch-Size. Dass beide
+Läufe hier bei 1-4% liegen, ist erwartbar und kein SigmaFlow-Defekt.
+
+Der Vergleich ist DIAGNOSTISCH, nicht kompetitiv. Verglichen werden zwei
+weitgehend untrainierte Modelle.
+
+TEILMENGE. Alle Fragment- und Bindungsmetriken (Abschnitte B, C, D) stehen
+auf 94 der 209 Komplexe. Grund: die Fragmentierung ist nicht in den
+Vorhersagen gespeichert, sondern wird aus ihnen rekonstruiert (Bindungen,
+deren Länge erhalten blieb, liegen innerhalb eines Fragments). Diese
+Rekonstruktion fällt zwischen Läufen unterschiedlich aus. Nur wo alle drei
+Läufe dieselbe Fragmentierung ergeben, sind diese Metriken vergleichbar.
+Ältere Bindungslängenzahlen aus früheren Sessions hatten diese Einschränkung
+NICHT und sind deshalb nicht mit diesen vergleichbar.
+
+RMSD. Index-basiert, nicht symmetriekorrigiert. Bei symmetrischen Gruppen
+(z.B. Phenylring-Drehungen) überschätzt das den Fehler. Da es auf alle Läufe
+identisch angewandt wird, bleiben die VERGLEICHE gültig; die absoluten Werte
+sind nicht direkt mit publizierten, symmetriekorrigierten Zahlen vergleichbar.
+
+
+================================================================================
+4. INTERESSANTE KOMPLEXE ZUM ANSCHAUEN
+================================================================================
+
+RMSD in Ångström.
+
+  Komplex     SigmaFlow-Fix   SigmaDock   SigmaFlow ohne Fix
+  ------------------------------------------------------------------
+  SigmaDock fliegt weg, SigmaFlow bleibt vernünftig:
+  7FRX_O88          6.5          80.3           7.0
+  7OZ9_NGK          4.0          74.9           4.3
+  8FO5_Y4U          5.2          73.6           5.2
+
+  Beste SigmaFlow-Posen:
+  7JG0_GAR          1.6           2.5           1.4
+  7Z1Q_NIO          2.0           6.5           2.5
+  7N7H_CTP          2.1           8.2           2.2
+
+  Größter Gewinn durch den Frame-Fix:
+  7ZHP_IQY          4.3           4.2           5.9
+  6T88_MWQ          2.5           1.8           3.9
+  8EYE_X4I          3.1           7.9           4.3
+
+  Typischer Fall (nahe am Median):
+  7UAS_MBU          5.1           5.9           5.2
+  7FT9_4MB          5.1           5.5           4.2
+  7NTG_F6R          5.1           2.9           4.7
+
+
+================================================================================
+5. PYMOL — CODE ZUM COPY-PASTEN
+================================================================================
+
+Der Komplexname besteht aus PDB-Code und Ligandenkürzel, z.B. "7FRX_O88" =
+PDB-Eintrag 7FRX, Ligand O88. Deshalb kann PyMOL das echte Protein per
+"fetch" direkt aus der PDB laden — die Koordinaten passen ohne weitere
+Ausrichtung, weil alle Posen im Kristall-Koordinatensystem liegen.
+
+ACHTUNG bei den Dateinamen: SigmaDocks Dateien heißen "..._ligands_seed0.sdf"
+(Plural), die von SigmaFlow "..._ligand_seed0.sdf" (Singular). Der Code unten
+benutzt deshalb glob und kein festes Muster.
+
+--------------------------------------------------------------------------------
+SCHRITT 1: einmalig in die PyMOL-Kommandozeile einfügen
+--------------------------------------------------------------------------------
+
+python
+import glob, os
+from pymol import cmd
+
+BASE = r"C:\Users\julia\Documents\SigmaFlow\SigmaFlow_Variants\posebusters_full_comparison"
+
+RUNS = {
+    "sigmaflow_fix": ("sigmaflow_framefix_pred", "cyan"),
+    "sigmadock":     ("sigmadock_lrfix_pred",    "magenta"),
+    "sigmaflow_old": ("sigmaflow_lrfix_pred",    "yellow"),
+}
+
+def show(cid, protein=True, old=False):
+    """cid z.B. "7FRX_O88". protein=True laedt das echte Protein aus der PDB.
+       old=True zeigt zusaetzlich SigmaFlow VOR dem Frame-Fix (gelb)."""
+    cmd.delete("all")
+    cmd.set("retain_order", 1)
+
+    # Wahre Kristallpose (gruen)
+    t = os.path.join(BASE, "true_ligands", cid + "_ligands.sdf")
+    cmd.load(t, "true")
+    cmd.color("green", "true")
+
+    # Vorhersagen
+    for name, (folder, colour) in RUNS.items():
+        if name == "sigmaflow_old" and not old:
+            continue
+        hits = glob.glob(os.path.join(BASE, folder, cid + "__*_seed0.sdf"))
+        if not hits:
+            print("FEHLT:", name, cid)
+            continue
+        cmd.load(hits[0], name)
+        cmd.color(colour, name)
+
+    cmd.show_as("sticks", "not polymer")
+    cmd.set("stick_radius", 0.15)
+
+    if protein:
+        try:
+            cmd.fetch(cid.split("_")[0], "protein", async_=0, type="pdb")
+            cmd.hide("everything", "protein")
+            cmd.show("surface", "protein and polymer")
+            cmd.color("grey80", "protein")
+            cmd.set("transparency", 0.6)
+        except Exception as e:
+            print("Protein konnte nicht geladen werden:", e)
+
+    cmd.orient("true")
+    cmd.zoom("true", 8)
+    cmd.set("ray_opaque_background", 0)
+    print(cid, "geladen — gruen=wahr, cyan=SigmaFlow(Fix), magenta=SigmaDock")
+
+def rmsd_to_true(name):
+    """Grobe Kontrolle: RMSD ohne Ausrichtung, gleiche Atomreihenfolge."""
+    return cmd.rms_cur(name, "true", matchmaker=-1)
+python end
+
+--------------------------------------------------------------------------------
+SCHRITT 2: Komplexe ansehen — einfach eine Zeile eingeben
+--------------------------------------------------------------------------------
+
+show("7FRX_O88")               # SigmaDock 80 A daneben, SigmaFlow 6.5 A
+show("7JG0_GAR")               # beste SigmaFlow-Pose (1.6 A)
+show("7ZHP_IQY", old=True)     # zeigt zusaetzlich den Zustand vor dem Fix
+show("7UAS_MBU")               # typischer Fall
+show("7OZ9_NGK", protein=False)  # ohne Protein, falls kein Internet
+
+Farben:
+  gruen     = wahre Kristallpose
+  cyan      = SigmaFlow MIT Frame-Fix       (Job 8530243)
+  magenta   = SigmaDock                     (Job 8512922)
+  gelb      = SigmaFlow OHNE Fix            (Job 8512798, nur bei old=True)
+  grau      = Protein (transparente Oberflaeche)
+
+--------------------------------------------------------------------------------
+SCHRITT 3: worauf zu achten ist
+--------------------------------------------------------------------------------
+
+1) BINDET ES ÜBERHAUPT IN DER TASCHE?
+   Bei 7FRX_O88 sieht man den Kernbefund sofort: SigmaDock (magenta) liegt
+   weit ausserhalb des Proteins, SigmaFlow (cyan) sitzt in der Naehe der
+   gruenen Kristallpose. Das ist der Ausreisser-Effekt aus Abschnitt A2.
+
+2) IST DAS MOLEKÜL IN SICH ZUSAMMENHÄNGEND?
+   Darauf zielt der Frame-Fix. Mit old=True laesst sich gelb (ohne Fix) gegen
+   cyan (mit Fix) vergleichen: die Fragmente sollten mit Fix deutlich
+   plausibler zueinander stehen, besonders an den Bindungen zwischen ihnen.
+   Vorher waren diese Uebergangsbindungen im Mittel 2.49 A lang statt 1.49 A —
+   sichtbar als auseinandergezogene Stellen im Molekuel.
+
+3) ÜBERGANGSBINDUNGEN GEZIELT ANSEHEN
+   Lange Bindungen zeichnet PyMOL nicht als Stab, weil es sie nicht mehr als
+   Bindung erkennt. Auseinandergerissene Stellen sind deshalb als "Luecke"
+   zwischen zwei Molekuelteilen sichtbar. Bei cyan sollten kaum noch welche
+   auftreten, bei gelb (ohne Fix) haeufig.
+
+4) ORIENTIERUNG EINZELNER FRAGMENTE
+   Der absolute Rotationsfehler liegt bei beiden Methoden nahe am Zufall.
+   Erwarte also NICHT, dass Ringe und Seitengruppen richtig herum stehen —
+   das kann dieses Trainingsbudget noch nicht.
+
+Nuetzliche Zusatzbefehle:
+
+  hide everything, protein          # Protein ausblenden
+  show surface, protein and polymer # wieder einblenden
+  set transparency, 0.8             # Oberflaeche durchsichtiger
+  rmsd_to_true("sigmaflow_fix")     # RMSD-Zahl in der Konsole
+  png C:\Users\julia\Desktop\pose.png, dpi=300, ray=1   # Bild speichern
+
+
+================================================================================
+6. REPRODUKTION
+================================================================================
+
+  cd SigmaFlow_Variants/posebusters_full_comparison
+  python full_metrics.py        # Abschnitte A, A2, B, C, D
+  python fragment_locality.py   # nur die Lokalitaetsmetrik, alle Laeufe
+
+Beide Skripte erwarten die entpackten Vorhersageordner:
+  true_ligands/            (Kristallposen)
+  sigmaflow_framefix_pred/ (Job 8530243)
+  sigmadock_lrfix_pred/    (Job 8512922)
+  sigmaflow_lrfix_pred/    (Job 8512798)
+
+Herleitungen und die vollstaendige Verifikationskette der Laeufe stehen in
+STATUS.md; die fortlaufende Ergebnistabelle in RESULTS.md.

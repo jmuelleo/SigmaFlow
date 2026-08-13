@@ -1,0 +1,327 @@
+================================================================
+SigmaFlow — Projektfortschritt (Stand: 28.07.2026)
+================================================================
+
+Dieses Dokument fasst den gesamten bisherigen Fortschritt des SigmaFlow-
+Projekts zusammen und ist als Grundlage für eine Präsentation gedacht.
+Ausführliche Herleitungen/Debugging-Wege stehen in STATUS.md, die
+konsolidierten Zahlen in RESULTS.md — diese Datei ist die kompakte
+Zusammenfassung von beidem.
+
+
+----------------------------------------------------------------
+1. PROJEKTZIEL
+----------------------------------------------------------------
+
+SigmaFlow ist eine minimal-invasive Umwandlung von SigmaDock (einem
+Diffusions-basierten generativen Modell für molekulares Docking) auf
+Riemannian Flow Matching als generatives Verfahren.
+
+Ziel war NICHT, SigmaDock neu zu entwerfen, sondern:
+- die bestehende Architektur (EquiformerV2-Backbone), Datenpipeline,
+  Tensor-Konventionen, Konfiguration und Inferenz-Schnittstelle
+  weitestgehend zu erhalten,
+- nur die eigentliche generative Logik (Diffusion -> Flow Matching) zu
+  ersetzen: sowohl für die Translation (R^3) als auch für die Rotation
+  (SO(3)), kombiniert zu SE(3).
+
+Kernidee: statt eines stochastischen Rückwärts-Diffusionsprozesses wird
+ein deterministischer ODE-Integrationsprozess (Euler-Schritte von t=0,
+reines Rauschen, zu t=1, Daten) verwendet, trainiert mit einem
+Conditional-Flow-Matching-Ziel statt einem Diffusions-Score.
+
+
+----------------------------------------------------------------
+2. GESAMTVERLAUF (chronologisch, PAUSE-PUNKT 1-13 in STATUS.md)
+----------------------------------------------------------------
+
+Phase A — Analyse & Kernkomponenten (16.-21.07.2026, PAUSE-PUNKT #1-#6)
+- Vollständige Kartierung der SigmaDock-Diffusionspipeline (wo Rauschen
+  erzeugt wird, was das Netzwerk vorhersagt, wie Training/Sampling
+  ablaufen) als Grundlage, bevor irgendein Code geschrieben wurde.
+- Die 5 Kerndateien (r3_flow_matcher, so3-Komponenten, se3-Kombination,
+  Trainingsziel/Generator, Sampling) wurden Schritt für Schritt von
+  Diffusion auf Flow Matching umgebaut:
+  * R^3: linearer ("CondOT") Interpolationspfad x_t = (1-t) x_0 + t x_1,
+    Zielvektorfeld u_t = x_1 - x_0.
+  * SO(3): analoge Konstruktion über Log-/Exp-Map, Zielvektorfeld über
+    log(R_0^T R_1).
+  * SE(3): Translation und Rotation getrennt behandelt (kein echtes
+    semidirektes Produkt), pro Fragment ein eigenes Vektorfeld.
+  * Netzwerk-Ziel: vorhergesagtes Vektorfeld statt Diffusions-Score.
+  * Sampling: deterministische Euler-ODE-Integration statt stochastischer
+    Rückwärtsdiffusion.
+- `SigmaDockDenoiser` wurde zu `SigmaFlowGenerator` umbenannt (Klasse tut
+  längst kein "Denoising" mehr).
+- Ein toter/fehlgeleiteter Hyperparameter-Pfad (`rot_score_method` vs.
+  `rot_vector_field_method`) wurde gefunden: die Config-Option landete
+  nur im `**kwargs`-Auffangbecken und wurde nie wirklich verwendet.
+
+Phase B — Sampling zum Laufen bringen + erster Qualitätscheck
+(21.-22.07.2026, PAUSE-PUNKT #7-#9)
+- `scripts/sample.py` von SigmaDock portiert, inkl. neuer Funktion, die
+  die gedockte Endpose direkt als `.sdf`-Datei exportiert (für
+  PyMOL-Sichtkontrolle).
+- Ein echter Bug gefunden+gefixt: `sigma_min` wurde beim Laden eines
+  Checkpoints nie gespeichert -> Sampling stürzte mit `TypeError` ab.
+- Erster 3h-Überanpassungslauf auf den 10 Dummy-Komplexen gesampelt:
+  Posen sahen in PyMOL stark verzerrt/zerrissen aus.
+
+Phase C — Root-Cause-Analyse eines echten Sampling-Bugs
+(24.07.2026, PAUSE-PUNKT #10)
+- Ursache gefunden: der `edm`-Zeitplan (Karras et al., aus dem
+  Original-Diffusionscode übernommen) lief für Flow Matching genau
+  RÜCKWÄRTS (baute den Zeitplan absteigend von t_max zu t_min statt
+  aufsteigend). Da `edm` der tatsächliche Default war, war JEDER
+  bisherige echte Sampling-Lauf davon betroffen — das Training selbst
+  war nicht betroffen, nur die Inferenz.
+- Fix: 2 Zeilen in `sampling.py`, Default-Diskretisierung auf `power`
+  umgestellt.
+- Nach dem Fix quantitativ über alle 10 Komplexe bestätigt: deutliche
+  Verbesserung, SigmaFlow lag danach schon roh leicht besser als
+  SigmaDock (siehe Tabelle unten).
+
+Phase D — Fairer Vergleich mit SigmaDock + Hyperparameter-Sweep
+(25.-26.07.2026, PAUSE-PUNKT #11)
+- Ein zweiter toter Hyperparameter-Pfad gefunden+gefixt
+  (`rot_score_scaling` -> `rot_vector_field_scaling`), dabei aber auch
+  festgestellt, dass diese Reskalierung im Vektorfeld aktuell ohnehin
+  wirkungslos ist (bewusste, aber nie explizit hergeleitete
+  Design-Entscheidung — offene Frage für später).
+- Breiter Hyperparameter-Sweep (10 Kombinationen aus
+  trans_score_weight/rot_score_weight), mit 8-facher Wiederholung pro
+  Checkpoint, um Auswertungsrauschen auszumitteln (eine einzelne
+  Messung schwankte um bis zu 0.7 im Loss allein durch Zufallsziehung).
+- Ergebnis: SigmaDocks eigene Produktions-Hyperparameter
+  (trans_score_weight=2.0, rot_score_weight=0.5) sind auch für
+  SigmaFlow die beste gefundene Kombination.
+- 3h-Bestätigungslauf mit diesen Hyperparametern: SigmaFlow erreicht
+  danach RMSD- und PoseBusters-Werte auf Augenhöhe mit SigmaDock
+  (siehe Ergebnistabellen unten) — die Flow-Matching-Konversion ist
+  damit auf dem 10-Komplexe-Überanpassungstest als gleichwertig
+  validiert.
+
+Phase E — Aufräumen + Cross-GPU-Verifikation
+(26.07.2026, PAUSE-PUNKT #12-#13)
+- Toter Code entfernt (u.a. die beiden wirkungslosen Hyperparameter-
+  Felder, ein nie aufgerufenes `get_fragment_com`, ein toter
+  `if False`-Block), Diffusions-Sprachreste in Docstrings/Kommentaren
+  umbenannt, `t_min`/`epsilon_t` vereinheitlicht.
+- Cleanup wurde nachträglich verifiziert (Diff-Review, repo-weiter
+  Grep, echter End-to-End-Lauf) statt nur behauptet.
+- Da alle L40S-GPUs auf ARC belegt waren, wurde testweise auf einer
+  V100 gesampelt: Ergebnis weicht vom L40S-Lauf im Schnitt nur um
+  0.04 Å ab (max. 0.10 Å) — bestätigt, dass das Sampling
+  GPU-architektur-unabhängig korrekt funktioniert.
+
+Phase F (parallel, seit 28.07.2026) — Vollständiger Code-Walkthrough
+- Unabhängig vom inhaltlichen Fortschritt läuft ein reiner
+  Lern-Walkthrough des gesamten Repos (alle 66 Python-Dateien,
+  ~20.225 Zeilen), Zeile für Zeile, inkl. aller Python-/PyTorch-
+  Grundlagen, die dabei auftauchen. Fortschritt wird separat in
+  CODE_WALKTHROUGH.md getrackt (aktuell: 2 von 66 Dateien komplett
+  durchgegangen).
+
+
+----------------------------------------------------------------
+3. QUANTITATIVE ERGEBNISSE (Details in RESULTS.md)
+----------------------------------------------------------------
+
+Alle Zahlen unten: 10 Dummy-Komplexe (notebooks/dummy_data/),
+Überanpassungstest — es gab bisher noch KEINEN Trainingslauf auf dem
+vollen Datensatz.
+
+--- RMSD gegen die wahre Pose (Angstrom) ---
+
+Setup                                              | raw (Mittel/Median) | aligned (Mittel/Median)
+----------------------------------------------------------------------------------------------------
+SigmaFlow, edm-Sampling-Bug (kaputt)                | 10.21 / 10.37       | 7.54 / 7.76
+SigmaFlow, edm-Bug gefixt, Ad-hoc-Gewichte          | 6.04 / 5.72         | 3.09 / 3.06
+SigmaFlow, edm-Fix + Produktions-Hyperparameter     | 4.31 / 3.67         | 2.86 / 2.81
+SigmaFlow, gleicher Checkpoint, gesampelt auf V100  | 4.32 / 3.70         | 2.87 / 2.82
+SigmaDock (Original-Diffusion), Ad-hoc-Gewichte     | 6.90 / 6.85         | 2.85 / 2.90
+SigmaDock (Original-Diffusion), Produktions-Gewichte| 5.08 / 4.76         | 2.59 / 2.60
+
+Einordnung: SigmaFlow (mit Produktions-Hyperparametern) liegt bei der
+rohen Abweichung leicht VOR SigmaDocks eigenem Produktionslauf
+(4.31 vs. 5.08 Å), bei den ausgerichteten Werten praktisch gleichauf
+(2.86 vs. 2.59 Å). In Summe: gleichwertig, keine Methode dominiert.
+
+--- PoseBusters (chemische Plausibilität, 28 Checks) ---
+
+Verglichen: SigmaFlow (edm-Fix + Produktions-Gewichte) vs. SigmaDock
+(Produktions-Gewichte).
+- 23 von 28 Checks: exakt identisch zwischen beiden Methoden.
+- Bei den 5 verbleibenden Unterschieden gewinnt durchgehend SigmaDock,
+  meist nur mit 1 von 10 Komplexen Unterschied (kein verlässliches
+  Signal bei dieser Stichprobengröße). Einzige Ausnahme mit größerem
+  Abstand: internal_energy (2/10 Komplexe).
+- Gemeinsame Schwäche BEIDER Methoden (0% Pass-Rate bei beiden,
+  architekturbedingt, kein Methodenunterschied): bond_lengths,
+  bond_angles, minimum_distance_to_protein — jedes Fragment wird
+  starr unabhängig platziert, nichts erzwingt chemisch sinnvolle
+  Bindungsgeometrie genau an der Schnittstelle zwischen zwei
+  Fragmenten. Das ist aus der ursprünglichen SigmaDock-Architektur
+  geerbt, nicht Teil des Flow-Matching-Konversionsauftrags.
+
+--- Trainings-Verlust (best_model_score / loss_val/total) ---
+
+Datum       | Setup                                          | Ergebnis
+------------------------------------------------------------------------
+17.07.2026  | 300 Epochen, früher Test vor allen Bugfixes    | ~18.8 (aggregiert)
+22.07.2026  | 3h-Lauf, Ad-hoc-Gewichte                       | Plateau bei 12.69-12.94
+25.07.2026  | 3h-Lauf, Produktions-Hyperparameter             | 5.23 (grob halbiert)
+
+Der große Sprung kam vom Hyperparameter-Wechsel, nicht von mehr
+Trainingszeit.
+
+--- Cross-GPU-Konsistenz ---
+Derselbe Checkpoint auf V100 vs. L40S gesampelt: mittlere Abweichung
+0.04 Å, maximal 0.10 Å über alle 10 Komplexe — reines
+Fließkomma-/Kernel-Rauschen zwischen GPU-Architekturen, keine
+strukturelle Divergenz.
+
+
+----------------------------------------------------------------
+4. WAS NOCH FEHLT (vor dem großen Trainingslauf auf dem vollen Datensatz)
+----------------------------------------------------------------
+
+1. `slurm/train.sh` für den großen Lauf existiert noch nicht (nur
+   Dummy-Varianten für die 10 Testkomplexe).
+2. ARC-Partition/Zeitlimit für einen Mehrtages-Job (7 Tage geplant)
+   noch nicht geklärt — die "short"-Partition ist auf Stunden
+   gedeckelt und stark ausgelastet (aktuell 5h+ Wartezeit selbst für
+   einen einzelnen 20-Minuten-Job).
+3. 4-GPU Distributed Data Parallel (DDP) wurde noch nie getestet —
+   bisher lief jeder echte Lauf nur mit 1 GPU.
+4. Datensatzpfade für den vollen PDBbind/Astex/PoseBusters-Datensatz
+   auf ARC wurden noch nie gegen die Konfigurations-Regex verifiziert.
+5. Entscheidung zu Weights&Biases-Logging (offline reicht vermutlich
+   nicht für einen unbeaufsichtigten 7-Tage-Lauf) noch offen.
+6. Nach dem großen Lauf steht laut Projektplan noch die volle
+   PoseBusters-Auswertung auf dem vollen Datensatz aus (bisher nur der
+   kleine Test auf den 10 Dummy-Komplexen).
+
+
+----------------------------------------------------------------
+5. BEFEHLE ZUM REPRODUZIEREN / AUSGEBEN DER ERGEBNISSE
+----------------------------------------------------------------
+
+Alles unten läuft auf dem ARC-Cluster (Login-Host: htc-login.arc.ox.ac.uk)
+im Verzeichnis SigmaFlow_Development, Umgebung "sigmaflow_env"
+(wird per `module load Mamba; conda activate ...` in den Skripten
+selbst aktiviert, kein manueller Schritt nötig).
+
+--- (a) Trainieren (3h-Überanpassungslauf, Produktions-Hyperparameter) ---
+
+    cd SigmaFlow_Development
+    sbatch slurm/train_dummy_overfit_gpu_3h_prodhparams.sh
+
+Kernbefehl darin (zum Verständnis, direkt ausführbar):
+
+    python scripts/train.py \
+        --data_dir <pfad>/notebooks \
+        --train_exps dummy_train --val_exps dummy_train --test_exps dummy_train \
+        --batch_size 2 --num_workers 0 \
+        --accelerator gpu --devices 1 \
+        --max_epochs 700 --early_stopping_patience 0 \
+        --trans_score_weight 2.0 --rot_score_weight 0.5 \
+        --rot_vector_field_scaling rms \
+        --offline_run --debug
+
+Der Checkpoint landet unter:
+    experiments/sigmadock/<timestamp>/checkpoints/last.ckpt
+(auffindbar mit: find experiments -name "*.ckpt")
+
+--- (b) Sampeln (gedockte Posen aus einem Checkpoint erzeugen, als .sdf) ---
+
+    CKPT_DIR=experiments/sigmadock/<timestamp>/checkpoints/last.ckpt \
+        sbatch slurm/sample_dummy.sh
+
+Kernbefehl darin:
+
+    python scripts/sample.py \
+        ckpt="${CKPT_DIR}" \
+        data_dir="${DATA_DIR}" \
+        experiment=dummy_train \
+        output_dir="${OUTPUT_DIR}" \
+        run_tag=dummy_overfit_check \
+        num_seeds=1 \
+        graph.sample_conformer=false \
+        postprocessing.scoring=null postprocessing.bust_config=null
+
+Ergebnis (predictions.pt + eine .sdf-Datei pro Komplex) landet unter:
+    ${OUTPUT_DIR}/results/dummy_train/last/seed_0/
+
+WICHTIG: use_true_vector_field muss auf False (Default) stehen — True
+umgeht das trainierte Netzwerk komplett (reiner ODE-Selbsttest ohne
+Modell) und würde unabhängig vom Trainingserfolg "funktionieren".
+
+--- (c) RMSD gegen die wahre Pose berechnen ---
+
+Kein festes Skript im Repo committet (bewusst, siehe CLAUDE.md §9:
+keine generierten Benchmark-Outputs committen). Vorgehen, um es neu zu
+bauen:
+1. Die vorhergesagte .sdf (aus Schritt b) und die wahre Ligand-Pose
+   (aus notebooks/dummy_data/) mit RDKit laden.
+2. Pro Molekül an den Rotationsbindungen fragmentieren
+   (Chem.FragmentOnBonds, gleiche Logik wie im Training), damit die
+   fragmentweise Struktur mit der Trainingslogik übereinstimmt.
+3. "raw"-RMSD: direkter Koordinatenvergleich (beide liegen schon im
+   selben Weltkoordinatensystem).
+4. "aligned"-RMSD: nach optimaler starrer Ausrichtung per
+   Kabsch-Algorithmus (trennt reinen Platzierungsfehler von
+   Rotations-/Translationsfehler).
+
+--- (d) PoseBusters (chemische Plausibilität) ---
+
+Lokal ausführbar (posebusters-Paket installiert), keine GPU nötig:
+
+    from posebusters import PoseBusters
+    pb = PoseBusters(config="redock")
+    results = pb.bust(mol_pred=<vorhergesagte .sdf>,
+                       mol_true=<wahre Pose>,
+                       mol_cond=<Protein>)
+
+Ergebnis: DataFrame/Dict mit 28 True/False-Checks pro Komplex
+(Bindungslängen, Chiralität, Protein-Ligand-Überlappung, etc.) —
+Mittelwert über alle Komplexe pro Check ergibt die Pass-Rate-Tabelle
+aus Abschnitt 3.
+
+--- (e) Trainings-Loss aus einem Checkpoint auslesen (ohne W&B-Sync) ---
+
+Da --offline_run genutzt wurde, liegt der Verlauf nicht online in
+W&B, sondern im Checkpoint-Callback-State selbst:
+
+    import torch
+    ckpt = torch.load("experiments/sigmadock/<timestamp>/checkpoints/last.ckpt",
+                       map_location="cpu")
+    print(ckpt["callbacks"])   # enthält current_score / best_model_score
+
+--- (f) Cross-GPU-Vergleich (z.B. V100 statt L40S) ---
+
+    CKPT_DIR=<gleicher checkpoint wie oben> \
+    OUTPUT_DIR=sampling_output_v100_check \
+        sbatch slurm/sample_dummy.sh
+    # danach im sbatch-Skript --gres=gpu:v100:1 statt gpu:l40s:1 setzen,
+    # falls die l40s-Partition ausgelastet ist (siehe PAUSE-PUNKT #13)
+
+Anschließend die beiden Ergebnis-.sdf-Sätze mit Schritt (c) gegeneinander
+vergleichen (statt gegen die wahre Pose).
+
+
+----------------------------------------------------------------
+6. WICHTIGSTE OFFENE FRAGEN (für die Präsentation als Ausblick)
+----------------------------------------------------------------
+
+- Braucht Flow Matching eine eigene, theoretisch hergeleitete
+  Zeit-Reskalierung des Vektorfelds (analog zum Diffusions-Score-
+  Scaling)? Aktuell nicht implementiert, könnte die letzte kleine
+  Lücke zu SigmaDock schließen, ist aber nicht dringend, da SigmaFlow
+  bereits gleichwertig ist.
+- Die gemeinsame Fragment-Übergangs-Schwäche (Bindungslängen/-winkel
+  an Torsionsbindungs-Schnittstellen) ist ein potenzieller
+  Verbesserungspunkt für BEIDE Methoden, aber außerhalb des
+  ursprünglichen Konversionsauftrags.
+- Nächster großer inhaltlicher Schritt: Training auf dem vollen
+  Datensatz (siehe Abschnitt 4 für die dafür noch offenen Punkte).

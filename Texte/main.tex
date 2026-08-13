@@ -1,0 +1,2126 @@
+
+\documentclass[a4paper,12pt]{article}
+%\usepackage declarations should go here
+\usepackage{graphicx}
+\usepackage[T
+1]{fontenc}
+\usepackage{parskip}
+\usepackage{latexsym}
+%\usepackage{natbib}
+\usepackage{graphicx}
+\usepackage{times}
+\usepackage{bm}
+\usepackage{enumitem}
+\usepackage[
+    backend=biber,
+    style=numeric,
+    sorting=none
+]{biblatex}
+\addbibresource{MScThesis_Zotero.bib}
+\usepackage{appendix}
+
+\usepackage[
+    colorlinks=true,
+    linkcolor=blue,
+    citecolor=blue,
+    urlcolor=blue
+]{hyperref}
+
+\usepackage{zi4}
+\usepackage{booktabs}
+\usepackage[a4paper,left=3cm,right=3cm,top=3cm,bottom=3cm]{geometry}
+\usepackage{amsmath, amssymb, amsthm, mathtools, booktabs}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{proposition}[theorem]{Proposition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\DeclareMathOperator{\Exp}{Exp}
+\DeclareMathOperator{\Log}{Log}
+\DeclareMathOperator{\so}{\mathfrak{so}}   % or just use \mathfrak{so}
+\DeclareMathOperator{\tr}{tr}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator{\Attn}{Attn}
+\DeclareMathOperator{\softmax}{softmax}
+\DeclareMathOperator{\LN}{LN}
+\DeclareMathOperator{\MLP}{MLP}
+
+%\usepackage{foundrysterlingbookosf}
+\begin{document}
+% Turn off page numbering until first section.
+\pagenumbering{gobble}
+% Title page - needs Stats_Logo.png
+\begin{titlepage}
+
+\begin{center}
+\vspace{1cm}
+\Huge{University of Oxford} \\
+\vspace{1cm}
+\begin{figure}[htb]
+\centering
+\includegraphics[scale=0.9]{Dept_Stats_logo_horizontal_RGB.jpg}
+\end{figure}
+\vspace{2.0cm}
+\Huge{SigmaFlow:\\ Riemannian Flow Matching for Generative Protein–Ligand Docking\\}
+\vspace{2.0cm}
+\large{ by \\[14pt] Julian Herbert Müller \\[8pt] St-Hugh's College} \\
+\vspace{2.2cm}
+\large{A dissertation submitted in partial fulfilment of the degree of Master of
+Science in Statistical Science.
+} \\
+\vspace{.5cm}
+\large{\emph{Department of Statistics, 24--29 St Giles, \\Oxford, OX1 3LB}} \\
+\vspace{1.0cm}
+\large{September 2026} \\
+\end{center}
+
+\end{titlepage}
+\clearpage
+This is my own work (except where otherwise indicated)
+\vspace{2.5in}
+\begin{center}
+Candidate: Julian Herbert Müller\\
+\vspace{1.0in}
+Signed:.................................\\
+\vspace{1.0in}
+Date:...................................
+\end{center}
+\clearpage
+\begin{abstract}
+The abstract should go here.
+\end{abstract}
+\clearpage
+%\thispagestyle{empty}
+\vspace*{2in}
+\begin{center}
+\textbf{Acknowledgements}
+\end{center}
+
+% Ich sag wir hauen das heute weg, dann am Abend arbeiten wir uns in Claude ein via den zwei Kursen, ich denke das ist sowieso sinnvoll, weil naja LLMs und Agentic AI sind irgendwo schon einfach die Zukunft, Strom und Compute wird günstiger werden (at least pro unit) und dann knallt das Zeug halt übetrieben, gehe schwer davon aus, dass das ein Skill ist den man haben sollte, von der harten Mathe, bis zur praktischen Implementierung und AI Agents, man muss die volle Pipeline verstehen und können, um großartig zu sein. Wichtig ist aber auch die Theorie by heart zu verstehen, sowie coding technisch implementieren zu können, entsprechend geben wir unser bestes in der Thesis, das wichtig!
+
+
+
+
+
+I would like to thank the following:
+The Friedrich-Naumann-Foundation for Freedom for supporting me during the MSc Degree with the Hans-Dietrich-Genscher Scholarship for one year long master programmes in england, as well as the general scholarship programme.
+I would like to acknowledge the use of the University of Oxford Advanced Research
+Computing (ARC) facility in carrying out this work.
+Furthermore I want to express my deepest gratitude to my beloved mother who supported me unbelievable throughout this year, to my grandmother, who throughout heaven and earth saw me for who I am and made me who I am today, as well as my wonderful fiance, without her support I wouldn't have found my way to Oxford.
+\clearpage
+\tableofcontents
+\listoffigures
+\listoftables
+\clearpage
+\pagenumbering{arabic}
+
+
+
+
+
+
+
+
+
+
+
+
+\section{Introduction}
+
+\subsection{Motivation}
+
+Protein--ligand docking, the task of predicting the bound pose of a small molecule
+inside a protein binding site, is a central problem in structure-based drug design:
+whether a candidate ligand is a plausible drug depends on how, and how well, it binds
+its target. The field was long dominated by physics-based search methods such as
+AutoDock Vina~\cite{bortoliRiemannianScoreBasedGenerative2022}, which are accurate but computationally expensive,
+since each pose prediction requires an explicit search over a scoring landscape.
+This cost motivated the exploration of deep generative models for docking, and in
+particular of diffusion models, beginning with DiffDock~\cite{bortoliRiemannianScoreBasedGenerative2022}. The field
+subsequently converged on the diffusion paradigm, culminating in
+SigmaDock~\cite{bortoliRiemannianScoreBasedGenerative2022}, a fragment-based $SE(3)$ diffusion model which is, to our
+knowledge, the first deep learning method to outperform physics-based search on the
+PoseBusters benchmark.
+
+In parallel, the generative modelling literature underwent a conceptual shift.
+Score-based diffusion models were unified with DDPM under a stochastic differential
+equation (SDE) formulation~\cite{bortoliRiemannianScoreBasedGenerative2022}, which made explicit that the object being
+generated is a \emph{probability path} rather than a score. This insight was then
+generalised: replacing score matching by \emph{flow matching} yields flow models,
+which subsume diffusion models as a particular choice of probability
+path~\cite{bortoliRiemannianScoreBasedGenerative2022}. The natural question is whether flow models should replace
+diffusion models in geometric generative applications. The most directly relevant
+evidence comes from Yim et al., whose $SE(3)$ diffusion model for protein backbone
+generation~\cite{bortoliRiemannianScoreBasedGenerative2022} was subsequently re-derived as an $SE(3)$ flow matching
+model by the same group~\cite{bortoliRiemannianScoreBasedGenerative2022}, yielding roughly five times fewer sampling
+steps and a twofold improvement in designability.
+
+This thesis asks whether the same substitution yields comparable gains in
+protein--ligand docking. Concretely: can the state-of-the-art diffusion model
+SigmaDock be converted into a flow matching model, and does the resulting model,
+which we call \emph{SigmaFlow}, train and sample more efficiently at equal or better accuracy?
+
+\subsection{Related Work}
+
+Diffusion models for protein--ligand docking include DiffDock~\cite{bortoliRiemannianScoreBasedGenerative2022} and
+SigmaDock~\cite{bortoliRiemannianScoreBasedGenerative2022}. The closely related \emph{cofolding} problem, in which
+protein and ligand structures are predicted jointly, is addressed by
+AlphaFold3~\cite{bortoliRiemannianScoreBasedGenerative2022} and Boltz~\cite{bortoliRiemannianScoreBasedGenerative2022} using diffusion, and by
+FlowDock~\cite{bortoliRiemannianScoreBasedGenerative2022} and MATCHA~\cite{bortoliRiemannianScoreBasedGenerative2022} using flow matching. The
+methodological blueprint for a controlled diffusion-versus-flow comparison is taken
+from Yim et al.~\cite{bortoliRiemannianScoreBasedGenerative2022,bortoliRiemannianScoreBasedGenerative2022}, who performed exactly this substitution for
+protein backbone generation. On the theoretical side, this thesis builds on
+score-based generative modelling~\cite{bortoliRiemannianScoreBasedGenerative2022}, flow matching~\cite{bortoliRiemannianScoreBasedGenerative2022} and
+its Riemannian generalisation~\cite{bortoliRiemannianScoreBasedGenerative2022}.
+
+\subsection{Contributions}
+
+The main contribution of this thesis is the adaptation of SigmaDock into SigmaFlow,
+replacing the score matching objective on $SE(3)^N$ by a Riemannian flow matching
+objective. In a first step the architecture is held fixed, so that the comparison
+isolates the single change from diffusion to flow; the resulting modifications are
+derived in Section~\ref{sec:SigmaFlow}. Building on this comparison, SigmaFlow is
+then extended with a binding affinity prediction head based on the AEV-PLIG
+work~\cite{bortoliRiemannianScoreBasedGenerative2022} developed in this department, enabling end-to-end training of
+the full docking pipeline together with uncertainty quantification.
+
+\subsection{Thesis Outline}
+
+Section~\ref{sec:math} develops the mathematical foundations: Riemannian manifolds,
+Lie groups and rigid body motion, continuous generative models in $\mathbb{R}^d$, and
+their generalisation to $SO(3)$ and $SE(3)^N$. To the best of our knowledge no single
+reference assembles all prerequisites for diffusion \emph{and} flow matching on
+$SE(3)$ in one place, and this chapter is intended to serve that purpose.
+Section~\ref{sec:SigmaDock} summarises SigmaDock, restricted to those aspects of the
+architecture and methodology that the proposed changes touch; for a complete
+description we refer to~\cite{bortoliRiemannianScoreBasedGenerative2022}. Section~\ref{sec:SigmaFlow} is the core of
+the thesis and derives SigmaFlow. Section~\ref{sec:experiments} reports experiments
+and benchmarks, Section~\ref{sec:limitations} discusses limitations and future work,
+and Section~\ref{sec:conclusion} concludes.
+
+
+\section{Mathematical Foundations}
+\label{sec:math}
+
+The purpose of this chapter is to assemble, in a single self-contained development,
+the geometry and the generative modelling theory required to state SigmaDock and
+SigmaFlow precisely. Section~\ref{sec:geom} introduces Riemannian manifolds and the
+Lie group structure of rigid body motion. Section~\ref{sec:cgm} develops diffusion
+and flow models in $\mathbb{R}^d$ and, crucially, shows that they are two
+parameterisations of the same object, namely a probability path.
+Section~\ref{sec:riemannian-cgm} lifts both constructions to $SO(3)$ and assembles
+them on the product manifold $SE(3)^N$ on which docking poses live.
+
+\subsection{Notation}
+\label{sec:notation}
+
+Throughout, $t\in[0,1]$ denotes \emph{generation time}, oriented so that
+\[
+p_0=p_{\mathrm{init}}
+\quad\text{(noise)},
+\qquad
+p_1=p_{\mathrm{data}}
+\quad\text{(data)} .
+\]
+Sampling therefore always integrates \emph{forward} in $t$, and the noising process,
+where one is used at all, runs in the reversed time $s=1-t$. This convention is fixed
+once and for all, as the diffusion and flow literatures disagree on it and mixing them
+is a common source of sign errors.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\mathcal M$ & smooth Riemannian manifold \\
+$T_x\mathcal M$ & tangent space of $\mathcal M$ at $x$ \\
+$g_x(\cdot,\cdot)$, $\|\cdot\|_g$ & Riemannian metric and induced norm \\
+$\exp_x$, $\log_x$ & Riemannian exponential and logarithmic map at $x$ \\
+$G$, $\mathfrak g$ & Lie group and its Lie algebra $\mathfrak g=T_eG$ \\
+$SO(3)$, $\mathfrak{so}(3)$ & rotation group and its Lie algebra \\
+$(\cdot)^\wedge$, $(\cdot)^\vee$ & hat and vee operators, $\mathbb R^3\leftrightarrow\mathfrak{so}(3)$ \\
+$SE(3)$, $\mathcal M_N=SE(3)^N$ & rigid motions; pose space of $N$ ligand fragments \\
+$p_{\mathrm{data}}$, $p_{\mathrm{init}}$ & data and prior distribution \\
+$p_t$, $p_t(\cdot\mid z)$ & marginal and conditional probability path \\
+$u_t$, $u_t(\cdot\mid z)$ & marginal and conditional vector field \\
+$u_t^\theta$, $s_\theta$ & learned vector field / score network \\
+$\nabla_x\log p_t(x)$ & (Riemannian) score \\
+$W_t$, $B_t^{\mathcal M}$ & Wiener process; Brownian motion on $\mathcal M$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Fundamentals of Geometric Deep Learning}
+\label{sec:geom}
+
+\subsubsection{Riemannian Manifolds}
+\label{sec:manifolds}
+
+Most machine learning models assume that data lives in a Euclidean vector space
+$\mathbb R^d$, in which vector addition, scalar multiplication and linear
+interpolation are defined. Many objects in geometric learning, however, carry
+intrinsic constraints. A rotation must preserve lengths and orientation and therefore
+cannot be an arbitrary matrix; the set of rotations is not closed under addition. Such
+objects live on curved spaces called manifolds. Since a docking pose is a collection of
+translations and rotations of rigid molecular fragments, this geometry is not optional
+decoration but the state space of the generative model itself.
+
+A smooth $n$-dimensional manifold $\mathcal M$ is a topological space in which every
+point has a neighbourhood homeomorphic to $\mathbb R^n$, with smooth transitions
+between such local charts. Globally, vector space operations are unavailable; locally,
+differential calculus proceeds exactly as in $\mathbb R^n$.
+
+The object that makes local calculus possible is the tangent space. For $x\in\mathcal M$,
+the tangent space $T_x\mathcal M$ collects all infinitesimal directions in which one may
+move while remaining on the manifold. Unlike $\mathcal M$ itself, $T_x\mathcal M$ \emph{is}
+a vector space; it is the best linear approximation of $\mathcal M$ at $x$. All learned
+quantities in this thesis (scores, velocity fields) are elements of tangent spaces,
+which is precisely what makes them well defined on a curved state space.
+
+To measure lengths and angles, each tangent space is equipped with an inner product.
+
+\begin{definition}[Riemannian metric]
+\label{def:metric}
+A \emph{Riemannian metric} on a smooth manifold $\mathcal M$ is a smoothly varying
+family of inner products
+\[
+g_x:T_x\mathcal M\times T_x\mathcal M\rightarrow\mathbb R,
+\]
+such that $g_x$ is symmetric and positive definite for every $x\in\mathcal M$.
+\end{definition}
+
+The metric generalises the Euclidean inner product and induces the norm
+$\|v\|_g=\sqrt{g_x(v,v)}$ for $v\in T_x\mathcal M$. Lengths of curves follow: for a
+smooth curve $\gamma:[0,1]\rightarrow\mathcal M$,
+\[
+L(\gamma)
+=
+\int_0^1
+\sqrt{g_{\gamma(t)}\bigl(\dot\gamma(t),\dot\gamma(t)\bigr)}\,dt,
+\qquad
+\dot\gamma(t)\in T_{\gamma(t)}\mathcal M .
+\]
+
+\begin{definition}[Geodesic]
+\label{def:geodesic}
+A \emph{geodesic} is a curve on a Riemannian manifold that locally minimises
+Riemannian distance, i.e.\ a locally length-minimising curve traversed at constant
+speed.
+\end{definition}
+
+Geodesics are the manifold analogue of straight lines, and they will replace the
+linear interpolation of Euclidean flow matching.
+
+Next we need an analogue of the update $x\mapsto x+v$. On a manifold, $v\in T_x\mathcal M$
+does not lie on $\mathcal M$, so addition is undefined; one returns to the manifold via
+the exponential map.
+
+\begin{definition}[Exponential map]
+\label{def:exp}
+For $x\in\mathcal M$, the Riemannian exponential map
+$\exp_x:T_x\mathcal M\rightarrow\mathcal M$ sends $v$ to the point reached by following
+for unit time the unique geodesic starting at $x$ with initial velocity $v$.
+\end{definition}
+
+\begin{definition}[Logarithmic map]
+\label{def:log}
+The Riemannian logarithmic map $\log_x:\mathcal U\rightarrow T_x\mathcal M$ is the local
+inverse of $\exp_x$ on a neighbourhood $\mathcal U$ of $x$, so that
+$\exp_x\bigl(\log_x(y)\bigr)=y$ for $y\in\mathcal U$.
+\end{definition}
+
+Thus $\log_x(y)$ is the tangent vector at $x$ pointing towards $y$ and plays the role
+of the difference $y-x$, while $\exp_x(v)$ plays the role of $x+v$. Together the two
+maps form the bridge between the nonlinear manifold and the linear tangent spaces, and
+they are the only two primitives we shall need: diffusion models sample Gaussian
+perturbations in $T_x\mathcal M$ and push them onto $\mathcal M$ with $\exp$, while flow
+matching builds geodesic interpolants from $\log$ and $\exp$.
+
+Differentiation also generalises. For differentiable $f:\mathcal M\rightarrow\mathbb R$,
+the \emph{Riemannian gradient} is the unique tangent vector
+$\nabla f(x)\in T_x\mathcal M$ satisfying
+\[
+g_x\bigl(\nabla f(x),v\bigr)=Df_x(v)
+\qquad\forall\,v\in T_x\mathcal M ,
+\]
+where $Df_x$ is the differential of $f$ at $x$. It points in the direction of steepest
+increase of $f$ while remaining tangent to $\mathcal M$, and it is the object that appears
+in the score functions of Riemannian diffusion models.
+
+Finally, Brownian motion generalises to manifolds: rather than adding Gaussian noise to
+points, one adds infinitesimal Gaussian increments in the tangent spaces and maps them
+back with $\exp$. In contrast to the Euclidean case, the stationary distribution is
+determined by the geometry, not by the noise. This will matter concretely: on the
+compact group $SO(3)$, Brownian motion converges to the uniform (Haar) measure over all
+rotations, not to an isotropic Gaussian.
+
+\subsubsection{Lie Groups and Rigid Body Motion}
+\label{sec:rigid}
+
+The objects moved by a docking model are not arbitrary point clouds but \emph{rigid
+bodies}: molecular fragments whose internal geometry is fixed. Their motions consist of
+translations and rotations only, preserving all internal distances and angles. The
+appropriate mathematical structure combines geometry with an algebraic composition law,
+and is provided by Lie groups.
+
+\begin{definition}[Lie group]
+\label{def:liegroup}
+A \emph{Lie group} is a smooth manifold $G$ equipped with a group operation
+$\circ: G \times G \mapsto G$ such that the group axioms are satisfied.
+\end{definition}
+
+The manifold structure gives access to the calculus of Section~\ref{sec:manifolds};
+the group structure describes composition of rigid motions.
+
+\begin{definition}[Lie algebra]
+\label{def:liealgebra}
+Let $G$ be a Lie group with identity $\mathcal{E}$. Its \emph{Lie algebra} is the tangent space
+at the identity, $\mathfrak g=T_\mathcal{E}G$.
+\end{definition}
+
+The Lie algebra is an ordinary vector space and provides a linear representation of
+infinitesimal motions: one constructs a vector in $\mathfrak g$ using standard linear
+algebra and transports it onto the group with the exponential map.
+
+\paragraph{The rotation group.}
+Rotations form the special orthogonal group
+\[
+SO(3)
+=
+\bigl\{
+R\in\mathbb R^{3\times3}
+\;\big|\;
+R^\top R=I,\ \det(R)=1
+\bigr\}.
+\]
+The constraint $R^\top R=I$ imposes six independent scalar equations on the nine matrix
+entries, leaving a manifold of dimension $9-6=3$; the condition $\det(R)=1$ does not
+remove a further dimension but selects the orientation-preserving connected component.
+Every rotation therefore has exactly three degrees of freedom.
+
+The associated Lie algebra is
+\[
+\mathfrak{so}(3)
+=
+T_ISO(3)
+=
+\bigl\{
+\Omega\in\mathbb R^{3\times3}\;\big|\;\Omega^\top=-\Omega
+\bigr\},
+\]
+the skew-symmetric matrices, each representing an infinitesimal rotation about the
+identity. Since $\mathfrak{so}(3)$ is three-dimensional, it is isomorphic to $\mathbb R^3$.
+
+\begin{definition}[Hat and vee operators]
+\label{def:hatvee}
+The hat operator $(\cdot)^\wedge:\mathbb R^3\rightarrow\mathfrak{so}(3)$ maps
+$\omega=(\omega_1,\omega_2,\omega_3)^\top$ to
+\[
+\widehat{\omega}
+=
+\begin{pmatrix}
+0 & -\omega_3 & \omega_2\\
+\omega_3 & 0 & -\omega_1\\
+-\omega_2 & \omega_1 & 0
+\end{pmatrix},
+\]
+and its inverse $(\cdot)^\vee:\mathfrak{so}(3)\rightarrow\mathbb R^3$ is the vee
+operator.
+\end{definition}
+
+We use the two representations interchangeably, writing $\omega\in\mathbb R^3$ whenever
+a tangent vector is to be fed to, or produced by, a neural network.
+
+\paragraph{Metric, exponential and logarithm on $SO(3)$.}
+We equip $SO(3)$ with the bi-invariant metric obtained by left translation of the inner
+product $\langle \Omega_1,\Omega_2\rangle=\tfrac12\tr(\Omega_1^\top\Omega_2)$ on
+$\mathfrak{so}(3)$; under the identification of Definition~\ref{def:hatvee} this is the
+Euclidean inner product on $\mathbb R^3$. With this choice, the Riemannian exponential
+map coincides with the matrix exponential, and Rodrigues' formula gives a closed form.
+For $\omega\in\mathbb R^3$ with $\theta=\|\omega\|$,
+\begin{equation}
+\label{eq:rodrigues}
+\exp(\widehat\omega)
+=
+I
++
+\frac{\sin\theta}{\theta}\,\widehat\omega
++
+\frac{1-\cos\theta}{\theta^2}\,\widehat\omega^{\,2}
+\;\in\;SO(3),
+\end{equation}
+where the direction of $\omega$ is the rotation axis and $\theta$ the rotation angle.
+Conversely, for $R$ with rotation angle $\theta\in(0,\pi)$,
+\begin{equation}
+\label{eq:so3log}
+\log(R)
+=
+\frac{\theta}{2\sin\theta}\bigl(R-R^\top\bigr)
+\;\in\;\mathfrak{so}(3),
+\qquad
+\theta
+=
+\arccos\!\left(\frac{\tr(R)-1}{2}\right).
+\end{equation}
+
+Because $SO(3)$ is a Lie group, the maps at an arbitrary point $R$ are obtained from
+those at the identity by \emph{left trivialisation}: the tangent space is
+$T_RSO(3)=\{R\,\widehat\omega:\omega\in\mathbb R^3\}$, and
+\begin{equation}
+\label{eq:so3explog}
+\exp_R\bigl(R\,\widehat\omega\bigr)
+=
+R\exp(\widehat\omega),
+\qquad
+\log_R(R')
+=
+R\log\!\bigl(R^\top R'\bigr).
+\end{equation}
+Throughout, we identify $T_RSO(3)\cong\mathbb R^3$ by
+$R\,\widehat\omega\mapsto\omega$, so that both the score and the velocity field
+predicted by the network are elements of $\mathbb R^3$ per fragment.
+Equations~\eqref{eq:rodrigues}--\eqref{eq:so3explog} are the only geometric primitives
+required by everything that follows.
+
+\subsubsection{The Pose Manifold $SE(3)^N$}
+\label{sec:se3}
+
+A rigid motion of a single fragment is an element of the special Euclidean group
+$SE(3)$, which as a manifold we identify with
+\[
+SE(3)\;\cong\;SO(3)\times\mathbb R^3,
+\qquad
+T=(R,x),
+\]
+acting on a point $y\in\mathbb R^3$ by $T\cdot y=Ry+x$. Following Yim et
+al.~\cite{bortoliRiemannianScoreBasedGenerative2022}, we equip $SE(3)$ with the \emph{product metric}
+\begin{equation}
+\label{eq:se3metric}
+g_{(R,x)}\bigl((\,\dot R_1,\dot x_1),(\dot R_2,\dot x_2)\bigr)
+=
+\langle \dot R_1,\dot R_2\rangle_{SO(3)}
++
+\langle \dot x_1,\dot x_2\rangle_{\mathbb R^3},
+\end{equation}
+rather than a metric that couples the rotational and translational blocks. This choice
+is what makes the entire construction tractable: with~\eqref{eq:se3metric} the manifold
+is a Riemannian product, so geodesics, exponential and logarithmic maps, Brownian
+motion and hence both the diffusion and the flow model \emph{factorise componentwise},
+\[
+\exp_{(R,x)}(\dot R,\dot x)
+=
+\bigl(\exp_R(\dot R),\,x+\dot x\bigr),
+\qquad
+\log_{(R,x)}(R',x')
+=
+\bigl(\log_R(R'),\,x'-x\bigr).
+\]
+Consequently every statement made below for $SO(3)$ and every statement made for
+$\mathbb R^d$ can be applied independently to the rotational and translational
+components and simply concatenated. The design rationale for this choice, and its
+interaction with $SE(3)$-equivariance of the network, is discussed further in
+Section~\ref{sec:DesignPhilosophy}.
+
+A ligand pose in SigmaDock is a rigid placement of each of $N$ molecular fragments.
+The state space of the generative model is therefore the product manifold
+\[
+\mathcal M_N
+\;=\;
+SE(3)^N
+\;\cong\;
+\bigl(SO(3)\times\mathbb R^3\bigr)^N,
+\qquad
+\mathbf T=(R^{(1)},x^{(1)},\dots,R^{(N)},x^{(N)}),
+\]
+again with the product metric, so that all constructions extend to $\mathcal M_N$ by
+acting on each fragment separately, while the network couples the fragments through its
+architecture rather than through the geometry.
+
+\subsection{Continuous Generative Models in $\mathbb{R}^d$}
+\label{sec:cgm}
+
+The generative problem is the following. We are given i.i.d.\ samples
+$X_1,\dots,X_n\sim p_{\mathrm{data}}$ but no access to the density $p_{\mathrm{data}}$
+itself, and we wish to draw new samples from it. Not knowing the density rules out
+classical rejection sampling or standard MCMC, both of which require pointwise
+evaluation of the target up to a constant. What we \emph{can} do is sample from a
+tractable prior $p_{\mathrm{init}}$ and learn a dynamical system that transports it onto
+$p_{\mathrm{data}}$.
+
+This section develops the two ways of doing so. Section~\ref{sec:dm1} presents
+score-based models in their original form, Section~\ref{sec:dm2} recasts them as SDEs,
+Section~\ref{sec:fm} derives flow matching, and Section~\ref{sec:bridge} shows that the
+two are parameterisations of one and the same object. The final subsection is what
+justifies calling the change from SigmaDock to SigmaFlow a \emph{controlled}
+substitution rather than a change of model class.
+
+\subsubsection{Score Matching and Langevin Dynamics}
+\label{sec:dm1}
+
+Song and Ermon~\cite{bortoliRiemannianScoreBasedGenerative2022} propose to learn not $p_{\mathrm{data}}$ but its
+\emph{score}
+\[
+\nabla_x\log p_{\mathrm{data}}(x)\in\mathbb R^d,
+\]
+the direction of steepest increase of the log-density, i.e.\ the direction in which a
+sample should be nudged to reach regions of higher probability mass. Although the score
+carries strictly less information than the density (it is invariant to the normalising
+constant), it is sufficient for sampling. This is the content of Langevin dynamics.
+
+\begin{theorem}[Langevin sampling]
+\label{thm:langevin}
+Let $p(x)\propto e^{-U(x)}$ with $U$ satisfying suitable regularity conditions. Then the
+Langevin diffusion
+\[
+dX_\tau=-\nabla U(X_\tau)\,d\tau+\sqrt2\,dW_\tau
+\]
+admits $p$ as its unique invariant distribution.
+\end{theorem}
+
+Taking $U=-\log p_{\mathrm{data}}$ gives $-\nabla U=\nabla_x\log p_{\mathrm{data}}$, so
+that $p_{\mathrm{data}}$ is invariant for
+\[
+dX_\tau=\nabla_x\log p_{\mathrm{data}}(X_\tau)\,d\tau+\sqrt2\,dW_\tau .
+\]
+Sampling thus reduces to estimating the score. Since $p_{\mathrm{data}}$ is unknown,
+the score must itself be learned, which is done by \emph{denoising score
+matching}~\cite{bortoliRiemannianScoreBasedGenerative2022}. Let
+\[
+p_\sigma(x\mid z)=\mathcal N(x\mid z,\sigma^2 I),
+\qquad
+p_\sigma(x)=\int p_\sigma(x\mid z)\,p_{\mathrm{data}}(z)\,dz ,
+\]
+be the Gaussian perturbation kernel and the associated marginal. Fix a noise schedule
+$0<\sigma_{\min}=\sigma_1<\dots<\sigma_N=\sigma_{\max}$, where $\sigma_{\min}$ is small
+enough that $p_{\sigma_{\min}}\approx p_{\mathrm{data}}$ and $\sigma_{\max}$ large
+enough that $p_{\sigma_{\max}}\approx\mathcal N(0,\sigma_{\max}^2I)$. A noise-conditional
+score network
+\[
+s_\theta:\mathbb R^d\times\mathbb R_+\rightarrow\mathbb R^d
+\]
+is trained with the weighted denoising score matching objective
+\begin{equation}
+\label{eq:dsm}
+\theta^{*}
+=
+\arg \min_{\theta}
+\sum_{i=1}^{N}
+\sigma_i^{2}\,
+\mathbb E_{z\sim p_{\mathrm{data}},\,x\sim p_{\sigma_i}(\cdot\mid z)}
+\Bigl[
+\bigl\|
+s_{\theta}(x,\sigma_i)-\nabla_{x}\log p_{\sigma_i}(x\mid z)
+\bigr\|_2^2
+\Bigr].
+\end{equation}
+The target in~\eqref{eq:dsm} is available in closed form,
+$\nabla_x\log p_\sigma(x\mid z)=(z-x)/\sigma^2$, even though the quantity of interest,
+$\nabla_x\log p_{\sigma}(x)$, is not. That the two coincide at the optimum is the
+central identity of denoising score matching; it is the exact analogue of
+Theorem~\ref{thm:cfm_equivalence} below, and we prove the general version in
+Appendix~\ref{app:AppendixB}. Given $s_{\theta^*}\approx\nabla_x\log p_{\sigma_i}$,
+Theorem~\ref{thm:langevin} licenses annealed Langevin sampling,
+\[
+x_i^{m}
+=
+x_i^{m-1}
++
+\epsilon_i\,s_{\theta^*}\!\bigl(x_i^{m-1},\sigma_i\bigr)
++
+\sqrt{2\epsilon_i}\,z_i^{m},
+\qquad
+z_i^{m}\overset{\text{i.i.d.}}{\sim}\mathcal N(0,I),
+\]
+run for $m=1,\dots,M$ at each noise level in decreasing order, and terminating at
+$p_{\sigma_{\min}}\approx p_{\mathrm{data}}$.
+
+\subsubsection{The SDE Perspective}
+\label{sec:dm2}
+
+The construction above works, but it leaves the conceptual question open: \emph{why}
+does the score suffice, and what connects the noise levels $\sigma_i$ to each other?
+Song et al.~\cite{bortoliRiemannianScoreBasedGenerative2022} answer this by embedding the discrete noise ladder into a
+continuous stochastic process, and this is the step that eventually makes flow matching
+visible.
+
+Let the \emph{noising} process run in reversed time $s=1-t$, so that it starts at data
+and ends at noise,
+\begin{equation}
+\label{eq:forward-sde}
+dY_s=f(Y_s,s)\,ds+g(s)\,dW_s,
+\qquad
+Y_0\sim p_{\mathrm{data}},
+\qquad
+Y_1\approx p_{\mathrm{init}},
+\end{equation}
+with drift $f$, diffusion coefficient $g$ and $W$ a standard Wiener process. Writing
+$p_t$ for the law of $Y_{1-t}$ recovers our global convention $p_0=p_{\mathrm{init}}$,
+$p_1=p_{\mathrm{data}}$. The variance-exploding choice $f\equiv0$,
+$g(s)^2=\tfrac{d}{ds}\sigma_s^2$ reproduces exactly the perturbation kernels of
+Section~\ref{sec:dm1}, which are thereby revealed as time slices of a single process.
+
+Anderson~\cite{bortoliRiemannianScoreBasedGenerative2022} showed that~\eqref{eq:forward-sde} admits a reverse-time SDE
+with the same marginals. In generation time $t$ it reads
+\begin{equation}
+\label{eq:reverse-sde}
+dX_t
+=
+\Bigl[
+-f(X_t,1-t)
++
+g(1-t)^2\,\nabla_x\log p_t(X_t)
+\Bigr]dt
++
+g(1-t)\,d\overline W_t,
+\qquad
+X_0\sim p_{\mathrm{init}} ,
+\end{equation}
+integrated from $t=0$ to $t=1$, whence $X_1\sim p_{\mathrm{data}}$. This is the
+theoretical justification for score-based modelling: the score is precisely the
+quantity that appears in the reverse drift, so learning it by~\eqref{eq:dsm} is exactly
+what is needed to simulate~\eqref{eq:reverse-sde}, for instance by
+Euler--Maruyama discretisation.
+
+\subsubsection{Flow Models}
+\label{sec:fm}
+
+Equation~\eqref{eq:reverse-sde} carries a further insight, and it is the one that this
+thesis exploits. The object that actually has to be transported from noise to data is
+the \emph{probability path} $(p_t)_{t\in[0,1]}$; the score-based SDE is merely
+\emph{one} dynamics whose marginals follow that path. Nothing forces the dynamics to be
+stochastic, and nothing forces the path to be the one induced by Gaussian noising.
+
+This suggests reframing the problem. Rather than asking how to estimate a score and
+simulate Langevin dynamics, we ask: how do we choose a probability path
+$(p_t)_{t\in[0,1]}$ with $p_0=p_{\mathrm{init}}$ and $p_1=p_{\mathrm{data}}$, and a
+vector field $u_t$ generating it, so that the deterministic ODE
+\begin{equation}
+\label{eq:ode}
+\frac{dX_t}{dt}=u_t(X_t),
+\qquad
+X_0\sim p_{\mathrm{init}},
+\end{equation}
+satisfies $X_t\sim p_t$ and hence $X_1\sim p_{\mathrm{data}}$?
+
+The construction proceeds by conditioning. A \emph{conditional probability path} is a
+family $p_t(x\mid z)$ of densities on $\mathbb R^d$ with
+\begin{equation}
+\label{eq:cond-path}
+p_0(\cdot\mid z)=p_{\mathrm{init}},
+\qquad
+p_1(\cdot\mid z)=\delta_z
+\qquad
+\forall z\in\mathbb R^d .
+\end{equation}
+Its marginal
+\[
+p_t(x)=\int p_t(x\mid z)\,p_{\mathrm{data}}(z)\,dz
+\]
+then automatically satisfies $p_0=p_{\mathrm{init}}$ and $p_1=p_{\mathrm{data}}$:
+sampling $z\sim p_{\mathrm{data}}$ followed by $x\sim p_t(\cdot\mid z)$ returns a draw
+from $p_{\mathrm{init}}$ at $t=0$ and a draw from $p_{\mathrm{data}}$ at $t=1$.
+Similarly, a \emph{conditional vector field} $u_t(\cdot\mid z)$ is one that generates
+the conditional path,
+\[
+X_0\sim p_{\mathrm{init}},
+\quad
+\frac{dX_t}{dt}=u_t(X_t\mid z)
+\quad\Longrightarrow\quad
+X_t\sim p_t(\cdot\mid z).
+\]
+
+The point of conditioning is that $u_t(\cdot\mid z)$ can usually be written down by
+hand. The canonical choice is the Gaussian path
+\begin{equation}
+\label{eq:gauss-path}
+p_t(\cdot\mid z)=\mathcal N\bigl(\alpha_t z,\ \beta_t^2 I\bigr),
+\qquad
+\alpha_0=0,\ \beta_0=1,
+\qquad
+\alpha_1=1,\ \beta_1=0,
+\end{equation}
+with smooth schedules $\alpha_t,\beta_t$, which satisfies~\eqref{eq:cond-path} for
+$p_{\mathrm{init}}=\mathcal N(0,I)$. Writing $X_t=\alpha_t z+\beta_t\varepsilon$ with
+$\varepsilon\sim\mathcal N(0,I)$ and differentiating gives the conditional vector field
+in closed form,
+\begin{equation}
+\label{eq:gauss-cvf}
+u_t(x\mid z)
+=
+\Bigl(\dot\alpha_t-\frac{\dot\beta_t}{\beta_t}\alpha_t\Bigr)z
++
+\frac{\dot\beta_t}{\beta_t}\,x .
+\end{equation}
+The special case $\alpha_t=t$, $\beta_t=1-t$ (the linear or ``conditional optimal
+transport'' path) yields
+\begin{equation}
+\label{eq:linear-cvf}
+x_t=(1-t)x_0+t\,z,
+\qquad
+u_t(x\mid z)=\frac{z-x}{1-t}=z-x_0 ,
+\end{equation}
+i.e.\ straight-line interpolation at constant velocity. This is the path SigmaFlow uses
+for the translational components, and its geodesic generalisation, derived in
+Section~\ref{sec:fm-so3}, is what replaces the $SO(3)$ diffusion kernel.
+
+Conditional fields generate conditional paths; the following theorem states that
+marginalising them generates the marginal path.
+
+\begin{theorem}[Marginalisation trick]
+\label{thm:MarginalizationTrick}
+Let $u_t(x\mid z)$ generate the conditional path $p_t(\cdot\mid z)$. Then the marginal
+vector field
+\[
+u_t(x)
+=
+\int u_t(x\mid z)\,\frac{p_t(x\mid z)\,p_{\mathrm{data}}(z)}{p_t(x)}\,dz
+\]
+generates the marginal path, i.e.
+\[
+X_0\sim p_{\mathrm{init}},
+\quad
+\frac{dX_t}{dt}=u_t(X_t)
+\quad\Longrightarrow\quad
+X_t\sim p_t
+\qquad (0\le t\le1).
+\]
+\end{theorem}
+
+A proof is given in Appendix~\ref{app:AppendixB}; it amounts to verifying that $(p_t,u_t)$
+satisfies the continuity equation. In particular $X_1\sim p_{\mathrm{data}}$, so $u_t$
+transports noise into data. The integral defining $u_t$ is, however, intractable, and so
+$u_t$ must be learned. The natural objective is the regression loss
+\[
+\mathcal L_{\mathrm{FM}}(\theta)
+=
+\mathbb E_{t\sim\mathcal U(0,1),\,x\sim p_t}
+\Bigl[
+\bigl\|u_t^\theta(x)-u_t(x)\bigr\|_2^2
+\Bigr],
+\]
+which is equally intractable, since its target is $u_t$. The resolution is the
+following identity, which is the exact counterpart of the denoising score matching
+identity of Section~\ref{sec:dm1}.
+
+\begin{theorem}[Equivalence of marginal and conditional flow matching]
+\label{thm:cfm_equivalence}
+Define the conditional flow matching loss
+\[
+\mathcal L_{\mathrm{CFM}}(\theta)
+=
+\mathbb E_{t\sim\mathcal U(0,1),\,z\sim p_{\mathrm{data}},\,x\sim p_t(\cdot\mid z)}
+\Bigl[
+\bigl\|
+u_t^\theta(x)-u_t(x\mid z)
+\bigr\|_2^2
+\Bigr].
+\]
+Then $\mathcal L_{\mathrm{FM}}(\theta)=\mathcal L_{\mathrm{CFM}}(\theta)+C$ with $C$
+independent of $\theta$; in particular the two have identical gradients in $\theta$ and
+the same minimisers.
+\end{theorem}
+
+A proof is given in Appendix~\ref{app:AppendixB}. Training therefore consists of
+minimising $\mathcal L_{\mathrm{CFM}}$, whose target~\eqref{eq:gauss-cvf} is available
+in closed form, and sampling consists of integrating the learned ODE~\eqref{eq:ode}
+from $t=0$ to $t=1$ with a numerical integrator of choice. This is the flow matching
+recipe, and its three ingredients --- a conditional path, its conditional vector field,
+and an ODE solver --- are precisely the three objects that will be replaced in
+SigmaFlow.
+
+\subsubsection{Diffusion Models as Flow Models}
+\label{sec:bridge}
+
+It is worth making explicit that the two frameworks are not disjoint, since this is what
+licenses the ``single controlled change'' claim of this thesis.
+
+First, every diffusion process has a deterministic counterpart with identical marginals.
+The \emph{probability flow ODE} associated with~\eqref{eq:forward-sde} is, in generation
+time,
+\begin{equation}
+\label{eq:pf-ode}
+\frac{dX_t}{dt}
+=
+u_t(X_t)
+:=
+-f(X_t,1-t)
++
+\tfrac12\,g(1-t)^2\,\nabla_x\log p_t(X_t),
+\end{equation}
+and its solutions satisfy $X_t\sim p_t$ for the same $(p_t)$ as the SDE. Thus a
+score-based diffusion model \emph{is} a flow model, whose vector field happens to be
+expressed through the score.
+
+Second, for the Gaussian path~\eqref{eq:gauss-path} the score and the velocity are
+related by an invertible affine map. Using
+$\nabla_x\log p_t(x\mid z)=(\alpha_t z-x)/\beta_t^2$ to eliminate $z$
+from~\eqref{eq:gauss-cvf} gives
+\begin{equation}
+\label{eq:score-velocity}
+u_t(x\mid z)
+=
+\frac{\dot\alpha_t}{\alpha_t}\,x
++
+\beta_t^2\Bigl(\frac{\dot\alpha_t}{\alpha_t}-\frac{\dot\beta_t}{\beta_t}\Bigr)
+\nabla_x\log p_t(x\mid z),
+\end{equation}
+and by linearity of the marginalisation in Theorem~\ref{thm:MarginalizationTrick} the
+same relation holds between $u_t$ and $\nabla_x\log p_t$.
+
+Consequently, diffusion and flow matching differ in two respects only: \emph{(i)} the
+choice of probability path --- Gaussian noising versus, e.g., the linear
+path~\eqref{eq:linear-cvf} --- and \emph{(ii)} the parameterisation of the network
+target --- score versus velocity, related by~\eqref{eq:score-velocity}. Everything else,
+including the architecture and the training data, may be held fixed. This is exactly the
+substitution performed in Section~\ref{sec:SigmaFlow}, and it is why any observed
+difference in performance can be attributed to the change of paradigm rather than to a
+confounded change of model.
+
+\subsection{Generalisation to Riemannian Manifolds}
+\label{sec:riemannian-cgm}
+
+Everything so far assumed $x\in\mathbb R^d$. Docking poses live on
+$\mathcal M_N=SE(3)^N$, and by the product structure of Section~\ref{sec:se3} the
+translational components may be handled by the Euclidean theory above verbatim. What is
+missing is the rotational component. We therefore develop diffusion and flow models on
+$SO(3)$, in that order, and then assemble the pieces on $\mathcal M_N$.
+
+\subsubsection{Diffusion Models on $SO(3)$}
+\label{sec:diff-so3}
+
+On $SO(3)$, an additive perturbation $R_t=R_0+\varepsilon$ is not defined, since the
+perturbed matrix violates $R^\top R=I$ and $\det R=1$. Noise must instead be injected
+intrinsically. The canonical construction is Brownian motion on the manifold: at
+$R\in SO(3)$ one samples a Gaussian increment in the tangent space,
+\[
+\omega\sim\mathcal N(0,\sigma_t^2I_3),
+\qquad
+\widehat\omega\in\mathfrak{so}(3),
+\]
+maps it onto the group with the exponential map~\eqref{eq:rodrigues} and composes,
+\[
+R_{t+\Delta t}=R_t\exp(\widehat\omega).
+\]
+The continuous-time limit of these updates is Brownian motion $B^{SO(3)}$ on $SO(3)$.
+
+Two facts distinguish the compact case from the Euclidean one. First, the stationary
+distribution is not Gaussian but the uniform (Haar) measure,
+\[
+R_s\xrightarrow[s\to\infty]{}\mathcal U\bigl(SO(3)\bigr),
+\]
+so that the prior of an $SO(3)$ diffusion model is $p_{\mathrm{init}}=\mathcal U(SO(3))$.
+Second, the transition kernel is not a Gaussian but the heat kernel on $SO(3)$, the
+isotropic Gaussian distribution $\mathrm{IGSO}(3)$,
+\[
+R_s\mid R_0\ \sim\ \mathrm{IGSO}(3)\bigl(R_0,\sigma_s^2\bigr),
+\]
+whose density with respect to the Haar measure admits the spectral expansion
+\begin{align}
+\label{eq:igso3}
+&f_{\sigma}(\omega)
+=
+\sum_{\ell=0}^{\infty}
+(2\ell+1)\,
+\exp\!\left(-\frac{\ell(\ell+1)\sigma^{2}}{2}\right)
+\frac{\sin\!\bigl((\ell+\tfrac12)\omega\bigr)}{\sin(\omega/2)},
+\\&
+\omega
+=
+\arccos\!\left(\frac{\tr(R_0^\top R_s)-1}{2}\right),
+\end{align}
+where $\omega\in[0,\pi]$ is the rotation angle of the relative rotation
+$R_0^\top R_s$. Sampling proceeds by drawing the angle from the corresponding marginal
+density $\tfrac{1-\cos\omega}{\pi}f_\sigma(\omega)$, drawing an axis uniformly from
+$S^2$, and applying~\eqref{eq:rodrigues}. Note that~\eqref{eq:igso3} is an infinite
+series that must be truncated, tabulated and interpolated in practice; this machinery is
+one of the costs that flow matching eliminates.
+
+The score-based framework of Section~\ref{sec:dm2} now carries over almost verbatim,
+with one substitution: the Euclidean gradient is replaced by the Riemannian gradient
+\[
+\nabla_R\log p_t(R)\in T_RSO(3),
+\]
+a tangent vector field on the manifold. Under the left-trivialised identification
+$T_RSO(3)\cong\mathbb R^3$ of~\eqref{eq:so3explog}, the conditional score of the
+$\mathrm{IGSO}(3)$ kernel is available in closed form,
+\begin{align}
+\label{eq:igso3-score}
+\nabla_R\log p_{t\mid1}\bigl(R\mid R_1\bigr)
+=
+\frac{v}{\|v\|}\,
+\frac{\partial}{\partial\omega}\log f_{\sigma_t}(\omega)
+\Big|_{\omega=\|v\|},
+\qquad
+v=\log\!\bigl(R_1^\top R\bigr)^\vee\in\mathbb R^3,
+\end{align}
+which is what makes Riemannian denoising score matching possible: the network
+$s_\theta$ is trained with
+\begin{align}
+\label{eq:rdsm}
+& \mathcal L_{\mathrm{RDSM}}(\theta)
+=
+\mathbb E_{t,\,R_1,\,R_t}
+\Bigl[
+\lambda_t
+\bigl\|
+s_\theta(R_t,t)-\nabla_R\log p_{t\mid1}(R_t\mid R_1)
+\bigr\|_g^2
+\Bigr],
+\qquad
+\\&R_t\mid R_1\sim\mathrm{IGSO}(3)\bigl(R_1,\sigma_t^2\bigr),
+\end{align}
+with weights $\lambda_t$ chosen to equalise the scale of the target across noise levels.
+At the optimum, $s_\theta(R,t)\approx\nabla_R\log p_t(R)$. Sampling then integrates the
+Riemannian reverse-time SDE
+\begin{equation}
+\label{eq:reverse-so3}
+dR_t
+=
+g(1-t)^2\,\nabla_R\log p_t(R_t)\,dt
++
+g(1-t)\,d\overline B_t^{SO(3)},
+\qquad
+R_0\sim\mathcal U\bigl(SO(3)\bigr),
+\end{equation}
+from $t=0$ to $t=1$, yielding $R_1\sim p_{\mathrm{data}}$. Equations~\eqref{eq:igso3},
+\eqref{eq:igso3-score} and~\eqref{eq:reverse-so3} are, in essence, the rotational core
+of SigmaDock.
+
+\subsubsection{Flow Models on $SO(3)$}
+\label{sec:fm-so3}
+
+Flow matching admits a considerably lighter generalisation, because it never requires a
+noising process: no Brownian motion, no heat kernel, no reverse-time SDE. One needs only
+the geodesic structure of the manifold.
+
+Fix the prior $p_0=\mathcal U(SO(3))$ and target $p_1=p_{\mathrm{data}}$, and let
+$R_0\sim p_0$, $R_1\sim p_{\mathrm{data}}$ be independent draws. Euclidean straight-line
+interpolation $x_t=(1-t)x_0+tx_1$ is meaningless on the curved manifold and is replaced,
+as anticipated in Section~\ref{sec:manifolds}, by the geodesic connecting the two
+rotations,
+\begin{equation}
+\label{eq:so3-interp}
+R_t
+=
+\exp_{R_0}\!\bigl(t\,\log_{R_0}(R_1)\bigr)
+=
+R_0\exp\!\Bigl(t\,\log\bigl(R_0^\top R_1\bigr)\Bigr),
+\end{equation}
+where the second equality follows from~\eqref{eq:so3explog}. This is the shortest path
+between $R_0$ and $R_1$ and, in quaternion form, is exactly spherical linear
+interpolation (SLERP). It is the direct analogue of the linear
+path~\eqref{eq:linear-cvf}, and it plays the role that the $\mathrm{IGSO}(3)$ kernel
+plays in the diffusion model --- with the difference that it is a closed-form
+interpolation rather than an infinite series.
+
+Differentiating~\eqref{eq:so3-interp} with respect to $t$ gives the conditional vector
+field
+\begin{equation}
+\label{eq:so3-cvf}
+u_t\bigl(R_t\mid R_1\bigr)
+=
+\frac{\log_{R_t}(R_1)}{1-t}
+\;\in\;T_{R_t}SO(3),
+\end{equation}
+equivalently
+\begin{equation}
+\omega_t
+=
+\frac{\log\!\bigl(R_t^\top R_1\bigr)^\vee}{1-t}\in\mathbb R^3 ,
+\end{equation}
+which points along the geodesic towards the target rotation and has constant speed
+$d(R_0,R_1)$. Note the structural identity with~\eqref{eq:linear-cvf}: replacing
+$z-x$ by $\log_{R_t}(R_1)$ is the \emph{entire} content of the Riemannian
+generalisation.
+
+The network is trained by Riemannian conditional flow matching,
+\begin{equation}
+\label{eq:rcfm}
+\mathcal L_{\mathrm{RCFM}}(\theta)
+=
+\mathbb E_{t\sim\mathcal U(0,1),\,R_0\sim p_0,\,R_1\sim p_{\mathrm{data}}}
+\Bigl[
+\bigl\|
+u_\theta(R_t,t)-u_t(R_t\mid R_1)
+\bigr\|_g^2
+\Bigr],
+\end{equation}
+with $R_t$ given by~\eqref{eq:so3-interp} and the norm induced by the Riemannian metric
+on $T_{R_t}SO(3)$. The analogue of Theorem~\ref{thm:cfm_equivalence} holds on
+manifolds~\cite{bortoliRiemannianScoreBasedGenerative2022}: minimising~\eqref{eq:rcfm} recovers the marginal field,
+$u_\theta(R,t)\approx u_t(R)$. Sampling integrates the learned ODE on the manifold,
+\begin{equation}
+\label{eq:so3-ode}
+\frac{dR_t}{dt}=u_\theta(R_t,t),
+\qquad
+R_0\sim\mathcal U\bigl(SO(3)\bigr),
+\end{equation}
+from $t=0$ to $t=1$, in practice by a geodesic (exponential) Euler step
+\[
+R_{t+\Delta t}
+=
+\exp_{R_t}\!\bigl(\Delta t\,u_\theta(R_t,t)\bigr)
+=
+R_t\exp\!\bigl(\Delta t\,\widehat{\omega}_\theta(R_t,t)\bigr),
+\]
+which by construction remains on $SO(3)$ exactly, for any step size.
+
+\begin{remark}[Parameterisation near $t=1$]
+\label{rem:sing}
+The factor $(1-t)^{-1}$ in~\eqref{eq:so3-cvf} is singular at $t=1$. As is standard, the
+network is therefore parameterised as a \emph{denoiser} predicting the target rotation
+$\widehat R_1^\theta(R_t,t)$, from which the velocity is recovered by
+$u_\theta(R_t,t)=\log_{R_t}(\widehat R_1^\theta)/(1-t)$; the loss~\eqref{eq:rcfm} is then
+equivalent to a reweighted regression on $R_1$ and is numerically well behaved.
+\end{remark}
+
+Comparing Sections~\ref{sec:diff-so3} and~\ref{sec:fm-so3}, flow matching on $SO(3)$
+dispenses with Brownian motion, the $\mathrm{IGSO}(3)$ heat kernel and its truncated
+series, score estimation and the reverse-time SDE, replacing them by a geodesic
+interpolant, a closed-form velocity target and a deterministic ODE. This simplification
+is the first of the two arguments motivating SigmaFlow; the second, a reduction in the
+number of function evaluations required at sampling time, is empirical and is examined in
+Section~\ref{sec:experiments}.
+
+
+
+
+
+
+
+
+\subsection{Neural Network Architectures}
+\label{sec:architectures}
+
+Sections~\ref{sec:cgm} and~\ref{sec:riemannian-cgm} reduced generative modelling on
+$\mathcal M_N=SE(3)^N$ to a single learning problem: approximate a time-dependent
+tangent vector field
+\begin{equation}
+\label{eq:network-signature}
+u_\theta:\ \mathcal M_N\times[0,1]\ \longrightarrow\ T\mathcal M_N,
+\qquad
+u_\theta(\mathbf T,t)
+=
+\Bigl(\omega^{(i)}_\theta,\ v^{(i)}_\theta\Bigr)_{i=1}^{N}
+\in
+\bigl(\mathbb R^3\times\mathbb R^3\bigr)^{N},
+\end{equation}
+where, by the left trivialisation~\eqref{eq:so3explog}, $\omega^{(i)}_\theta$ is the
+rotational and $v^{(i)}_\theta$ the translational velocity of fragment $i$. (The score
+network $s_\theta$ of Section~\ref{sec:diff-so3} has the identical signature; by
+Section~\ref{sec:bridge} the two differ only in the regression target, not in the
+architecture. Everything in this section therefore applies to both.)
+
+The input to $u_\theta$ is not a vector but a \emph{geometric graph}: an unordered set of
+protein and ligand atoms, each carrying a position in $\mathbb R^3$ and discrete
+chemical features. Two structural properties of this input constrain the architecture,
+and it is worth stating them before any architecture is introduced, because between them
+they essentially force the choice.
+
+\paragraph{Requirement 1: permutation equivariance.}
+Atoms carry no canonical order. Reindexing the input must permute the output in the same
+way and change nothing else. Any architecture whose computation depends on the storage
+order of its inputs is modelling an artefact.
+
+\paragraph{Requirement 2: $SE(3)$-equivariance.}
+The physics of binding does not depend on the pose of the laboratory. Rotating and
+translating the entire protein--ligand complex must rotate the predicted velocity field
+accordingly, rather than change it. This is not merely aesthetic; it is what makes the
+learned model consistent with the geometry of Section~\ref{sec:se3}, as we now make
+precise.
+
+\begin{definition}[Group action, invariance, equivariance]
+\label{def:equivariance}
+Let a group $G$ act on a manifold $\mathcal M$ by diffeomorphisms $\Phi_Q:\mathcal M\to\mathcal M$,
+$Q\in G$. A density $p$ on $\mathcal M$ is \emph{$G$-invariant} if $p(\Phi_Q(x))=p(x)$ for all
+$Q\in G$, $x\in\mathcal M$ (the actions we consider preserve the Riemannian volume, so no
+Jacobian factor appears). A vector field $u:\mathcal M\to T\mathcal M$ is \emph{$G$-equivariant} if
+\[
+u\bigl(\Phi_Q(x)\bigr)
+=
+d\Phi_Q\bigl|_x\,u(x)
+\qquad\forall\,Q\in G,\ x\in\mathcal M ,
+\]
+i.e.\ transforming the input and then evaluating the field agrees with evaluating the
+field and then pushing the resulting tangent vector forward.
+\end{definition}
+
+Concretely, for the global rotation action $\Phi_Q(\mathbf T)=(QR^{(i)},\,Qx^{(i)})_{i=1}^N$
+on $\mathcal M_N$, equivariance of~\eqref{eq:network-signature} reads
+\begin{equation}
+\label{eq:equivariance-concrete}
+\omega^{(i)}_\theta\bigl(\Phi_Q(\mathbf T),t\bigr)=\omega^{(i)}_\theta(\mathbf T,t),
+\qquad
+v^{(i)}_\theta\bigl(\Phi_Q(\mathbf T),t\bigr)=Q\,v^{(i)}_\theta(\mathbf T,t),
+\end{equation}
+where the rotational component is \emph{invariant} rather than covariant precisely
+because it lives in the left-trivialised (body-frame) tangent space; had we used the
+right trivialisation it would rotate. This asymmetry is a frequent source of sign and
+frame errors in implementations and is worth stating explicitly once.
+
+The reason equivariance is the right inductive bias, rather than one convenience among
+several, is the following.
+
+\begin{proposition}[Equivariant field $\Rightarrow$ invariant model]
+\label{prop:equivariant-invariant}
+Let $G$ act on $\mathcal M$ by isometries, let the prior $p_0$ be $G$-invariant, and let
+$u_\theta$ be $G$-equivariant. Then every marginal $p_t^\theta$ of the flow
+$\tfrac{d}{dt}X_t=u_\theta(X_t,t)$, $X_0\sim p_0$, is $G$-invariant; in particular the
+model distribution $p_1^\theta$ is.
+\end{proposition}
+
+The proof (Appendix~\ref{app:proofs}) is a short computation: the pushforward of the flow
+under $\Phi_Q$ solves the same ODE with the same initial law, so uniqueness of solutions
+gives equality of the marginals. Two consequences matter here. First, the priors of
+Section~\ref{sec:assemble} \emph{are} invariant --- the Haar measure on $SO(3)$ by
+construction, the translational Gaussian provided its centre is defined equivariantly
+from the complex --- so Proposition~\ref{prop:equivariant-invariant} applies. Second, the
+regression target is itself equivariant: $\Exp$ and $\Log$ commute with isometries, so
+the conditional field of Section~\ref{sec:assemble} satisfies
+Definition~\ref{def:equivariance} exactly. Restricting the hypothesis class to
+equivariant networks therefore removes a symmetry direction along which the target is
+constant, which is both a hard constraint that cannot be violated at test time and a
+substantial reduction in the effective size of the hypothesis space.
+
+The remainder of this section builds the architecture that meets both requirements, in
+three steps. Section~\ref{sec:transformer} introduces attention, which solves
+Requirement~1 but is blind to geometry. Section~\ref{sec:gnn} introduces message
+passing on geometric graphs, which encodes geometry but --- in its invariant form ---
+provably \emph{cannot} produce the output~\eqref{eq:network-signature} at all.
+Section~\ref{sec:equiformer} resolves the tension with steerable features, yielding the
+Equiformer.
+
+\subsubsection{Transformers}
+\label{sec:transformer}
+
+Let the input be a set of $n$ tokens with features $X=(x_1,\dots,x_n)^\top\in\mathbb R^{n\times d}$.
+Self-attention is a learned, input-dependent averaging operation over this set.
+
+\begin{definition}[Scaled dot-product self-attention]
+\label{def:attention}
+Given projection matrices $W_Q,W_K\in\mathbb R^{d\times d_k}$ and $W_V\in\mathbb R^{d\times d_v}$,
+set $Q=XW_Q$, $K=XW_K$, $V=XW_V$ and define
+\begin{equation}
+\label{eq:attention}
+\Attn(X)
+=
+A\,V,
+\qquad
+A=\softmax\!\left(\frac{QK^\top}{\sqrt{d_k}}\right)
+\in\mathbb R^{n\times n},
+\end{equation}
+where the softmax is applied row-wise, so that $A_{ij}\ge0$ and $\sum_j A_{ij}=1$.
+\end{definition}
+
+Row $i$ of the output is thus a convex combination $\sum_j A_{ij}v_j$ of the value
+vectors, with weights determined by the compatibility $\langle q_i,k_j\rangle$ between
+token $i$ and token $j$. The scaling by $\sqrt{d_k}$ keeps the logits at unit scale when
+$q_i,k_j$ have i.i.d.\ unit-variance entries, preventing the softmax from saturating.
+Attention is applied in $H$ parallel \emph{heads} with separate projections, whose
+outputs are concatenated and mixed by $W_O$, and embedded in a residual block with
+pre-normalisation,
+\begin{equation}
+\label{eq:transformer-block}
+X'=X+\Attn\bigl(\LN(X)\bigr),
+\qquad
+X''=X'+\MLP\bigl(\LN(X')\bigr),
+\end{equation}
+so that each layer applies a correction to the current representation rather than
+replacing it. The essential property is the following.
+
+\begin{proposition}[Permutation equivariance of attention]
+\label{prop:perm-equivariance}
+Let $P\in\mathbb R^{n\times n}$ be a permutation matrix. Then $\Attn(PX)=P\,\Attn(X)$, and
+the same holds for the block~\eqref{eq:transformer-block}.
+\end{proposition}
+
+\begin{proof}
+The projections act on the feature axis, so $Q\mapsto PQ$, $K\mapsto PK$, $V\mapsto PV$.
+Hence $QK^\top\mapsto PQK^\top P^\top$, and since the row-wise softmax acts entrywise on
+rows, $A\mapsto PAP^\top$. Therefore $AV\mapsto PAP^\top PV=PAV$, using $P^\top P=I$.
+The MLP and layer norm act tokenwise and thus commute with $P$.
+\end{proof}
+
+Proposition~\ref{prop:perm-equivariance} delivers Requirement~1, and it does so
+\emph{because} attention treats its input as a set: nothing in~\eqref{eq:attention}
+refers to the index $i$ except through $x_i$. The familiar positional encodings of
+sequence models are precisely a device to \emph{break} this symmetry, and are
+inappropriate here, where no canonical ordering exists.
+
+Two properties of attention will carry over to the equivariant setting. First,
+Equation~\eqref{eq:attention} is exactly message passing on the \emph{complete} graph,
+with learned edge weights $A_{ij}$; the graph formalism of the next section is thus a
+generalisation, not an alternative. Second, the cost of~\eqref{eq:attention} is
+$\mathcal O(n^2 d)$, which is why in practice attention is restricted to a radius or
+$k$-nearest-neighbour graph, recovering sparsity while retaining the learned weighting.
+
+What attention does \emph{not} provide is any notion of geometry. The tokens
+in~\eqref{eq:attention} carry features, not positions, and the dot product
+$\langle q_i,k_j\rangle$ is oblivious to where in $\mathbb R^3$ the atoms sit. Injecting
+coordinates naively --- concatenating $x_i\in\mathbb R^3$ into the feature vector ---
+destroys Requirement~2, since the resulting logits change under a global rotation.
+Geometry must therefore enter through the \emph{relations} between atoms, which is the
+subject of the next section.
+
+\subsubsection{Graph Neural Networks}
+\label{sec:gnn}
+
+\begin{definition}[Geometric graph]
+\label{def:geometric-graph}
+A \emph{geometric graph} is a tuple $\mathcal G=(\mathcal V,\mathcal E,\{h_i\},\{x_i\})$ with nodes
+$i\in\mathcal V$, edges $\mathcal E\subseteq\mathcal V\times\mathcal V$, invariant node features
+$h_i\in\mathbb R^{d}$ (atom type, charge, fragment index, the time embedding of $t$) and
+positions $x_i\in\mathbb R^3$. We write $x_{ij}=x_j-x_i$ and $d_{ij}=\|x_{ij}\|$, and take
+$\mathcal E$ to be the radius graph $\{(i,j):d_{ij}<r_{\mathrm{cut}}\}$.
+\end{definition}
+
+Message passing updates node features by aggregating over neighbourhoods.
+
+\begin{definition}[Message passing layer]
+\label{def:mpnn}
+A message passing layer computes
+\begin{equation}
+\label{eq:mpnn}
+m_{ij}=\phi_m\bigl(h_i,h_j,e_{ij}\bigr),
+\qquad
+m_i=\bigoplus_{j\in\mathcal N(i)}m_{ij},
+\qquad
+h_i'=\phi_u\bigl(h_i,m_i\bigr),
+\end{equation}
+with learned maps $\phi_m,\phi_u$, edge attributes $e_{ij}$, and a permutation-invariant
+aggregator $\bigoplus$ (typically the sum or mean).
+\end{definition}
+
+Because $\bigoplus$ is a function of the \emph{multiset} $\{m_{ij}\}_{j\in\mathcal N(i)}$,
+Equation~\eqref{eq:mpnn} is permutation equivariant by construction, exactly as in
+Proposition~\ref{prop:perm-equivariance}; indeed attention is the special case in which
+$\bigoplus$ is a learned convex combination on the complete graph.
+
+Geometry is introduced through the edge attributes. The canonical invariant choice
+expands the interatomic distance in a radial basis,
+\begin{equation}
+\label{eq:rbf}
+e_{ij}
+=
+\Bigl(\psi_1(d_{ij}),\dots,\psi_K(d_{ij})\Bigr),
+\qquad
+\psi_k(d)=\exp\!\bigl(-\gamma(d-\mu_k)^2\bigr)\,\chi(d),
+\end{equation}
+with centres $\mu_k$ and a smooth cutoff $\chi$ vanishing at $r_{\mathrm{cut}}$, which
+keeps the network continuous as atoms enter and leave the neighbourhood. Since
+$d_{ij}$ is invariant under any $Q\in SE(3)$, so is every feature computed
+by~\eqref{eq:mpnn}. This is both the strength and the fatal limitation of the
+construction.
+
+\begin{proposition}[Invariant features cannot produce an equivariant field]
+\label{prop:invariance-obstruction}
+Suppose all node features $h_i$ are $SE(3)$-invariant and the readout
+$v_i=\rho(h_i)$ is a function of these features alone. Then $v_i$ is invariant, i.e.\
+$v_i(\Phi_Q(\mathbf T))=v_i(\mathbf T)$ for all $Q$. If $v_i$ is required to be
+equivariant in the sense of~\eqref{eq:equivariance-concrete}, then
+$Q\,v_i(\mathbf T)=v_i(\mathbf T)$ for all $Q\in SO(3)$, and hence $v_i\equiv0$.
+\end{proposition}
+
+\begin{proof}
+Immediate: the only vector in $\mathbb R^3$ fixed by every rotation is the zero vector.
+\end{proof}
+
+Proposition~\ref{prop:invariance-obstruction} is the crux. A distance-based GNN can
+predict energies, affinities and any other scalar --- and this is exactly why the
+affinity head of Section~\ref{sec:SigmaFlow} may be invariant --- but it cannot, even
+in principle, output the translational velocity $v^{(i)}_\theta$
+of~\eqref{eq:network-signature}. Invariance is too strong a symmetry for the task.
+
+There is a minimal repair. Instead of reading out from $h_i$ alone, one may combine
+invariant scalars with the relative position vectors, which \emph{are} equivariant:
+\begin{equation}
+\label{eq:egnn}
+v_i
+=
+\sum_{j\in\mathcal N(i)}
+\phi_v\bigl(h_i,h_j,d_{ij}\bigr)\;x_{ij},
+\qquad
+\phi_v:\ \text{invariant scalar weight} .
+\end{equation}
+Under $x\mapsto Qx+b$ one has $x_{ij}\mapsto Qx_{ij}$ while $\phi_v$ is unchanged, so
+$v_i\mapsto Qv_i$ as required. This is the EGNN construction, and it is the cheapest
+equivariant architecture available. Its limitation is equally structural: the geometric
+information entering~\eqref{eq:egnn} consists of degree-one objects (the vectors
+$x_{ij}$) modulated by degree-zero objects (the scalars $\phi_v$). Angular relationships
+between \emph{three or more} atoms --- which is where the directional character of a
+binding pocket lives --- can only be represented indirectly, through the scalar channel,
+and higher-order angular dependencies not at all. Furthermore, the rotational output
+$\omega^{(i)}_\theta\in\mathfrak{so}(3)$ is an \emph{axial} vector: under a reflection it
+transforms with an extra sign relative to the polar vectors $x_{ij}$, and a construction
+of the form~\eqref{eq:egnn} therefore assigns it the wrong parity unless parity is
+tracked explicitly.
+
+What is needed is a systematic way of building features of arbitrary angular degree,
+with well-defined transformation behaviour, and of multiplying them together without
+leaving the class of equivariant objects. That machinery is representation theory.
+
+\subsubsection{Equiformer}
+\label{sec:equiformer}
+
+\paragraph{Steerable features.}
+The transformation behaviour of a feature under rotation is specified by a
+representation.
+
+\begin{definition}[Representation, irreducible representation]
+\label{def:representation}
+A (real, finite-dimensional) \emph{representation} of $SO(3)$ is a smooth homomorphism
+$D:SO(3)\to GL(V)$ into the invertible linear maps of a vector space $V$. It is
+\emph{irreducible} if $V$ has no proper nonzero subspace invariant under all $D(Q)$.
+\end{definition}
+
+For $SO(3)$ the irreducible representations are classified by a degree
+$\ell\in\{0,1,2,\dots\}$ and act on $V_\ell\cong\mathbb R^{2\ell+1}$ through the Wigner
+matrices $D^{\ell}(Q)\in\mathbb R^{(2\ell+1)\times(2\ell+1)}$. The cases $\ell=0$ and
+$\ell=1$ are the familiar ones: $D^0(Q)=1$, so type-$0$ features are scalars
+(invariants), and $D^1(Q)=Q$, so type-$1$ features are ordinary $3$-vectors.
+
+\begin{definition}[Steerable feature]
+\label{def:steerable}
+A \emph{steerable feature} of type $\ell$ is a vector $h^{\ell}\in\mathbb R^{2\ell+1}$
+that transforms as $h^{\ell}\mapsto D^{\ell}(Q)h^{\ell}$ under $Q\in SO(3)$. A node
+feature in an equivariant network is a direct sum of $C_\ell$ channels of each type,
+\[
+h_i=\bigoplus_{\ell=0}^{L}\bigoplus_{c=1}^{C_\ell}h_{i}^{\ell,c},
+\qquad
+h_i\mapsto\Bigl(\bigoplus_{\ell,c}D^\ell(Q)\Bigr)h_i .
+\]
+\end{definition}
+
+Thus a single node carries scalars ($\ell=0$), vectors ($\ell=1$) and higher-degree
+tensors ($\ell\ge2$) simultaneously, each with a prescribed rotation law. The degree
+$\ell$ is exactly the angular resolution of the feature: $\ell=1$ can encode a direction,
+$\ell=2$ a quadrupolar (orientation-of-a-plane) pattern, and so on.
+
+\paragraph{Embedding geometry.}
+Directions are lifted into steerable features by the real spherical harmonics
+$Y^{\ell}:S^2\to\mathbb R^{2\ell+1}$, which satisfy, and are essentially characterised by,
+the equivariance property
+\begin{equation}
+\label{eq:sph-equivariance}
+Y^{\ell}\bigl(Q\hat x\bigr)
+=
+D^{\ell}(Q)\,Y^{\ell}(\hat x),
+\qquad
+\hat x=x/\|x\| .
+\end{equation}
+Each edge is therefore embedded as the pair
+$\bigl(\psi(d_{ij}),\,Y^{\ell}(\hat x_{ij})\bigr)_{\ell\le L}$: an invariant radial part
+as in~\eqref{eq:rbf}, and an equivariant angular part of every degree up to $L$. Note
+that $Y^0\equiv\mathrm{const}$ and $Y^1(\hat x)=\hat x$ up to normalisation, so the
+distance-only GNN and the EGNN of~\eqref{eq:egnn} are recovered as the truncations
+$L=0$ and $L=1$.
+
+\paragraph{Multiplying steerable features.}
+Feature interaction requires a product that respects the transformation laws. The
+tensor product of $V_{\ell_1}$ and $V_{\ell_2}$ decomposes into irreducibles,
+\[
+V_{\ell_1}\otimes V_{\ell_2}
+\;\cong\;
+\bigoplus_{\ell=|\ell_1-\ell_2|}^{\ell_1+\ell_2}V_{\ell},
+\]
+and the change of basis realising this decomposition is given by the Clebsch--Gordan
+coefficients $C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}$.
+
+\begin{definition}[Clebsch--Gordan tensor product]
+\label{def:cg}
+For $u\in V_{\ell_1}$, $v\in V_{\ell_2}$, the component of degree $\ell$ of the tensor
+product is
+\begin{equation}
+\label{eq:cg}
+\bigl(u\otimes_{\mathrm{cg}}v\bigr)^{\ell}_{m}
+=
+\sum_{m_1=-\ell_1}^{\ell_1}
+\sum_{m_2=-\ell_2}^{\ell_2}
+C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}\;
+u^{\ell_1}_{m_1}\,v^{\ell_2}_{m_2},
+\qquad
+|\ell_1-\ell_2|\le\ell\le\ell_1+\ell_2 .
+\end{equation}
+\end{definition}
+
+By construction $u\otimes_{\mathrm{cg}}v$ is again steerable, of degree $\ell$: it is the
+unique (up to scale) bilinear map $V_{\ell_1}\times V_{\ell_2}\to V_\ell$ commuting with
+the group action. Equation~\eqref{eq:cg} is the workhorse of the architecture --- it is
+how a node feature is combined with an edge's spherical harmonic --- and it also explains
+the computational cost of equivariant networks, since the number of admissible paths
+$(\ell_1,\ell_2)\to\ell$ grows rapidly with $L$. Familiar operations are special cases:
+$\ell_1=\ell_2=1,\ \ell=0$ is the dot product, and $\ell_1=\ell_2=1,\ \ell=1$ is the cross
+product.
+
+\paragraph{Equivariant linear layers and nonlinearities.}
+Two constraints follow immediately, and they are what distinguish an equivariant network
+from an ordinary one.
+
+\begin{proposition}[Form of equivariant linear maps]
+\label{prop:schur}
+Let $W:\bigoplus_{\ell,c}V_\ell\to\bigoplus_{\ell,c'}V_\ell$ be linear and equivariant.
+Then $W$ mixes channels only within a fixed degree $\ell$, acting as
+$h^{\ell,c}\mapsto\sum_{c'}W^{\ell}_{cc'}h^{\ell,c'}$ with scalar weights
+$W^\ell_{cc'}\in\mathbb R$; in particular no equivariant linear map sends degree $\ell_1$
+to degree $\ell_2\neq\ell_1$.
+\end{proposition}
+
+\begin{proof}
+An equivariant linear map is an intertwiner. By Schur's lemma, an intertwiner between
+non-isomorphic irreducibles vanishes, and an intertwiner from $V_\ell$ to itself is a
+scalar multiple of the identity (the real irreps of $SO(3)$ are of real type, so the
+commutant is $\mathbb R$). Decomposing $W$ blockwise into its $(\ell,c)\to(\ell',c')$
+components gives the claim.
+\end{proof}
+
+Proposition~\ref{prop:schur} says that a learned linear layer contributes one scalar
+weight per (degree, channel-pair) --- degrees may not be mixed linearly. The \emph{only}
+way to move information between degrees is the tensor product~\eqref{eq:cg}, which is
+precisely why it is unavoidable.
+
+The same argument forbids the pointwise nonlinearities of ordinary networks: applying
+$\mathrm{ReLU}$ entrywise to a type-$\ell$ feature destroys~\eqref{eq:sph-equivariance},
+since $\sigma(D^\ell(Q)h)\neq D^\ell(Q)\sigma(h)$ in general. Nonlinearity must instead
+be routed through invariants. The standard device is the \emph{gate},
+\begin{equation}
+\label{eq:gate}
+h^{\ell,c}
+\;\longmapsto\;
+\sigma\!\bigl(g^{\ell,c}\bigr)\,h^{\ell,c},
+\qquad
+g^{\ell,c}\ \text{a type-$0$ (invariant) feature},
+\end{equation}
+which rescales each higher-degree feature by a learned nonlinear function of the scalar
+channels: the \emph{magnitude} is nonlinearly transformed, the \emph{direction} is
+untouched, and equivariance survives because $\sigma(g)$ is a scalar. Layer
+normalisation is adapted identically, normalising each $(\ell,c)$ feature by its norm,
+which is invariant.
+
+\paragraph{Equivariant attention.}
+The Equiformer assembles these ingredients into the transformer block
+of~\eqref{eq:transformer-block}, with two modifications. Messages are formed by the
+tensor product of the neighbour's steerable feature with the edge's spherical harmonic,
+\begin{equation}
+\label{eq:equiv-message}
+m_{ij}
+=
+W_{ij}\Bigl(h_j\ \otimes_{\mathrm{cg}}\ Y\bigl(\hat x_{ij}\bigr)\Bigr),
+\qquad
+W_{ij}=W\bigl(\psi(d_{ij}),h_i^{0},h_j^{0}\bigr),
+\end{equation}
+where the weights $W_{ij}$ are produced by an ordinary MLP from \emph{invariant}
+quantities only (the radial basis and the scalar channels) and are applied degreewise as
+in Proposition~\ref{prop:schur}. Attention weights are then computed from invariant
+features and used to aggregate the equivariant messages,
+\begin{equation}
+\label{eq:equiv-attention}
+a_{ij}=\softmax_{j\in\mathcal N(i)}\Bigl(\MLP\bigl(z_{ij}\bigr)\Bigr)\in\mathbb R,
+\qquad
+h_i'
+=
+h_i+\sum_{j\in\mathcal N(i)}a_{ij}\,m_{ij},
+\end{equation}
+with $z_{ij}$ an invariant edge representation. The resulting layer is equivariant, and
+the reason is worth isolating.
+
+\begin{proposition}[Equivariance of the Equiformer block]
+\label{prop:equiformer}
+If the attention weights $a_{ij}$ are $SE(3)$-invariant and the messages $m_{ij}$ are
+steerable of type $\ell$, then the update~\eqref{eq:equiv-attention} is steerable of type
+$\ell$.
+\end{proposition}
+
+\begin{proof}
+Under $Q$, invariance gives $a_{ij}\mapsto a_{ij}$ and~\eqref{eq:cg}
+with~\eqref{eq:sph-equivariance} gives $m_{ij}\mapsto D^\ell(Q)m_{ij}$. Hence
+$\sum_j a_{ij}m_{ij}\mapsto\sum_j a_{ij}D^\ell(Q)m_{ij}=D^\ell(Q)\sum_j a_{ij}m_{ij}$ by
+linearity of $D^\ell(Q)$. Translations act only on $x$, and enter solely through
+$\hat x_{ij}$ and $d_{ij}$, both of which are translation invariant.
+\end{proof}
+
+Two design points follow from the proof rather than from convention. First, attention
+weights \emph{must} be scalars: an equivariant weight would not commute out of the sum.
+This is why Equiformer replaces dot-product attention by an MLP on invariant edge
+features --- the dot product of two type-$\ell$ features is a legitimate invariant (it is
+the $\ell\to0$ path of~\eqref{eq:cg}), but the more expressive MLP formulation is
+available at no cost to equivariance. Second, translation equivariance is obtained for
+free, and only, because positions enter exclusively through the relative vectors
+$x_{ij}$; absolute coordinates must never appear.
+
+\paragraph{Reading out the vector field.}
+After $L$ blocks, each fragment $i$ is represented by a steerable feature $h_i$, and the
+output~\eqref{eq:network-signature} is read off from its type-$1$ channels by an
+equivariant linear layer, giving two vectors in $\mathbb R^3$ per fragment. By
+Proposition~\ref{prop:equiformer} these transform as required
+by~\eqref{eq:equivariance-concrete} --- after conjugation of the rotational channel into
+the body frame of the fragment, which converts the world-frame type-$1$ output into the
+left-trivialised element of $\mathfrak{so}(3)$ that the geometry of
+Section~\ref{sec:rigid} demands. Together with
+Proposition~\ref{prop:equivariant-invariant}, the generated distribution over poses is
+then $SE(3)$-invariant by construction, for any parameter setting $\theta$ and at any
+point during training.
+
+\begin{remark}[Parity]
+\label{rem:parity}
+Strictly, the relevant symmetry group of the ambient space is $O(3)$ rather than
+$SO(3)$, and steerable features carry a parity label $p\in\{+1,-1\}$ in addition to the
+degree $\ell$, with the tensor product multiplying parities. Molecules are chiral, so
+the model must \emph{not} be reflection invariant; and, as noted in
+Section~\ref{sec:gnn}, the rotational velocity $\omega\in\mathfrak{so}(3)$ is an axial
+(parity-even, $\ell=1$) vector whereas the translational velocity is polar
+(parity-odd, $\ell=1$). Tracking parity separates them correctly; ignoring it silently
+conflates two different objects.
+\end{remark}
+
+\begin{remark}[Cost]
+\label{rem:cost}
+The expressive gain of degrees $\ell\ge2$ is paid for in the tensor
+product~\eqref{eq:cg}, whose cost grows steeply in $L$; $L=2$ is the usual compromise.
+Since the sampling procedures of Sections~\ref{sec:diff-so3} and~\ref{sec:fm-so3}
+evaluate the network once per integration step, this cost is multiplied by the number of
+function evaluations --- which is exactly the quantity flow matching aims to reduce, and
+the reason the comparison in Section~\ref{sec:experiments} is measured in network
+evaluations rather than in wall-clock time alone.
+\end{remark}
+
+
+
+\section{SigmaDock}
+\label{sec:SigmaDock}
+
+The purpose of this chapter is not to reproduce \cite{bortoliRiemannianScoreBasedGenerative2022} in full, but to
+restate it in the language assembled in Section~\ref{sec:foundations}, and to isolate
+precisely those components that SigmaFlow replaces. Read in that light, SigmaDock consists
+of three separable design decisions: a choice of \emph{state space} (Section~\ref{sec:DesignPhilosophy}),
+a choice of \emph{probability path} on that state space, and a choice of \emph{network}
+approximating the associated tangent vector field (Section~\ref{sec:architecture-design}).
+Only the second, and the thin scalar layer of the third that is tied to it, are diffusion-specific.
+Everything else is inherited unchanged by SigmaFlow, and it is this separation that makes the
+comparison of Section~\ref{sec:experiments} a controlled one.
+
+\begin{remark}[Time convention]
+\label{rem:time-convention}
+\cite{bortoliRiemannianScoreBasedGenerative2022}, following \cite{bortoliRiemannianScoreBasedGenerative2022}, orient time so that $t=0$ is the data
+and $t=T=1$ is the prior. This chapter restates their construction in the convention fixed in
+Section~\ref{sec:notation}, namely $p_0 = p_{\mathrm{init}}$ and $p_1 = p_{\mathrm{data}}$, so
+that the noising process runs in the reversed time $s = 1-t$. All schedules below are therefore
+written as functions of $s$, and all statements about limits are taken as $t \to 1$ (equivalently
+$s \to 0$), i.e.\ towards the data.
+\end{remark}
+
+%---------------------------------------------------------
+\subsection{Design Philosophy}
+\label{sec:DesignPhilosophy}
+
+\paragraph{The task.} SigmaDock addresses the \emph{re-docking} problem: given the 2D molecular
+graph of a ligand $\mathcal{G}^{2D}_{\text{ligand}} = \{\mathbf{v}, \mathbf{b}\}$ and the 3D graph
+of a rigid (holo) protein $\mathcal{G}_{\text{protein}} = \{\mathbf{y}, \mathbf{v}_y, \mathbf{b}_y\}$
+together with a specified binding pocket, predict the bound pose
+$\mathbf{x} \in \mathbb{R}^{|\mathcal{G}_{\text{ligand}}| \times 3}$. We write
+$\mathcal{G}_{\text{dock}} = (\mathcal{G}^{2D}_{\text{ligand}}, \{\mathcal{G}_{F_i}\}_{i=1}^{m},
+\mathcal{G}_{\text{protein}})$ for the totality of the conditioning information. The receptor is
+held fixed and the pocket is assumed known; this is the standard benchmarking protocol and the
+setting in which the reported state-of-the-art results are to be read. It is worth naming these
+qualifiers explicitly, because the headline claim --- that SigmaDock is the first deep learning
+method to surpass physics-based search on PoseBusters --- is a claim about this protocol and this
+train--test split, not about docking in general.
+
+\subsubsection{Choosing the state space}
+
+A generative docking model must commit to a manifold on which to diffuse or flow. Three choices
+are available, and the argument between them is the substance of SigmaDock's contribution.
+
+\emph{All-atom.} Generate all $3N$ Cartesian coordinates freely. This is the choice made by the
+co-folding models, and it discards every structural-chemical constraint: bond lengths, bond angles
+and chirality must be re-learned from data. Empirically this manifests as chemically implausible
+output, which is exactly what the PoseBusters validity checks were designed to expose
+\cite{bortoliRiemannianScoreBasedGenerative2022}.
+
+\emph{Torsional.} Fix bond lengths and bond angles at their equilibrium values and generate only
+the $k$ dihedral angles together with a global rigid motion, i.e.\ work on
+$\mathbb{T}^{k} \times \mathrm{SE}(3)$ with $k+6$ degrees of freedom. This is the DiffDock lineage
+\cite{bortoliRiemannianScoreBasedGenerative2022}. The dimensionality is attractive, but the empirical record is poor, and
+\cite{bortoliRiemannianScoreBasedGenerative2022} give a geometric explanation for why.
+
+\emph{Fragment.} Break the ligand at its rotatable bonds into $m$ rigid fragments and generate one
+element of $\mathrm{SE}(3)$ per fragment, i.e.\ work on $\mathcal{M}_N = \mathrm{SE}(3)^m$ with
+$6m$ degrees of freedom. This is SigmaDock, and it is the state space developed in
+Section~\ref{sec:pose-manifold}.
+
+The case against the torsional parameterisation is a statement about the \emph{induced measure},
+and it is worth stating carefully, because it is what licenses the product metric~\eqref{eq:se3-product-metric}
+on which the whole of Section~\ref{sec:riemannian-generalisation} rests. Let $\Omega$ denote a
+parameterisation map from a parameter space $\mathcal{Y}$ into Cartesian space, $J_\Omega = \partial\Omega/\partial y$
+its Jacobian and $G_\Omega = J_\Omega^{\top} J_\Omega$ the associated Gram (pullback) matrix. The
+Riemannian volume element induced on $\mathcal{Y}$ is
+\[
+  \mathrm{d}\mu_\Omega(y) \;=\; \sqrt{\det G_\Omega(y)}\, \mathrm{d}y .
+\]
+
+\begin{theorem}[Torsional entanglement]
+\label{thm:entanglement}
+Let $\psi : \mathrm{SE}(3) \times \mathbb{T}^{k} \to \mathbb{R}^{N \times 3}$ be the torsional
+parameterisation and $\varphi : \mathrm{SE}(3)^m \to \mathbb{R}^{N \times 3}$ the rigid-fragment
+parameterisation with disjoint fragments. Then for standard molecular topologies $G_\psi$ is
+generically non-diagonal, $\det G_\psi$ does not factorise across coordinates, and
+$\mathrm{d}\mu_\psi$ is not a product measure. By contrast $J_\varphi$ is block diagonal, whence
+$\det G_\varphi = \prod_{i=1}^{m} \det (J_i^\top J_i)$ and $\mathrm{d}\mu_\varphi$ is a product
+measure over fragments.
+\end{theorem}
+
+The mechanism is elementary once seen. The Jacobian column associated with torsion $\phi_i$ is the
+Cartesian displacement field generated by rotating about bond $i$; in a chain or branched topology
+this field moves \emph{many} downstream atoms, and the atom sets moved by different torsions
+\emph{overlap}. Hence $(G_\psi)_{ij} = \sum_a \partial_{\phi_i} x_a \cdot \partial_{\phi_j} x_a \neq 0$
+for $i \neq j$, and the volume form fails to factorise. Three consequences follow, all of them
+practical rather than aesthetic:
+
+\begin{enumerate}
+\item \emph{Independent noise does not stay independent.} A forward kernel that is a product over
+      torsions maps to a correlated, anisotropic perturbation in Cartesian space --- and Cartesian
+      space is where the network observes the data. The network must therefore implicitly invert
+      the metric-induced coupling, an ill-conditioned learning problem.
+\item \emph{Global--internal coupling.} A torsional increment generically shifts the centre of mass
+      ($\sum_a m_a\, \partial_{\phi_i} x_a \neq 0$) and induces a torque
+      ($\sum_a m_a\, x_a \times \partial_{\phi_i} x_a \neq 0$), so the $\mathbb{T}^k$ and
+      $\mathrm{SE}(3)$ blocks do not decouple either. RMSD re-alignment after each update is a
+      heuristic patch, exact only in the limit of infinitesimal steps.
+\item \emph{Gauge ambiguity.} A dihedral $\phi_{ABCD}$ does not determine \emph{which} side of the
+      bond rotates: the update $\Delta\phi_{ABCD} = \theta_{ABC} - \theta_{BCD}$ leaves two extrinsic
+      realisations (rotate left, rotate right, or any convex combination). Any implementation must
+      commit to a convention, and the learned score must be consistent with it --- a consistency that
+      cannot be guaranteed at sampling time.
+\end{enumerate}
+
+Fragments dissolve all three. Because $\varphi$ places each fragment by an independent group action
+$\mathbf{x}_{F_i} = R_i \tilde{\mathbf{x}}_{F_i} + p_i$, moving one fragment does not move any other;
+$J_\varphi$ is block diagonal by construction, the base measure is a product of copies of
+$\mathrm{d}\mu_{\mathrm{SE}(3)}$, and the forward kernel factorises. Inter-fragment correlations
+enter the model \emph{only through the learned score}, never through the noise. This is precisely
+the condition under which the product metric~\eqref{eq:se3-product-metric} is the right metric and
+the componentwise constructions of Sections~\ref{sec:diffusion-so3} and~\ref{sec:flow-so3} apply
+verbatim to each fragment. The price is dimensional: $6m$ against $k+6$, and we return to it below.
+
+\subsubsection{The conformational manifold, and what rigidity costs}
+\label{sec:conformational-manifold}
+
+Treating fragments as rigid is an assumption, and SigmaDock justifies it empirically rather than
+by fiat. In vacuum, the conformational space of a ligand with known topology follows a Boltzmann
+distribution whose mass concentrates near a manifold defined by holonomic constraints,
+\[
+  \mathcal{M}_c \;=\; \{\, \mathbf{x}_c \in \mathbb{R}^{|\mathcal{G}_{\text{ligand}}|\times 3} \;:\;
+  g(\mathbf{x}_c) \approx 0 \,\},
+\]
+where the components of $g$ encode bond lengths ($\|r_{AB}\| - d_0$) and bond angles
+($\hat{u}\cdot\hat{v} - \cos\tau_0$), enforced softly by stiff harmonic potentials, and pointedly
+\emph{exclude} dihedrals. Writing $\pi_{\mathcal{M}_c}$ for the constrained Boltzmann measure
+(sampled in practice via RDKit's ETKDGv3) and $\pi_{\mathcal{M}_b}$ for the distribution of
+experimentally bound poses, the assumption to be checked is that the bound manifold is essentially
+reachable from $\mathcal{M}_c$ by torsions and rigid motions. Letting
+$\psi(\bm{\phi})$ be the dihedral-to-Cartesian map and
+$\Psi(p,R,\bm{\phi}) = (p,R)\cdot\psi(\bm{\phi})$, one solves
+\[
+  \min_{p \in \mathbb{R}^3,\; R \in \mathrm{SO}(3),\; \bm{\phi} \in \mathbb{T}^k}
+  \mathrm{RMSD}\big(\mathbf{x}_b, \Psi(p,R,\bm{\phi})\big), \qquad \mathbf{x}_b \sim \pi_{\mathcal{M}_b}.
+\]
+Over the Astex diverse set, the best of five random conformers aligns to the bound pose with a mean
+RMSD of $0.21\,\text{\AA}$ (and $0.39\,\text{\AA}$ for a single conformer), against an acceptance
+threshold of $2\,\text{\AA}$. The variability in bond lengths and angles is therefore small relative
+to the tolerance of the task, and generating poses by rigidly reassembling RDKit fragment templates
+does not push the model out of distribution.
+
+This matters for us in a specific way. The $\approx 0.2\,\text{\AA}$ alignment error is an
+\emph{error floor} inherited by any model built on this fragmentation --- including SigmaFlow ---
+and it is not attributable to the choice of probability path. It therefore does not confound the
+diffusion-versus-flow comparison; it merely bounds what either model can achieve.
+
+\subsubsection{FR3D: reducing the degrees of freedom}
+
+Naively cutting all $k$ rotatable bonds yields $\hat{m} = k+1$ fragments and hence $6\hat{m}$
+degrees of freedom, which \emph{exceeds} the $k+6$ of the torsional model --- the fragment
+formulation has bought conditioning at the cost of dimensionality. FR3D (Fragment REduction) buys
+some of it back. Starting from the torsion-free $\hat{m}$ fragments, it performs a stochastic
+recursive search over merge actions, collapsing adjacent fragments wherever consecutive torsional
+bonds are linked, until an irreducible set of size $m$ is reached; empirically $m \approx \tfrac{2}{3}(k+1)$.
+Because the search is stochastic and the valid cut-sets are equiprobable, FR3D doubles as a data
+augmentation scheme: the same complex is presented under different fragmentations across epochs.
+
+Fragmentation retains the geometry of each cut bond by introducing \emph{dummy atoms} on either
+side, so that $|\mathcal{G}_{\text{ligand}}| \leq \sum_i |\mathcal{G}_{F_i}|$. A dummy is retained
+only if it is \emph{free}; a dummy is \emph{over-constrained} --- and pruned --- whenever FR3D merges
+the torsional bond it belongs to into a neighbouring fragment, since retaining it would freeze a
+dihedral that must remain free. Freezing a dihedral drawn from $\pi_{\mathcal{M}_c}$ would violate
+the reachability argument of Section~\ref{sec:conformational-manifold}, i.e.\ it would force
+$\Psi \cdot \pi_{\mathcal{M}_c}(\cdot) \neq \pi_{\mathcal{M}_b}(\cdot)$.
+
+\subsubsection{Triangulation: a soft inductive bias on bond angles}
+\label{sec:triangulation}
+
+Fragmentation is a lossy operation: once two fragments are free to move independently in
+$\mathrm{SE}(3)$, nothing in the state space prevents the bond angles \emph{across} the cut bond from
+taking absurd values. SigmaDock's answer is not to constrain the manifold but to \emph{condition}
+the network, and the device is elementary trigonometry.
+
+\begin{theorem}[Triangulation]
+\label{lem:triangulation}
+Let $\overline{BC}$ be a torsional bond joining fragments $\mathcal{A} \ni A$ and $\mathcal{D} \ni D$.
+Fixing the intra-fragment lengths $\|A-B\|$, $\|C-D\|$, the bond length $\|B-C\|$, and the two
+\emph{cross-fragment} distances $\|A-C\|$ and $\|B-D\|$ determines the bond angles
+$\angle(A,B,C)$ and $\angle(B,C,D)$ uniquely, while leaving the dihedral $\phi_{ABCD}$ free.
+\end{theorem}
+
+\begin{proof}[Proof sketch]
+The triple $\{\|A-B\|, \|B-C\|, \|A-C\|\}$ fixes the triangle $(A,B,C)$ up to rigid motion (SSS),
+and the law of cosines gives
+\[
+  \cos\angle(A,B,C) \;=\; \frac{\|A-B\|^2 + \|B-C\|^2 - \|A-C\|^2}{2\,\|A-B\|\,\|B-C\|},
+\]
+so the angle is a function of the fixed lengths alone; identically for $(B,C,D)$. Neither triangle
+constrains the relative rotation of the two planes about $\overline{BC}$.
+\end{proof}
+
+The point of Lemma~\ref{lem:triangulation} is that exactly the two quantities we wish to preserve
+(the bond angles adjacent to the cut) are pinned by two scalar distances, and exactly the quantity
+we wish to leave free (the dihedral) is untouched. Crucially, the two distances are
+$\mathrm{SE}(3)$-invariant and hence admissible as edge features in the sense of
+Section~\ref{sec:gnn} --- they are precisely the scalar, degree-zero objects that an equivariant
+network is permitted to consume.
+
+In implementation these are injected \emph{softly}, as conditioning rather than as constraints. For
+each triangulation edge the network is given the deviation of the current distance from its
+equilibrium value,
+\begin{equation}
+\label{eq:triangulation-feature}
+  d_{ij}(t) \;=\; \Big|\; \|\mathbf{x}_i(t) - \mathbf{x}_j(t)\| \;-\; \|\mathbf{x}_i^{\mathrm{ref}} - \mathbf{x}_j^{\mathrm{ref}}\| \;\Big|,
+\end{equation}
+with $\mathbf{x}^{\mathrm{ref}}$ the reference conformer geometry, so that
+$d_{ij}(t) \to 0$ as $t \to 1$. The model is thus told, at every step, by how much its current pose
+violates the geometry it is meant to produce, and it learns to drive that violation to zero. No
+projection is applied and no hard equality is imposed.
+
+The degrees-of-freedom bookkeeping is instructive. Stacking the $2e$ triangulation distances over
+the $e$ cut bonds into $c(z)$, the hard-constrained manifold
+$\mathcal{M}_{\text{frag}} = \{ z \in \mathrm{SE}(3)^m : c(z) = 0 \}$ has tangent dimension
+$6m - \operatorname{rank} J_c(z)$; for a tree fragment graph ($e = m-1$) two non-degenerate distance
+constraints across each joint remove five relative degrees of freedom, leaving a single revolute
+one, so $\operatorname{rank} J_c = 5(m-1)$ and
+\[
+  \dim \mathcal{M}_{\text{frag}} \;=\; 6m - 5(m-1) \;=\; m+5 .
+\]
+Because the constraints are soft, the trajectories merely concentrate near $\mathcal{M}_{\text{frag}}$
+as $t \to 1$, and the effective dimensionality lies between the torsional lower bound $k+6$ and the
+unconstrained $6m$. The empirical value of the device is large: removing the triangulation features
+costs $12.8\%$ of PB-validity (Config.~A of the ablation), the single largest effect in the study.
+
+For SigmaFlow this is good news and one caveat. The features~\eqref{eq:triangulation-feature} are a
+function of the current pose only, not of the noising process, and therefore transfer verbatim.
+The caveat is distributional: the typical magnitude of $d_{ij}(t)$ at a given $t$ is determined by
+the probability path, so a network trained under a geodesic interpolant sees a different feature
+distribution than one trained under the IGSO(3) kernel, even though the feature \emph{definition}
+is identical. This is a fact to be verified rather than assumed, and we flag it in
+Section~\ref{sec:SigmaFlow}.
+
+\subsubsection{Symmetry, and the choice of what \emph{not} to impose}
+
+SigmaDock's network is $\mathrm{SO}(3)$-equivariant but deliberately \emph{not} translation
+invariant. The reason is that the problem supplies a canonical origin: the pocket centre of mass,
+about which the translational prior $\mathcal{N}(0, I)$ is centred. (To make that prior faithful,
+global coordinates are rescaled by a factor $2.7$, the mean standard deviation in \AA{} of fragment
+centres of mass relative to the pocket centre of mass across the training set; the prior spread is
+thereby matched to the data spread, as the variance-preserving forward kernel requires.) Imposing
+translation invariance would discard information that the task actually provides.
+
+Two distinct symmetry statements are then required, and they are worth separating because the
+literature routinely conflates them.
+
+\emph{Gauge invariance.} Unlike protein backbone frames, molecular fragments admit no canonical
+local axes: for any $R_s \in \mathrm{SO}(3)$ the local coordinates
+$\tilde{\mathbf{x}}'_F = R_s \cdot \tilde{\mathbf{x}}_F$ describe the same rigid body, and the same
+global pose is then parameterised by $(p_F, R_F R_s^{\top})$ rather than $(p_F, R_F)$. A model whose
+loss or sampler depended on this choice would be modelling an artefact.
+
+\emph{Stochastic equivariance.} The generated kernel should satisfy
+$p_\theta(\mathrm{d}z \mid R_0 \cdot \mathcal{G}_{\text{dock}}) = R_0 \cdot p_\theta(\mathrm{d}z \mid \mathcal{G}_{\text{dock}})$
+for all $R_0 \in \mathrm{SO}(3)$: rotating the pocket should rotate the predicted pose distribution
+and nothing else.
+
+\begin{theorem}[SigmaDock Invariance]
+\label{thm:sigmadock-symmetry}
+The SigmaDock training objective and sampling procedure are invariant to the choice of orientation
+of the fragment local coordinates, and the induced kernel $p_\theta(z \mid \mathcal{G}_{\text{dock}})$
+is stochastically $\mathrm{SO}(3)$-equivariant.
+\end{theorem}
+
+Theorem~\ref{thm:sigmadock-symmetry} is the stochastic counterpart of
+Proposition~\ref{prop:equivariant-invariant}: there, an equivariant vector field plus an invariant
+prior gives invariant marginals along a deterministic flow. SigmaFlow, being an ODE, needs only the
+deterministic statement, which is the simpler of the two; the architectural requirement --- an
+equivariant network and a conditioning-consistent prior --- is identical.
+
+
+
+
+\subsection{Architecture Design}
+\label{sec:architecture-design}
+
+We now describe the probability path and the network, in each case flagging what is
+diffusion-specific.
+
+\subsubsection{The forward process}
+\label{sec:sigmadock-forward}
+
+Writing $s = 1-t$ for noising time (Remark~\ref{rem:time-convention}) and suppressing the fragment
+index, SigmaDock adopts the decoupled $\mathrm{SE}(3)$ process of \cite{bortoliRiemannianScoreBasedGenerative2022}. The
+translational component is a variance-preserving Ornstein--Uhlenbeck process and the rotational
+component is a variance-exploding Brownian motion on $\mathrm{SO}(3)$:
+\begin{align}
+  \mathrm{d}p^{(s)} &= -\tfrac{1}{2}\beta(s)\, p^{(s)}\, \mathrm{d}s \;+\; \sqrt{\beta(s)}\; \mathrm{d}B^{(s)}_{\mathbb{R}^{m\times 3}},
+    && \beta(s) = \beta_{\min} + s(\beta_{\max}-\beta_{\min}), \label{eq:sd-fwd-trans} \\
+  \mathrm{d}R^{(s)} &= \sqrt{g(s)}\; \mathrm{d}B^{(s)}_{\mathrm{SO}(3)^m},
+    && g(s) = \tfrac{\mathrm{d}}{\mathrm{d}s}\sigma^2(s), \quad
+       \sigma(s) = \log\!\big( s\, e^{\sigma_{\max}} + (1-s)\, e^{\sigma_{\min}} \big). \label{eq:sd-fwd-rot}
+\end{align}
+By the product metric~\eqref{eq:se3-product-metric} the forward kernel factorises, and both
+components are exactly the objects developed in Section~\ref{sec:foundations}:
+\begin{equation}
+\label{eq:sd-kernels}
+  p_{s|0}\big(p^{(s)} \,\big|\, p^{\mathrm{data}}\big) = \mathcal{N}\Big(\alpha_s\, p^{\mathrm{data}},\; (1-\alpha_s^2) I\Big),
+  \quad \alpha_s = \exp\Big(-\tfrac{1}{2}\!\int_0^s \!\beta(r)\,\mathrm{d}r\Big),
+  \qquad
+  p_{s|0}\big(R^{(s)} \,\big|\, R^{\mathrm{data}}\big) = \mathcal{IGSO}(3)\big(R^{\mathrm{data}}, \sigma^2(s)\big).
+\end{equation}
+The stationary distribution, and hence the prior of the generative model, is
+$p_{\mathrm{init}} = \mathcal{N}(0,I) \otimes \mathcal{U}\big(\mathrm{SO}(3)^m\big)$, which is
+$\mathrm{SO}(3)$-invariant as Theorem~\ref{thm:sigmadock-symmetry} requires. Training minimises the
+Riemannian denoising score matching objective~\eqref{eq:rdsm} against the conditional score of
+\eqref{eq:sd-kernels}, i.e.\ \eqref{eq:igso3-score} for the rotational block and the standard
+Gaussian expression for the translational one, with per-component weights
+$\lambda_s \propto 1/\mathbb{E}\big[\|\nabla \log p_{s|0}\|^2\big]$; for rotations this expectation
+is available only as
+$\mathbb{E}_{\omega \sim f(\omega,\sigma^2(s))}\big[(\partial_\omega f_0/f_0)^2\big]$, computed
+numerically from the truncated series.
+
+Three items in the previous paragraph are the entire diffusion-specific machinery of SigmaDock: the
+IGSO(3) kernel with its truncated spectral expansion~\eqref{eq:igso3-density}, the conditional score
+\eqref{eq:igso3-score} derived from it, and the loss weights $\lambda_s$ that must be tabulated from
+the same series. They are exactly what Section~\ref{sec:flow-so3} showed to be unnecessary.
+
+\subsubsection{Input graph}
+
+The network does not see the group element $z$ directly; it sees a geometric graph built from the
+current Cartesian coordinates $\mathbf{x}^{(t)} = \varphi(z^{(t)})$ and the protein. This graph
+splits into two parts.
+
+The \emph{global topology} is immutable along the path: the intra-fragment bonds, the protein
+structure, the triangulation edges of Section~\ref{sec:triangulation}, and a hierarchical layer of
+\emph{virtual nodes} --- one per fragment (or one per ring system in polycyclic fragments), and one
+per protein $C_\alpha$ --- connected pairwise ($C_\alpha$--$C_\alpha$ within $18\,\text{\AA}$,
+$V_F$--$V_F$, and $V_F$--$C_\alpha$). This hierarchy lowers the average node degree while creating
+short paths between distant parts of the complex, mitigating over-squashing and reducing the number
+of layers needed for global information to propagate.
+
+The \emph{transient topology} consists of the protein--ligand interaction edges, included whenever
+two atoms fall within a $4\,\text{\AA}$ cutoff, and therefore changing as the pose moves. Their
+radial features are a Bessel basis multiplied by a polynomial envelope vanishing at the cutoff ---
+the construction $\psi_k(d)\chi(d)$ of \eqref{eq:radial-basis} --- so that messages, and their
+gradients, decay smoothly to zero as an edge appears or disappears. Without this the learned vector
+field would be discontinuous in $z$ at the cutoff, with predictable consequences for the stability
+of the integrator.
+
+Nodes and edges carry categorical type labels (ligand atom, anchor, dummy, fragment-virtual, protein
+atom, protein-virtual; and correspondingly for edges), chemical features (atomic number, degree,
+formal charge, hybridisation, valence, aromaticity, ring membership, chirality tag; bond type,
+conjugation, ring membership, stereochemistry), and a Fourier embedding of $t$.
+
+\subsubsection{Backbone}
+
+The backbone is EquiformerV2 \cite{bortoliRiemannianScoreBasedGenerative2022}, i.e.\ the steerable equivariant
+transformer of Section~\ref{sec:equiformer}, with $14.9\mathrm{M}$ parameters. The one modification
+is to remove the bias terms from the radial MLPs that generate the weights $W_{ij}$ of
+\eqref{eq:equiformer-message} on transient edges (with a separate MLP per edge type), which is what
+makes the smooth-cutoff argument above actually hold: with a bias, a message would not vanish even
+when its radial features do.
+
+Its output is a set of atom-wise type-1 features $f_i \in \mathbb{R}^3$, interpreted as
+\emph{pseudo-forces} in the world frame. Note what this means for the gauge problem: the backbone
+consumes only $\mathbf{x} = \varphi(z)$ and $\mathbf{y}$, never $(\tilde{\mathbf{x}}_F, p_F, R_F)$
+separately, so its output is manifestly independent of the choice of fragment local frame.
+
+\subsubsection{Prediction head: Newton--Euler}
+\label{sec:newton-euler}
+
+The head is where atom-wise forces become an element of $T_z \mathrm{SE}(3)^m$, and where the choice
+of local frame re-enters. Adapting \cite{bortoliRiemannianScoreBasedGenerative2022}, for each fragment $\mathcal{G}_F$ with
+global coordinates $\mathbf{x}_F$ and pose $(p_F, R_F)$ one forms the net force, the torque about
+the fragment centre, and the inertia tensor:
+\begin{equation}
+\label{eq:newton-euler}
+  \mathbf{F}_F = \sum_{i} f_i,
+  \qquad
+  \bm{\tau}_F = \sum_{i} (\mathbf{x}_{F,i} - p_F) \times f_i,
+  \qquad
+  I_F = \sum_{i} \Big( \|\mathbf{x}_{F,i} - p_F\|^2 I - (\mathbf{x}_{F,i} - p_F)(\mathbf{x}_{F,i} - p_F)^{\top} \Big).
+\end{equation}
+The two score components are then
+\begin{equation}
+\label{eq:sd-head}
+  s^{p}_{\theta} \;=\; \frac{1}{\sqrt{1-\alpha_s^2}} \cdot \frac{1}{|\mathcal{G}_F|}\, \mathbf{F}_F,
+  \qquad
+  s^{R}_{\theta} \;=\; -\,\frac{\partial_\omega f_0(\omega, \sigma(s))}{\omega\, f_0(\omega, \sigma(s))}\;
+  \big[\, I_F^{-1} \bm{\tau}_F \,\big]_{\times} R_F,
+  \qquad \omega = \big\| I_F^{-1} \bm{\tau}_F \big\|_2 .
+\end{equation}
+Both are constructed to \emph{match the form of the conditional score}: the translational head is an
+$\epsilon$-prediction rescaled by the kernel's standard deviation, and the rotational head is an
+axis-angle vector dressed by the scalar $\partial_\omega f_0 / (\omega f_0)$, which is exactly the
+radial derivative of the log heat kernel appearing in~\eqref{eq:igso3-score}. The purpose of the
+dressing is conditioning of the score matching loss: it removes the noise-level-dependent scale from
+what the network must learn.
+
+This decomposition is the single most useful observation in the chapter, and we state it plainly.
+The network's actual geometric output is the pair
+\begin{equation}
+\label{eq:sd-raw-output}
+  \Big( \tfrac{1}{|\mathcal{G}_F|}\mathbf{F}_F \,,\; I_F^{-1} \bm{\tau}_F \Big) \;\in\; \mathbb{R}^3 \times \mathbb{R}^3,
+\end{equation}
+a translational displacement and a body-frame rotation vector --- precisely the signature of the
+tangent vector field~\eqref{eq:vector-field-signature}. Everything diffusion-specific in
+\eqref{eq:sd-head} is the \emph{scalar prefactor} applied to each component. Converting SigmaDock to
+SigmaFlow therefore does not touch the backbone, the graph, the featurisation, the fragmentation, or
+even the Newton--Euler construction~\eqref{eq:newton-euler}: it replaces two scalars and the process
+that defines them. This is the concrete sense in which the substitution of
+Section~\ref{sec:SigmaFlow} is surgical.
+
+\subsubsection{Sampling and candidate ranking}
+
+Generation integrates the reverse-time SDE~\eqref{eq:riemannian-reverse-sde} from
+$t = t_{\min} \approx 0$ to $t = 1$, componentwise: an Euler--Maruyama step for translations, and an
+exponential-map step $R \leftarrow R \exp([\Delta R + \Delta\epsilon]_\times)$ for rotations, which
+keeps the iterate on $\mathrm{SO}(3)$ exactly. The time grid follows the schedule of
+\cite{bortoliRiemannianScoreBasedGenerative2022},
+\[
+  t_k \;=\; \Big( t_{\max}^{1/\rho} + \tfrac{k}{N_{\text{steps}}-1}\big(t_{\min}^{1/\rho} - t_{\max}^{1/\rho}\big) \Big)^{\rho},
+\]
+with $N_{\text{steps}} = 25$, $\rho = 3$, plus a noise-annealing coefficient $\gamma_i$ scaling the
+injected Brownian increment. On an A40, one seed costs $\approx 0.57\,\mathrm{s}$ per molecule at
+$20$ steps; performance saturates beyond $20$--$30$ steps. Since each step is one network evaluation,
+the number of function evaluations (NFE) is the natural cost unit --- and, per
+Remark~\ref{rem:equiformer-cost}, the one that flow matching aims to reduce. It is the quantity
+reported in Section~\ref{sec:experiments}.
+
+Notably, SigmaDock dispenses with a learned confidence model and with post-hoc energy minimisation,
+both of which are standard in the DiffDock lineage and both of which make it difficult to attribute
+performance to the generative model itself. Instead $N_{\text{seeds}} = 40$ samples are ranked by the
+cheap heuristic
+\[
+  s_i \;=\; -\, b_i \, p_i^{\beta}, \qquad \beta = 4,
+\]
+where $b_i$ is the Vinardo binding energy of sample $i$ and $p_i \in [0,1]$ the fraction of
+PoseBusters stereochemical checks it passes. That this suffices --- and that Top-1 accuracy is high
+without coordinate-altering refinement --- is itself evidence for the inductive biases: the model's
+raw output is already chemically plausible.
+
+\subsubsection{Summary: what SigmaFlow inherits and what it replaces}
+
+Table~\ref{tab:sigmadock-vs-sigmaflow} makes the controlled-substitution claim of
+Section~\ref{sec:contributions} concrete.
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+\textbf{Component} & \textbf{SigmaDock} & \textbf{SigmaFlow} \\
+\midrule
+State space & $\mathrm{SE}(3)^m$, product metric & unchanged \\
+Fragmentation (FR3D) & stochastic recursive merging & unchanged \\
+Fragment templates & RDKit ETKDGv3, Kabsch-aligned & unchanged \\
+Triangulation conditioning & soft invariant edge features & unchanged (feature \emph{distribution} shifts) \\
+Input graph \& featurisation & hierarchical, virtual nodes, smooth cutoff & unchanged \\
+Backbone & EquiformerV2, $14.9\mathrm{M}$ params & unchanged \\
+Newton--Euler head \eqref{eq:newton-euler} & force / torque / inertia & unchanged \\
+Ranking heuristic & Vinardo $\times$ PB checks & unchanged \\
+\midrule
+Prior $p_{\mathrm{init}}$ & $\mathcal{N}(0,I) \otimes \mathcal{U}(\mathrm{SO}(3)^m)$ & retained (invariance still required) \\
+Probability path & VP Gaussian $\oplus$ IGSO(3) heat kernel & linear $\oplus$ geodesic (SLERP) interpolant \\
+Regression target & conditional score & conditional velocity \\
+Output dressing \eqref{eq:sd-head} & $\partial_\omega f_0 / (\omega f_0)$, $(1-\alpha_s^2)^{-1/2}$ & path-dependent scalars (Sec.~\ref{sec:SigmaFlow}) \\
+Loss weights $\lambda_s$ & tabulated from truncated series & \emph{n/a} \\
+Sampler & reverse-time SDE, noise annealing & geodesic Euler on the learned ODE \\
+\bottomrule
+\end{tabular}
+\caption{Component-wise comparison. Everything above the rule is held fixed, so that any difference
+in performance is attributable to the change of probability path and target rather than to a
+confounded change of model.}
+\label{tab:sigmadock-vs-sigmaflow}
+\end{table}
+
+\begin{remark}[Items requiring verification against the reference implementation]
+\label{rem:verification}
+The following are stated in \cite{bortoliRiemannianScoreBasedGenerative2022} at a level of detail that is sufficient for
+exposition but not for reimplementation, and each is checked against the released codebase before
+the experiments of Section~\ref{sec:experiments} are run.
+\begin{enumerate}[label=(\roman*)]
+\item The exact ordering of the $2.7\times$ coordinate rescaling relative to pocket centring, and
+      whether it is applied to the protein coordinates as well as the ligand.
+\item Whether the translational prefactor in \eqref{eq:sd-head} is $(1-\alpha_s^2)^{-1/2}$ or its
+      reciprocal in code; the two differ by the $\epsilon$- versus score-parameterisation convention.
+\item The sign conventions induced by the time reversal of Remark~\ref{rem:time-convention}. This is
+      the single most likely source of silent error in the port.
+\item Whether the loss weights $\lambda_s$ have any analogue under conditional flow matching. The
+      CFM objective is naturally unweighted; any residual weighting is a design choice and must be
+      reported as such rather than carried over by inertia.
+\item Whether the retained prior $\mathcal{N}(0,I)$ for translations is the appropriate $p_0$ for the
+      linear path~\eqref{eq:cond-ot-path}. It is, in the sense that the conditional-OT path is
+      standardly defined from an isotropic Gaussian; but the variance is tied to the $2.7\times$
+      rescaling, which was chosen to make the \emph{variance-preserving} kernel terminate correctly,
+      and that rationale does not transfer.
+\item Whether stochasticity at sampling time (noise annealing, and its flow-matching analogue in the
+      form of an SDE sampler with the same marginals) contributes materially. SigmaDock reports a
+      benefit; a deterministic ODE has no such knob, which is a genuine expressivity difference and
+      not merely a simplification. This warrants an ablation rather than a footnote.
+\end{enumerate}
+\end{remark}
+
+\section{SigmaFlow}
+\label{sec:SigmaFlow}
+
+\section{Experiments}
+\label{sec:experiments}
+
+\section{Limitations and Further Work}
+\label{sec:limitations}
+
+\section{Conclusion}
+\label{sec:conclusion}
+
+
+\clearpage
+
+
+
+
+
+
+
+
+\printbibliography
+
+
+
+
+\appendix
+% If you have R code include it in an appendix.
+\section{Appendix A}
+\label{app:AppendixA}
+\section{Appendix B}
+\label{app:AppendixB}
+\section{Appendix C}
+\label{app:AppendixC}
+\begin{verbatim}
+Put your R code here.
+\end{verbatim}
+
+\end{document}
+
+\end{document}

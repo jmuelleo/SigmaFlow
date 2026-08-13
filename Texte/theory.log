@@ -1,0 +1,1714 @@
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.1.13)  8 AUG 2026 11:00
+entering extended mode
+ restricted \write18 enabled.
+ %&-line parsing enabled.
+**theory.tex
+(./theory.tex
+LaTeX2e <2025-11-01>
+L3 programming layer <2025-12-29>
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/report.cls
+Document Class: report 2025/01/22 v1.4n Standard LaTeX document class
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/size11.clo
+File: size11.clo 2025/01/22 v1.4n Standard LaTeX file (size option)
+)
+\c@part=\count275
+\c@chapter=\count276
+\c@section=\count277
+\c@subsection=\count278
+\c@subsubsection=\count279
+\c@paragraph=\count280
+\c@subparagraph=\count281
+\c@figure=\count282
+\c@table=\count283
+\abovecaptionskip=\skip49
+\belowcaptionskip=\skip50
+\bibindent=\dimen148
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/fontenc.sty
+Package: fontenc 2025/07/18 v2.1d Standard LaTeX package
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/inputenc.sty
+Package: inputenc 2024/02/08 v1.3d Input encoding file
+\inpenc@prehook=\toks17
+\inpenc@posthook=\toks18
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2024/12/31 v1.2e Enhanced LaTeX Graphics (DPC,SPQR)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks19
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 106.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2025/09/29 v1.2d Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen149
+\Gin@req@width=\dimen150
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/latexsym.sty
+Package: latexsym 1998/08/17 v2.2e Standard LaTeX package (lasy symbols)
+\symlasy=\mathgroup4
+LaTeX Font Info:    Overwriting symbol font `lasy' in version `bold'
+(Font)                  U/lasy/m/n --> U/lasy/b/n on input line 52.
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsmath/amsmath.sty
+Package: amsmath 2025/07/09 v2.17z AMS math features
+\@mathmargin=\skip51
+
+For additional information on amsmath, use the `?' option.
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsmath/amstext.sty
+Package: amstext 2024/11/17 v2.01 AMS text
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsmath/amsgen.sty
+File: amsgen.sty 1999/11/30 v2.0 generic functions
+\@emptytoks=\toks20
+\ex@=\dimen151
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsmath/amsbsy.sty
+Package: amsbsy 1999/11/29 v1.2d Bold Symbols
+\pmbraise@=\dimen152
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsmath/amsopn.sty
+Package: amsopn 2022/04/08 v2.04 operator names
+)
+\inf@bad=\count284
+LaTeX Info: Redefining \frac on input line 233.
+\uproot@=\count285
+\leftroot@=\count286
+LaTeX Info: Redefining \overline on input line 398.
+LaTeX Info: Redefining \colon on input line 409.
+\classnum@=\count287
+\DOTSCASE@=\count288
+LaTeX Info: Redefining \ldots on input line 495.
+LaTeX Info: Redefining \dots on input line 498.
+LaTeX Info: Redefining \cdots on input line 619.
+\Mathstrutbox@=\box53
+\strutbox@=\box54
+LaTeX Info: Redefining \big on input line 721.
+LaTeX Info: Redefining \Big on input line 722.
+LaTeX Info: Redefining \bigg on input line 723.
+LaTeX Info: Redefining \Bigg on input line 724.
+\big@size=\dimen153
+LaTeX Font Info:    Redeclaring font encoding OML on input line 742.
+LaTeX Font Info:    Redeclaring font encoding OMS on input line 743.
+\macc@depth=\count289
+LaTeX Info: Redefining \bmod on input line 904.
+LaTeX Info: Redefining \pmod on input line 909.
+LaTeX Info: Redefining \smash on input line 939.
+LaTeX Info: Redefining \relbar on input line 969.
+LaTeX Info: Redefining \Relbar on input line 970.
+\c@MaxMatrixCols=\count290
+\dotsspace@=\muskip17
+\c@parentequation=\count291
+\dspbrk@lvl=\count292
+\tag@help=\toks21
+\row@=\count293
+\column@=\count294
+\maxfields@=\count295
+\andhelp@=\toks22
+\eqnshift@=\dimen154
+\alignsep@=\dimen155
+\tagshift@=\dimen156
+\tagwidth@=\dimen157
+\totwidth@=\dimen158
+\lineht@=\dimen159
+\@envbody=\toks23
+\multlinegap=\skip52
+\multlinetaggap=\skip53
+\mathdisplay@stack=\toks24
+LaTeX Info: Redefining \[ on input line 2950.
+LaTeX Info: Redefining \] on input line 2951.
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/amssymb.sty
+Package: amssymb 2013/01/14 v3.01 AMS font symbols
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/amsfonts.sty
+Package: amsfonts 2013/01/14 v3.01 Basic AMSFonts support
+\symAMSa=\mathgroup5
+\symAMSb=\mathgroup6
+LaTeX Font Info:    Redeclaring math symbol \hbar on input line 98.
+LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
+(Font)                  U/euf/m/n --> U/euf/b/n on input line 106.
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amscls/amsthm.sty
+Package: amsthm 2020/05/29 v2.20.6
+\thm@style=\toks25
+\thm@bodyfont=\toks26
+\thm@headfont=\toks27
+\thm@notefont=\toks28
+\thm@headpunct=\toks29
+\thm@preskip=\skip54
+\thm@postskip=\skip55
+\thm@headsep=\skip56
+\dth@everypar=\toks30
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/tools/bm.sty
+Package: bm 2025/10/21 v1.2g Bold Symbol Support (DPC/FMi)
+\symboldoperators=\mathgroup7
+\symboldletters=\mathgroup8
+\symboldsymbols=\mathgroup9
+Package bm Info: No bold for \OMX/cmex/m/n, using \pmb.
+\symboldlasy=\mathgroup10
+Package bm Info: No bold for \U/msa/m/n, using \pmb.
+Package bm Info: No bold for \U/msb/m/n, using \pmb.
+LaTeX Font Info:    Redeclaring math alphabet \mathbf on input line 149.
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/booktabs/booktabs.sty
+Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
+\heavyrulewidth=\dimen160
+\lightrulewidth=\dimen161
+\cmidrulewidth=\dimen162
+\belowrulesep=\dimen163
+\belowbottomsep=\dimen164
+\aboverulesep=\dimen165
+\abovetopsep=\dimen166
+\cmidrulesep=\dimen167
+\cmidrulekern=\dimen168
+\defaultaddspace=\dimen169
+\@cmidla=\count296
+\@cmidlb=\count297
+\@aboverulesep=\dimen170
+\@belowrulesep=\dimen171
+\@thisruleclass=\count298
+\@lastruleclass=\count299
+\@thisrulewidth=\dimen172
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/tools/longtable.sty
+Package: longtable 2025-10-13 v4.24 Multi-page Table package (DPC)
+\LTleft=\skip57
+\LTright=\skip58
+\LTpre=\skip59
+\LTpost=\skip60
+\LTchunksize=\count300
+\LTcapwidth=\dimen173
+\LT@head=\box55
+\LT@firsthead=\box56
+\LT@foot=\box57
+\LT@lastfoot=\box58
+\LT@gbox=\box59
+\LT@cols=\count301
+\LT@rows=\count302
+\c@LT@tables=\count303
+\c@LT@chunks=\count304
+\LT@p@ftn=\toks31
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/tools/array.sty
+Package: array 2025/09/25 v2.6n Tabular extension package (FMi)
+\col@sep=\dimen174
+\ar@mcellbox=\box60
+\extrarowheight=\dimen175
+\NC@list=\toks32
+\extratabsurround=\skip61
+\backup@length=\skip62
+\ar@cellbox=\box61
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/enumitem/enumitem.sty
+Package: enumitem 2025/02/06 v3.11 Customized lists
+\labelindent=\skip63
+\enit@outerparindent=\dimen176
+\enit@toks=\toks33
+\enit@inbox=\box62
+\enit@count@id=\count305
+\enitdp@description=\count306
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/xcolor/xcolor.sty
+Package: xcolor 2024/09/29 v3.02 LaTeX color extensions (UK)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics-cfg/color.cfg
+File: color.cfg 2016/01/02 v1.6 sample color configuration
+)
+Package xcolor Info: Driver file: pdftex.def on input line 274.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/graphics/mathcolor.ltx)
+Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1349.
+Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1353.
+Package xcolor Info: Model `RGB' extended on input line 1365.
+Package xcolor Info: Model `HTML' substituted by `rgb' on input line 1367.
+Package xcolor Info: Model `Hsb' substituted by `hsb' on input line 1368.
+Package xcolor Info: Model `tHsb' substituted by `hsb' on input line 1369.
+Package xcolor Info: Model `HSB' substituted by `hsb' on input line 1370.
+Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
+Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/tcolorbox/tcolorbox.sty
+Package: tcolorbox 2026/05/28 version 6.10.0 text color boxes
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/frontendlayer/tikz.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/basiclayer/pgf.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/utilities/pgfrcs.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgfutil-common.tex
+\pgfutil@everybye=\toks34
+\pgfutil@tempdima=\dimen177
+\pgfutil@tempdimb=\dimen178
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgfutil-latex.def
+\pgfutil@abb=\box63
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgfrcs.code.tex (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/pgf.revision.tex)
+Package: pgfrcs 2026-08-01 v3.1.12 (3.1.12)
+))
+Package: pgf 2026-08-01 v3.1.12 (3.1.12)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/basiclayer/pgfcore.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/systemlayer/pgfsys.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/systemlayer/pgfsys.code.tex
+Package: pgfsys 2026-08-01 v3.1.12 (3.1.12)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgfkeys.code.tex
+\pgfkeys@pathtoks=\toks35
+\pgfkeys@temptoks=\toks36
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgfkeyslibraryfiltered.code.tex
+\pgfkeys@tmptoks=\toks37
+))
+\pgf@x=\dimen179
+\pgf@y=\dimen180
+\pgf@xa=\dimen181
+\pgf@ya=\dimen182
+\pgf@xb=\dimen183
+\pgf@yb=\dimen184
+\pgf@xc=\dimen185
+\pgf@yc=\dimen186
+\pgf@xd=\dimen187
+\pgf@yd=\dimen188
+\w@pgf@writea=\write3
+\r@pgf@reada=\read2
+\c@pgf@counta=\count307
+\c@pgf@countb=\count308
+\c@pgf@countc=\count309
+\c@pgf@countd=\count310
+\t@pgf@toka=\toks38
+\t@pgf@tokb=\toks39
+\t@pgf@tokc=\toks40
+\pgf@sys@id@count=\count311
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/systemlayer/pgf.cfg
+File: pgf.cfg 2026-08-01 v3.1.12 (3.1.12)
+)
+Driver file for pgf: pgfsys-pdftex.def
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/systemlayer/pgfsys-pdftex.def
+File: pgfsys-pdftex.def 2026-08-01 v3.1.12 (3.1.12)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/systemlayer/pgfsys-common-pdf.def
+File: pgfsys-common-pdf.def 2026-08-01 v3.1.12 (3.1.12)
+))) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/systemlayer/pgfsyssoftpath.code.tex
+File: pgfsyssoftpath.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgfsyssoftpath@smallbuffer@items=\count312
+\pgfsyssoftpath@bigbuffer@items=\count313
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/systemlayer/pgfsysprotocol.code.tex
+File: pgfsysprotocol.code.tex 2026-08-01 v3.1.12 (3.1.12)
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcore.code.tex
+Package: pgfcore 2026-08-01 v3.1.12 (3.1.12)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmath.code.tex (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathutil.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathparser.code.tex
+\pgfmath@dimen=\dimen189
+\pgfmath@count=\count314
+\pgfmath@box=\box64
+\pgfmath@toks=\toks41
+\pgfmath@stack@operand=\toks42
+\pgfmath@stack@operation=\toks43
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.basic.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.trigonometric.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.random.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.comparison.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.base.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.round.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.misc.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfunctions.integerarithmetics.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathcalc.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmathfloat.code.tex
+\c@pgfmathroundto@lastzeros=\count315
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfint.code.tex) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorepoints.code.tex
+File: pgfcorepoints.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgf@picminx=\dimen190
+\pgf@picmaxx=\dimen191
+\pgf@picminy=\dimen192
+\pgf@picmaxy=\dimen193
+\pgf@pathminx=\dimen194
+\pgf@pathmaxx=\dimen195
+\pgf@pathminy=\dimen196
+\pgf@pathmaxy=\dimen197
+\pgf@xx=\dimen198
+\pgf@xy=\dimen199
+\pgf@yx=\dimen256
+\pgf@yy=\dimen257
+\pgf@zx=\dimen258
+\pgf@zy=\dimen259
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorepathconstruct.code.tex
+File: pgfcorepathconstruct.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgf@path@lastx=\dimen260
+\pgf@path@lasty=\dimen261
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorepathusage.code.tex
+File: pgfcorepathusage.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgf@shorten@end@additional=\dimen262
+\pgf@shorten@start@additional=\dimen263
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorescopes.code.tex
+File: pgfcorescopes.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgfpic=\box65
+\pgf@hbox=\box66
+\pgf@layerbox@main=\box67
+\pgf@picture@serial@count=\count316
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoregraphicstate.code.tex
+File: pgfcoregraphicstate.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgflinewidth=\dimen264
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoretransformations.code.tex
+File: pgfcoretransformations.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgf@pt@x=\dimen265
+\pgf@pt@y=\dimen266
+\pgf@pt@temp=\dimen267
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorequick.code.tex
+File: pgfcorequick.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoreobjects.code.tex
+File: pgfcoreobjects.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorepathprocessing.code.tex
+File: pgfcorepathprocessing.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorearrows.code.tex
+File: pgfcorearrows.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgfarrowsep=\dimen268
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoreshade.code.tex
+File: pgfcoreshade.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgf@max=\dimen269
+\pgf@sys@shading@range@num=\count317
+\pgf@shadingcount=\count318
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoreimage.code.tex
+File: pgfcoreimage.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoreexternal.code.tex
+File: pgfcoreexternal.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgfexternal@startupbox=\box68
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorelayers.code.tex
+File: pgfcorelayers.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcoretransparency.code.tex
+File: pgfcoretransparency.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorepatterns.code.tex
+File: pgfcorepatterns.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/basiclayer/pgfcorerdf.code.tex
+File: pgfcorerdf.code.tex 2026-08-01 v3.1.12 (3.1.12)
+))) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/modules/pgfmoduleshapes.code.tex
+File: pgfmoduleshapes.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgfnodeparttextbox=\box69
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/modules/pgfmoduleplot.code.tex
+File: pgfmoduleplot.code.tex 2026-08-01 v3.1.12 (3.1.12)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/compatibility/pgfcomp-version-0-65.sty
+Package: pgfcomp-version-0-65 2026-08-01 v3.1.12 (3.1.12)
+\pgf@nodesepstart=\dimen270
+\pgf@nodesepend=\dimen271
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/compatibility/pgfcomp-version-1-18.sty
+Package: pgfcomp-version-1-18 2026-08-01 v3.1.12 (3.1.12)
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/utilities/pgffor.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/utilities/pgfkeys.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgfkeys.code.tex)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pgf/math/pgfmath.sty (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/math/pgfmath.code.tex)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/utilities/pgffor.code.tex
+Package: pgffor 2026-08-01 v3.1.12 (3.1.12)
+\pgffor@iter=\dimen272
+\pgffor@skip=\dimen273
+\pgffor@stack=\toks44
+\pgffor@toks=\toks45
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/frontendlayer/tikz/tikz.code.tex
+Package: tikz 2026-08-01 v3.1.12 (3.1.12)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/libraries/pgflibraryplothandlers.code.tex
+File: pgflibraryplothandlers.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgf@plot@mark@count=\count319
+\pgfplotmarksize=\dimen274
+)
+\tikz@lastx=\dimen275
+\tikz@lasty=\dimen276
+\tikz@lastxsaved=\dimen277
+\tikz@lastysaved=\dimen278
+\tikz@lastmovetox=\dimen279
+\tikz@lastmovetoy=\dimen280
+\tikzleveldistance=\dimen281
+\tikzsiblingdistance=\dimen282
+\tikz@figbox=\box70
+\tikz@figbox@bg=\box71
+\tikz@tempbox=\box72
+\tikz@tempbox@bg=\box73
+\tikztreelevel=\count320
+\tikznumberofchildren=\count321
+\tikznumberofcurrentchild=\count322
+\tikz@fig@count=\count323
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/modules/pgfmodulematrix.code.tex
+File: pgfmodulematrix.code.tex 2026-08-01 v3.1.12 (3.1.12)
+\pgfmatrixcurrentrow=\count324
+\pgfmatrixcurrentcolumn=\count325
+\pgf@matrix@numberofcolumns=\count326
+)
+\tikz@expandcount=\count327
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/generic/pgf/frontendlayer/tikz/libraries/tikzlibrarytopaths.code.tex
+File: tikzlibrarytopaths.code.tex 2026-08-01 v3.1.12 (3.1.12)
+))) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/tools/verbatim.sty
+Package: verbatim 2024-01-22 v1.5x LaTeX2e package for verbatim enhancements
+\every@verbatim=\toks46
+\verbatim@line=\toks47
+\verbatim@in@stream=\read3
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/environ/environ.sty
+Package: environ 2014/05/04 v0.3 A new way to define environments
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/trimspaces/trimspaces.sty
+Package: trimspaces 2009/09/17 v1.1 Trim spaces around a token list
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/etoolbox/etoolbox.sty
+Package: etoolbox 2025/10/02 v2.5m e-TeX tools for LaTeX (JAW)
+\etb@tempcnta=\count328
+)
+\tcb@titlebox=\box74
+\tcb@upperbox=\box75
+\tcb@lowerbox=\box76
+\tcb@phantombox=\box77
+\c@tcbbreakpart=\count329
+\c@tcblayer=\count330
+\c@tcolorbox@number=\count331
+\l__tcobox_tmpa_box=\box78
+\l__tcobox_tmpa_dim=\dimen283
+\tcb@temp=\box79
+\tcb@temp=\box80
+\tcb@temp=\box81
+\tcb@temp=\box82
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/tcolorbox/tcbskins.code.tex
+Library (tcolorbox): 'tcbskins.code.tex' version '6.10.0'
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/tikzfill/tikzfill.image.sty
+Package: tikzfill.image 2026/04/23 v1.2.0 Image filling library for TikZ
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/tikzfill/tikzlibraryfill.image.code.tex
+File: tikzlibraryfill.image.code.tex 2026/04/23 v1.2.0 Image filling library
+\l__tikzfill_tmpa_dim=\dimen284
+\l__tikzfill_tmpb_dim=\dimen285
+\l__tikzfill_img_box=\box83
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/tcolorbox/tcbskinsjigsaw.code.tex
+Library (tcolorbox): 'tcbskinsjigsaw.code.tex' version '6.10.0'
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/tcolorbox/tcbbreakable.code.tex
+Library (tcolorbox): 'tcbbreakable.code.tex' version '6.10.0'
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/pdfcol/pdfcol.sty
+Package: pdfcol 2026-06-20 v1.8 Handle new color stacks for pdfTeX (HO)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/ltxcmds/ltxcmds.sty
+Package: ltxcmds 2023-12-04 v1.26 LaTeX kernel commands for general use (HO)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/infwarerr/infwarerr.sty
+Package: infwarerr 2019/12/03 v1.5 Providing info/warning/error messages (HO)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/iftex/iftex.sty
+Package: iftex 2024/12/12 v1.0g TeX engine tests
+))
+Package pdfcol Info: New color stack `tcb@breakable' = 1 on input line 23.
+\tcb@testbox=\box84
+\tcb@totalupperbox=\box85
+\tcb@totallowerbox=\box86
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/geometry/geometry.sty
+Package: geometry 2020/01/02 v5.9 Page Geometry
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/iftex/ifvtex.sty
+Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
+)
+\Gm@cnth=\count332
+\Gm@cntv=\count333
+\c@Gm@tempcnt=\count334
+\Gm@bindingoffset=\dimen286
+\Gm@wd@mp=\dimen287
+\Gm@odd@mp=\dimen288
+\Gm@even@mp=\dimen289
+\Gm@layoutwidth=\dimen290
+\Gm@layoutheight=\dimen291
+\Gm@layouthoffset=\dimen292
+\Gm@layoutvoffset=\dimen293
+\Gm@dimlist=\toks48
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/inconsolata/zi4.sty
+Package: zi4 2019/05/17 v1.12
+ `inconsolata-zi4' v1.12, 2019/05/17 Text macros for Inconsolata (msharpe) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/textcomp.sty
+Package: textcomp 2024/04/24 v2.1b Standard LaTeX package
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/xkeyval/xkeyval.sty
+Package: xkeyval 2025/11/04 v2.10 package option processing (HA)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/xkeyval/xkeyval.tex (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/xkeyval/xkvutils.tex
+\XKV@toks=\toks49
+\XKV@tempa@toks=\toks50
+\XKV@tempb@toks=\toks51
+)
+\XKV@depth=\count335
+File: xkeyval.tex 2014/12/03 v2.7a key=value parser (HA)
+))
+\zifour@ocount=\count336
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hyperref/hyperref.sty
+Package: hyperref 2025-07-12 v7.01o Hypertext links for LaTeX
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/kvsetkeys/kvsetkeys.sty
+Package: kvsetkeys 2022-10-05 v1.19 Key value parser (HO)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/kvdefinekeys/kvdefinekeys.sty
+Package: kvdefinekeys 2019-12-19 v1.6 Define keys (HO)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/pdfescape/pdfescape.sty
+Package: pdfescape 2019/12/09 v1.15 Implements pdfTeX's escape features (HO)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/pdftexcmds/pdftexcmds.sty
+Package: pdftexcmds 2020-06-27 v0.33 Utility functions of pdfTeX for LuaTeX (HO)
+Package pdftexcmds Info: \pdf@primitive is available.
+Package pdftexcmds Info: \pdf@ifprimitive is available.
+Package pdftexcmds Info: \pdfdraftmode found.
+)) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hycolor/hycolor.sty
+Package: hycolor 2020-01-27 v1.10 Color options for hyperref/bookmark (HO)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hyperref/nameref.sty
+Package: nameref 2025-06-21 v2.57 Cross-referencing by name of section
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/refcount/refcount.sty
+Package: refcount 2019/12/15 v3.6 Data extraction from label references (HO)
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/gettitlestring/gettitlestring.sty
+Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/kvoptions/kvoptions.sty
+Package: kvoptions 2022-06-15 v3.15 Key value format for package options (HO)
+))
+\c@section@level=\count337
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/stringenc/stringenc.sty
+Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO)
+)
+\@linkdim=\dimen294
+\Hy@linkcounter=\count338
+\Hy@pagecounter=\count339
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hyperref/pd1enc.def
+File: pd1enc.def 2025-07-12 v7.01o Hyperref: PDFDocEncoding definition (HO)
+Now handling font encoding PD1 ...
+... no UTF-8 mapping file for font encoding PD1
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/intcalc/intcalc.sty
+Package: intcalc 2019/12/15 v1.3 Expandable calculations with integers (HO)
+)
+\Hy@SavedSpaceFactor=\count340
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hyperref/puenc.def
+File: puenc.def 2025-07-12 v7.01o Hyperref: PDF Unicode definition (HO)
+Now handling font encoding PU ...
+... no UTF-8 mapping file for font encoding PU
+)
+Package hyperref Info: Option `colorlinks' set `true' on input line 4066.
+Package hyperref Info: Option `bookmarksnumbered' set `true' on input line 4066.
+Package hyperref Info: Option `bookmarksopen' set `true' on input line 4066.
+Package hyperref Info: Hyper figures OFF on input line 4195.
+Package hyperref Info: Link nesting OFF on input line 4200.
+Package hyperref Info: Hyper index ON on input line 4203.
+Package hyperref Info: Plain pages OFF on input line 4210.
+Package hyperref Info: Backreferencing OFF on input line 4215.
+Package hyperref Info: Implicit mode ON; LaTeX internals redefined.
+Package hyperref Info: Bookmarks ON on input line 4462.
+\c@Hy@tempcnt=\count341
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/url/url.sty
+\Urlmuskip=\muskip18
+Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
+)
+LaTeX Info: Redefining \url on input line 4801.
+\XeTeXLinkMargin=\dimen295
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/bitset/bitset.sty
+Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/bigintcalc/bigintcalc.sty
+Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO)
+))
+\Fld@menulength=\count342
+\Field@Width=\dimen296
+\Fld@charsize=\dimen297
+Package hyperref Info: Hyper figures OFF on input line 6078.
+Package hyperref Info: Link nesting OFF on input line 6083.
+Package hyperref Info: Hyper index ON on input line 6086.
+Package hyperref Info: backreferencing OFF on input line 6093.
+Package hyperref Info: Link coloring ON on input line 6096.
+Package hyperref Info: Link coloring with OCG OFF on input line 6103.
+Package hyperref Info: PDF/A mode OFF on input line 6108.
+\Hy@abspage=\count343
+\c@Item=\count344
+\c@Hfootnote=\count345
+)
+Package hyperref Info: Driver (autodetected): hpdftex.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/hyperref/hpdftex.def
+File: hpdftex.def 2025-07-12 v7.01o Hyperref driver for pdfTeX
+\Fld@listcount=\count346
+\c@bookmark@seq@number=\count347
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/rerunfilecheck/rerunfilecheck.sty
+Package: rerunfilecheck 2025-06-21 v1.11 Rerun checks for auxiliary files (HO)
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/generic/uniquecounter/uniquecounter.sty
+Package: uniquecounter 2019/12/15 v1.4 Provide unlimited unique counter (HO)
+)
+Package uniquecounter Info: New unique counter `rerunfilecheck' on input line 284.
+)
+\Hy@SectionHShift=\skip64
+) (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/cleveref/cleveref.sty
+Package: cleveref 2018/03/27 v0.21.4 Intelligent cross-referencing
+Package cleveref Info: `hyperref' support loaded on input line 2370.
+LaTeX Info: Redefining \cref on input line 2370.
+LaTeX Info: Redefining \Cref on input line 2370.
+LaTeX Info: Redefining \crefrange on input line 2370.
+LaTeX Info: Redefining \Crefrange on input line 2370.
+LaTeX Info: Redefining \cpageref on input line 2370.
+LaTeX Info: Redefining \Cpageref on input line 2370.
+LaTeX Info: Redefining \cpagerefrange on input line 2370.
+LaTeX Info: Redefining \Cpagerefrange on input line 2370.
+LaTeX Info: Redefining \labelcref on input line 2370.
+LaTeX Info: Redefining \labelcpageref on input line 2370.
+Package cleveref Info: `amsthm' support loaded on input line 3026.
+)
+==> First Aid for cleveref.sty applied!
+\c@theorem=\count348
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
+File: l3backend-pdftex.def 2025-10-09 L3 backend support: PDF output (pdfTeX)
+\l__color_backend_stack_int=\count349
+) (./theory.aux)
+\openout1 = `theory.aux'.
+
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 106.
+LaTeX Font Info:    ... okay on input line 106.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
+))
+*geometry* driver: auto-detecting
+*geometry* detected driver: pdftex
+*geometry* verbose mode - [ preamble ] result:
+* driver: pdftex
+* paper: a4paper
+* layout: <same size as paper>
+* layoutoffset:(h,v)=(0.0pt,0.0pt)
+* modes: 
+* h-part:(L,W,R)=(79.6678pt, 438.17227pt, 79.6678pt)
+* v-part:(T,H,B)=(79.6678pt, 685.71124pt, 79.6678pt)
+* \paperwidth=597.50787pt
+* \paperheight=845.04684pt
+* \textwidth=438.17227pt
+* \textheight=685.71124pt
+* \oddsidemargin=7.39781pt
+* \evensidemargin=7.39781pt
+* \topmargin=-29.60219pt
+* \headheight=12.0pt
+* \headsep=25.0pt
+* \topskip=11.0pt
+* \footskip=30.0pt
+* \marginparwidth=50.0pt
+* \marginparsep=10.0pt
+* \columnsep=10.0pt
+* \skip\footins=10.0pt plus 4.0pt minus 2.0pt
+* \hoffset=0.0pt
+* \voffset=0.0pt
+* \mag=1000
+* \@twocolumnfalse
+* \@twosidefalse
+* \@mparswitchfalse
+* \@reversemarginfalse
+* (1in=72.27pt=25.4mm, 1cm=28.453pt)
+
+(c:/Users/julia/AppData/Roaming/TinyTeX/texmf-local/tex/latex/upquote/upquote.sty
+Package: upquote 2012/04/19 v1.3 upright-quote and grave-accent glyphs in verbatim
+)
+Package hyperref Info: Link coloring ON on input line 106.
+ (./theory.out) (./theory.out)
+\@outlinefile=\write4
+\openout4 = `theory.out'.
+
+LaTeX Font Info:    Trying to load font information for U+lasy on input line 119.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/base/ulasy.fd
+File: ulasy.fd 1998/08/17 v2.2e LaTeX symbol font definitions
+)
+LaTeX Font Info:    Trying to load font information for U+msa on input line 119.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/umsa.fd
+File: umsa.fd 2013/01/14 v3.01 AMS symbols A
+)
+LaTeX Font Info:    Trying to load font information for U+msb on input line 119.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/umsb.fd
+File: umsb.fd 2013/01/14 v3.01 AMS symbols B
+)
+LaTeX Font Info:    Font shape `U/lasy/b/n' in size <8> not available
+(Font)              Font shape `U/lasy/m/n' tried instead on input line 119.
+LaTeX Font Info:    Font shape `U/lasy/b/n' in size <6> not available
+(Font)              Font shape `U/lasy/m/n' tried instead on input line 119.
+ [1
+
+{c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.149 \end{abstract}
+                     [1
+
+] (./theory.toc
+LaTeX Font Info:    Trying to load font information for U+euf on input line 24.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/amsfonts/ueuf.fd
+File: ueuf.fd 2013/01/14 v3.01 Euler Fraktur
+)
+pdfTeX warning (ext4): destination with the same identifier (name{page.1}) has been already used, duplicate ignored
+<to be read again> 
+                   \relax 
+l.31 ...oduct manifold $SE(3)^N$}{29}{section.3.5}
+                                                  % [1
+
+
+] [2] [3] [4])
+\tf@toc=\write5
+\openout5 = `theory.toc'.
+
+ [5]
+LaTeX Font Info:    Trying to load font information for T1+zi4 on input line 185.
+ (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/inconsolata/t1zi4.fd
+File: t1zi4.fd 2018/01/14 T1/zi4 (Inconsolata)
+)
+LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
+(Font)              scaled to size 10.95pt on input line 185.
+ [6
+
+
+{c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-0.enc}] [7] [8] [9
+
+
+]
+Chapter 1.
+[10
+
+] [11] [12] [13]
+Chapter 2.
+[14
+
+
+] [15] [16]
+Overfull \hbox (12.04958pt too wide) in paragraph at lines 798--800
+[]\T1/cmr/bx/n/10.95 Proposition 2.16 \T1/cmr/m/n/10.95 (MLE min-imises KL to the data dis-tri-bu-tion)\T1/cmr/bx/n/10.95 . []\T1/cmr/m/it/10.95 As $\OML/cmm/m/it/10.95 n \OMS/cmsy/m/n/10.95 ! 1$\T1/cmr/m/it/10.95 , $[] [][] [] \OML/cmm/m/it/10.95 p[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 !
+ []
+
+[17] [18] [19
+
+
+]
+Chapter 3.
+[20
+
+] [21]
+LaTeX Font Info:    Font shape `U/lasy/b/n' in size <7> not available
+(Font)              Font shape `U/lasy/m/n' tried instead on input line 1064.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1064.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1064.
+
+[22]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathop' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathchardef' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\std@minus' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathcode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\leavevmode@ifvmode' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                \kern 2.41927pt
+(hyperref)                removed on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\mathgroup' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\symoperators' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\@ifnextchar' on input line 1130.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1130.
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1189--1201
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 so3_utils.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 hat\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 vee \T1/cmr/m/n/10.95 (iden-ti-cal in \T1/zi4/m/n/10.95 SigmaDock/ \T1/cmr/m/n/10.95 and
+ []
+
+[23] [24] [25] [26]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1427.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1427.
+
+[27] [28]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1609.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1609.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1609.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 1609.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1609.
+
+[29]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1713.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 1713.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1713.
+
+[30] [31]
+Chapter 4.
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1805.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 1805.
+
+[32
+
+
+]
+Overfull \hbox (12.14134pt too wide) in paragraph at lines 1886--1896
+[]\T1/cmr/bx/n/10.95 Example 4.5 \T1/cmr/m/n/10.95 ($\OML/cmm/m/it/10.95 ` \OT1/cmr/m/n/10.95 = 0$ \T1/cmr/m/n/10.95 and $\OML/cmm/m/it/10.95 ` \OT1/cmr/m/n/10.95 = 1$\T1/cmr/m/n/10.95 )\T1/cmr/bx/n/10.95 . []$\OML/cmm/m/it/10.95 V[] [] \U/msb/m/n/10.95 R$ \T1/cmr/m/n/10.95 with $\OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 ) = 1$\T1/cmr/m/n/10.95 : type-$\OT1/cmr/m/n/10.95 0$ \T1/cmr/m/n/10.95 fea-tures are scalars/invariants.
+ []
+
+[33] [34]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2059.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2059.
+
+[35] [36]
+Overfull \hbox (19.88521pt too wide) in paragraph at lines 2205--2207
+[]\T1/cmr/bx/n/10.95 Proposition 4.14 \T1/cmr/m/n/10.95 (The Cleb-sch---Gor-dan prod-uct is equiv-ari-ant)\T1/cmr/bx/n/10.95 . []\T1/cmr/m/it/10.95 For $\OML/cmm/m/it/10.95 Q \OMS/cmsy/m/n/10.95 2 \OML/cmm/m/it/10.95 SO\OT1/cmr/m/n/10.95 (3)$\T1/cmr/m/it/10.95 : $[]\OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 u[] \OMS/cmsy/m/n/10.95 
+[]
+ []
+
+[37]
+Overfull \hbox (5.11182pt too wide) in paragraph at lines 2283--2291
+[]\T1/cmr/bx/n/10.95 Proposition 4.17 \T1/cmr/m/n/10.95 (Con-se-quence for mul-ti--chan-nel equiv-ari-ant lin-ear lay-ers)\T1/cmr/bx/n/10.95 . []\T1/cmr/m/it/10.95 Let $\OML/cmm/m/it/10.95 h \OT1/cmr/m/n/10.95 = [][] \OML/cmm/m/it/10.95 h[]$
+ []
+
+[38] [39] [40
+
+
+]
+Chapter 5.
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2340.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 2340.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2340.
+
+[41
+
+] [42] [43] [44] [45]
+Chapter 6.
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2694.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2694.
+
+[46
+
+
+]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2808.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2808.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2808.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2808.
+
+
+Overfull \hbox (3.97911pt too wide) in paragraph at lines 2821--2827
+\T1/cmr/m/it/10.95 called $[]\OT1/cmr/m/n/10.95 (3)(\OML/cmm/m/it/10.95 R[]; ^^[[]\OT1/cmr/m/n/10.95 )$\T1/cmr/m/it/10.95 , de-pends on $\OML/cmm/m/it/10.95 R[]; R$ \T1/cmr/m/it/10.95 only through the relative-rotation an-gle $\OML/cmm/m/it/10.95 ! \OT1/cmr/m/n/10.95 = 
+(\OML/cmm/m/it/10.95 R[]R\OT1/cmr/m/n/10.95 )$
+ []
+
+[47]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2892.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 2892.
+
+[48]
+Underfull \hbox (badness 3668) in paragraph at lines 2985--3032
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 so3_diffuser.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 SO3Diffuser.__init__\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 sample_igso3_angle\T1/cmr/m/n/10.95 ,
+ []
+
+[49]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 3034.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 3034.
+
+[50]
+Underfull \hbox (badness 7832) in paragraph at lines 3090--3110
+\T1/cmr/bx/n/10.95 Interpretation: \T1/cmr/m/n/10.95 com-putes \T1/zi4/m/n/10.95 perturb$\OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 g[] \OMS/cmsy/m/n/10.95 ^^A [][] ^^A \OML/cmm/m/it/10.95 dt \OT1/cmr/m/n/10.95 + [] \OMS/cmsy/m/n/10.95 ^^A \OML/cmm/m/it/10.95 g[] \OMS/cmsy/m/n/10.95 ^^A
+ []
+
+
+Underfull \hbox (badness 1127) in paragraph at lines 3090--3110
+[] \OMS/cmsy/m/n/10.95 ^^A \OML/cmm/m/it/10.95 z$ \T1/cmr/m/n/10.95 with $\OML/cmm/m/it/10.95 z \OT1/cmr/m/n/10.95 =$\T1/zi4/m/n/10.95 tangent_gaussian$\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 R[]\OT1/cmr/m/n/10.95 )$ \T1/cmr/m/n/10.95 (Sec-tion [][]6.1[][]'s code cor-re-spon-dence) and
+ []
+
+[51] [52
+
+
+]
+Chapter 7.
+[53
+
+]
+Overfull \hbox (27.06288pt too wide) in paragraph at lines 3227--3238
+[]\T1/cmr/m/n/10.95 Let $\OML/cmm/m/it/10.95 Y[] \OT1/cmr/m/n/10.95 := ^^H[](\OML/cmm/m/it/10.95 X[]\OT1/cmr/m/n/10.95 )$\T1/cmr/m/n/10.95 . Since $\OT1/cmr/m/n/10.95 ^^H[]$ \T1/cmr/m/n/10.95 is a fixed dif-feo-mor-phism, $[] \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 d\OT1/cmr/m/n/10.95 ^^H[]\OMS/cmsy/m/n/10.95 j[][] \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 d\OT1/cmr/m/n/10.95 ^^H[]\OMS/cmsy/m/n/10.95 j[] \OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 X[]; t\OT1/cmr/m/n/10.95 ) =
+ []
+
+
+Overfull \hbox (0.3741pt too wide) in paragraph at lines 3255--3258
+[]\T1/cmr/bx/n/10.95 Definition 7.3 \T1/cmr/m/n/10.95 (Scaled dot-prod-uct self--at-ten-tion; re-stated)\T1/cmr/bx/n/10.95 . []\T1/cmr/m/n/10.95 For to-kens $\OML/cmm/m/it/10.95 X \OT1/cmr/m/n/10.95 = (\OML/cmm/m/it/10.95 x[]; [] ; x[]\OT1/cmr/m/n/10.95 )[] \OMS/cmsy/m/n/10.95 2
+ []
+
+[54] [55] [56]
+Overfull \hbox (0.74669pt too wide) in paragraph at lines 3471--3476
+\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 h[]; h[]; d[]\OT1/cmr/m/n/10.95 )$\T1/cmr/m/n/10.95 , de-pend-ing only on in-vari-ants, is un-changed too. Hence $\OML/cmm/m/it/10.95 v[] \OMS/cmsy/m/n/10.95 7! [][] \OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 ([] ) \OML/cmm/m/it/10.95 Qx[] \OT1/cmr/m/n/10.95 =
+ []
+
+[57]
+Overfull \hbox (1.1514pt too wide) in paragraph at lines 3504--3519
+[]\T1/cmr/bx/n/10.95 Axial (rotation-vector) out-puts get the wrong re-flec-tion par-ity un-less tracked
+ []
+
+[58]
+Chapter 8.
+
+Overfull \hbox (55.24168pt too wide) in paragraph at lines 3535--3545
+\T1/cmr/m/n/10.95 of en-abling a reader to open the ac-tual net-work source (\T1/zi4/m/n/10.95 net/ \T1/cmr/m/n/10.95 in \T1/zi4/m/n/10.95 SigmaFlow_Development/src/sigmadock/\T1/cmr/m/n/10.95 )
+ []
+
+[59
+
+
+]
+Overfull \hbox (46.53084pt too wide) in paragraph at lines 3653--3665
+\T1/cmr/m/n/10.95 tion $\OML/cmm/m/it/10.95 F$ \T1/cmr/m/n/10.95 act-ing on (steer-able fea-ture, edge di-rec-tion) pairs, de-fine $[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 h; e[]\OT1/cmr/m/n/10.95 ) := \OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q[]\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 F[]D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q[]\OT1/cmr/m/n/10.95 )[]\OML/cmm/m/it/10.95 h; [][]$\T1/cmr/m/n/10.95 ;
+ []
+
+[60]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 3700.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 3700.
+
+[61]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 3767.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 3767.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 3767.
+
+
+Overfull \hbox (16.72687pt too wide) in paragraph at lines 3797--3803
+\T1/cmr/m/n/10.95 rate, invariant-only com-pu-ta-tion path) and $\OML/cmm/m/it/10.95 h[] \OMS/cmsy/m/n/10.95 7! \OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 h[]$\T1/cmr/m/n/10.95 , so $\OML/cmm/m/it/10.95 ^^[\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 g[]\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 h[] \OMS/cmsy/m/n/10.95 7! \OML/cmm/m/it/10.95 ^^[\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 g[]\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 h[] \OT1/cmr/m/n/10.95 =
+ []
+
+[62]
+Underfull \hbox (badness 10000) in paragraph at lines 3814--3836
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 net/activation.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 SeparableS2Activation \T1/cmr/m/n/10.95 (con-fig de-fault:
+ []
+
+[63]
+Overfull \hbox (0.24213pt too wide) in paragraph at lines 3895--3903
+[]\T1/cmr/bx/n/10.95 Proposition 8.7 \T1/cmr/m/n/10.95 (At-ten-tion weights must be in-vari-ant scalars)\T1/cmr/bx/n/10.95 . []\T1/cmr/m/it/10.95 Let $\OML/cmm/m/it/10.95 h[] \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 h[] \OT1/cmr/m/n/10.95 + [][] \OML/cmm/m/it/10.95 a[] m[]$\T1/cmr/m/it/10.95 ,
+ []
+
+
+Overfull \hbox (24.711pt too wide) in paragraph at lines 3906--3916
+[]\T1/cmr/m/n/10.95 If $\OML/cmm/m/it/10.95 a[]$ \T1/cmr/m/n/10.95 is in-vari-ant and $\OML/cmm/m/it/10.95 m[] \OMS/cmsy/m/n/10.95 7! \OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 m[]$\T1/cmr/m/n/10.95 : $[][] \OML/cmm/m/it/10.95 a[]m[] \OMS/cmsy/m/n/10.95 7! [][] \OML/cmm/m/it/10.95 a[]D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 m[] \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 D[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 Q\OT1/cmr/m/n/10.95 ) [][] \OML/cmm/m/it/10.95 a[]m[]$\T1/cmr/m/n/10.95 ,
+ []
+
+
+Overfull \hbox (8.43883pt too wide) in paragraph at lines 3928--3944
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 net/transformer_block.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 SO2EquivariantGraphAttention.forward 
+ []
+
+[64]
+Underfull \hbox (badness 7540) in paragraph at lines 3986--4023
+\T1/cmr/bx/n/10.95 Interpretation: \T1/cmr/m/n/10.95 for each of the (de-fault) \T1/cmr/bx/n/10.95 ten \T1/cmr/m/n/10.95 cat-e-gor-i-cal atom fea-tures
+ []
+
+[65]
+Underfull \hbox (badness 4467) in paragraph at lines 4038--4063
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 net/model.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 EquiformerV2.forward\T1/cmr/m/n/10.95 , fi-nal \T1/zi4/m/n/10.95 force_block \T1/cmr/m/n/10.95 (an
+ []
+
+
+Underfull \hbox (badness 2753) in paragraph at lines 4038--4063
+\T1/zi4/m/n/10.95 SO2EquivariantGraphAttention \T1/cmr/m/n/10.95 with a sin-gle out-put chan-nel), then \T1/zi4/m/n/10.95 forces =
+ []
+
+[66]
+Overfull \hbox (15.41061pt too wide) in paragraph at lines 4094--4108
+[]\T1/cmr/m/it/10.95 Caution \T1/cmr/m/n/10.95 8.9 (This code-base im-ple-ments a hy-brid, not pure V2)\T1/cmr/m/it/10.95 . []\T1/cmr/m/n/10.95 The con-struc-tor of \T1/zi4/m/n/10.95 EquiformerV2
+ []
+
+
+Overfull \hbox (16.79839pt too wide) in paragraph at lines 4114--4131
+ [] 
+ []
+
+
+Overfull \hbox (32.81216pt too wide) in paragraph at lines 4136--4150
+\T1/cmr/m/n/10.95 (\T1/zi4/m/n/10.95 net/layer_norm.py\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 net/timestep_embedder.py\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 net/activation.py \T1/cmr/m/n/10.95 in full, \T1/zi4/m/n/10.95 chem/processing.py\T1/cmr/m/n/10.95 )
+ []
+
+[67] [68] [69
+
+
+]
+Chapter 9.
+[70
+
+] [71] [72] [73]
+Underfull \hbox (badness 1960) in paragraph at lines 4480--4508
+\T1/cmr/bx/n/10.95 Implementation: \T1/cmr/m/n/10.95 the de-vi-a-tion for-mula $\OML/cmm/m/it/10.95 d[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 ) = [] \OMS/cmsy/m/n/10.95 k\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 )\OMS/cmsy/m/n/10.95 k ^^@ k\OML/cmm/m/it/10.95 x[] \OMS/cmsy/m/n/10.95 ^^@
+ []
+
+
+Underfull \hbox (badness 7759) in paragraph at lines 4480--4508
+\OML/cmm/m/it/10.95 x[]\OMS/cmsy/m/n/10.95 k []$\T1/cmr/m/n/10.95 , com-puted at \T1/zi4/m/n/10.95 net/model.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 compute_edge_embedding\T1/cmr/m/n/10.95 's ``bound-ary'' edge
+ []
+
+
+Underfull \hbox (badness 5548) in paragraph at lines 4480--4508
+\T1/cmr/m/n/10.95 branch, us-ing \T1/zi4/m/n/10.95 pos_0 \T1/cmr/m/n/10.95 as the ref-er-ence ge-om-e-try and \T1/zi4/m/n/10.95 pos_t \T1/cmr/m/n/10.95 as the cur-rent
+ []
+
+[74]
+Overfull \hbox (27.36768pt too wide) in paragraph at lines 4528--4528
+[]\T1/cmr/bx/n/14.4 Symmetry: gauge in-vari-ance and stochas-tic $\OML/cmm/m/it/14.4 SE\OT1/cmr/m/n/14.4 (3)$\T1/cmr/bx/n/14.4 -equivariance 
+ []
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 4528.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 4528.
+
+[75]
+Overfull \hbox (30.8724pt too wide) in paragraph at lines 4589--4605
+\T1/zi4/m/n/10.95 SO3Diffuser.sample_ref \T1/cmr/m/n/10.95 lit-er-ally eval-u-at-ing the for-ward ker-nel at $\OML/cmm/m/it/10.95 t \OT1/cmr/m/n/10.95 = 1$ \T1/cmr/m/n/10.95 to ob-tain an approximately-
+ []
+
+[76]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 4710.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `\varphi' on input line 4710.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 4710.
+
+[77]
+Underfull \hbox (badness 7186) in paragraph at lines 4787--4809
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 denoiser.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 _compute_forces\T1/cmr/m/n/10.95 ; the net-work call it-self is
+ []
+
+[78]
+Overfull \hbox (249.01831pt too wide) detected at line 4882
+[][][][]\OML/cmm/m/it/10.95 dT \OT1/cmr/m/n/10.95 = [] []\OML/cmm/m/it/10.95 ;  dW \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 I[]^^\[] [];
+ []
+
+[79] [80]
+Overfull \hbox (36.09738pt too wide) in paragraph at lines 4981--4989
+\T1/cmr/m/n/10.95 ing this doc-u-ment, the con-struc-tor de-fault is \T1/zi4/m/n/10.95 rot_score_method="space"\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 rot_score_scaling="rms"\T1/cmr/m/n/10.95 .
+ []
+
+
+Underfull \hbox (badness 1107) in paragraph at lines 4995--5000
+\T1/cmr/bx/n/10.95 Interpretation: \T1/cmr/m/n/10.95 four terms, each a $\OML/cmm/m/it/10.95 ^^U$\T1/cmr/m/n/10.95 -weighted squared er-ror, match-ing []'s
+ []
+
+[81]
+Underfull \hbox (badness 8094) in paragraph at lines 5048--5064
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 sampling.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 sampler\T1/cmr/m/n/10.95 , match-ing \T1/zi4/m/n/10.95 conf/sampling/base.yaml\T1/cmr/m/n/10.95 's
+ []
+
+
+Underfull \hbox (badness 6510) in paragraph at lines 5048--5064
+\T1/cmr/bx/n/10.95 Interpretation: \T1/cmr/m/n/10.95 de-fault \T1/zi4/m/n/10.95 num_steps$\OT1/cmr/m/n/10.95 = 25$\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 t_min$\OT1/cmr/m/n/10.95 = 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 005$\T1/cmr/m/n/10.95 , \T1/zi4/m/n/10.95 rho$\OT1/cmr/m/n/10.95 = 3\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 0$\T1/cmr/m/n/10.95 , de-
+ []
+
+
+Underfull \hbox (badness 1412) in paragraph at lines 5048--5064
+\T1/cmr/m/n/10.95 fault \T1/zi4/m/n/10.95 discretization="edm" \T1/cmr/m/n/10.95 (the Kar-ras et al. power-law-in-$\OT1/cmr/m/n/10.95 1\OML/cmm/m/it/10.95 =^^Z$ \T1/cmr/m/n/10.95 sched-ule, $\OML/cmm/m/it/10.95 t[] \OT1/cmr/m/n/10.95 =
+ []
+
+
+Underfull \hbox (badness 2608) in paragraph at lines 5048--5064
+[]\OML/cmm/m/it/10.95 t[] \OT1/cmr/m/n/10.95 + [](\OML/cmm/m/it/10.95 t[] \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 t[]\OT1/cmr/m/n/10.95 )[][]$\T1/cmr/m/n/10.95 , rather than the sim-pler \T1/zi4/m/n/10.95 "power" \T1/cmr/m/n/10.95 sched-ule $\OML/cmm/m/it/10.95 t[] \OT1/cmr/m/n/10.95 =
+ []
+
+
+Underfull \hbox (badness 1132) in paragraph at lines 5067--5093
+[]\T1/cmr/bx/n/10.95 Mathematical ob-ject: \T1/cmr/m/n/10.95 one reverse-time step (Euler--Maruyama for trans-la-tion,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 5067--5093
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 sampling.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 sampler\T1/cmr/m/n/10.95 's loop body, com-pos-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 5067--5093
+\T1/cmr/m/n/10.95 ing \T1/zi4/m/n/10.95 denoiser._compute_forces $\OMS/cmsy/m/n/10.95 !$ \T1/zi4/m/n/10.95 _compute_fragment_dynamics $\OMS/cmsy/m/n/10.95 !$
+ []
+
+LaTeX Font Info:    Font shape `T1/zi4/b/n' will be
+(Font)              scaled to size 10.95pt on input line 5106.
+
+Underfull \hbox (badness 10000) in paragraph at lines 5096--5117
+\T1/cmr/bx/n/10.95 Implementation: \T1/cmr/m/n/10.95 quadratic de-cay $[] \OT1/cmr/m/n/10.95 =
+ []
+
+[82] [83] [84
+
+
+]
+Chapter 10.
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 5149.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 5149.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 5149.
+
+[85
+
+]
+Overfull \hbox (25.66739pt too wide) in paragraph at lines 5252--5265
+\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 )) = \OML/cmm/m/it/10.95 x[]$\T1/cmr/m/n/10.95 ), we get $\OML/cmm/m/it/10.95 q\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 ) = \OML/cmm/m/it/10.95 p[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 )$\T1/cmr/m/n/10.95 , con-stant in $\OML/cmm/m/it/10.95 t$\T1/cmr/m/n/10.95 . Dif-fer-en-ti-at-ing $\OML/cmm/m/it/10.95 q\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 ) = \OML/cmm/m/it/10.95 p[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 ))\OML/cmm/m/it/10.95 J[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 ))$
+ []
+
+
+Overfull \hbox (4.35059pt too wide) in paragraph at lines 5252--5265
+\T1/cmr/m/n/10.95 us-ing the prod-uct rule and the chain rule (treat-ing $\OML/cmm/m/it/10.95 p[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 ))$\T1/cmr/m/n/10.95 's time-derivative as $\OML/cmm/m/it/10.95 @[]p[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 )) +
+ []
+
+
+Overfull \hbox (10.01628pt too wide) in paragraph at lines 5252--5265
+\OMS/cmsy/m/n/10.95 r\OML/cmm/m/it/10.95 p[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 )) \OMS/cmsy/m/n/10.95 ^^A \OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 ))$\T1/cmr/m/n/10.95 , the ma-te-rial deriva-tive), and us-ing [] for $[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 )) = \OML/cmm/m/it/10.95 J[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^^[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x[]\OT1/cmr/m/n/10.95 ))(\OMS/cmsy/m/n/10.95 r ^^A
+ []
+
+[86] [87]
+Overfull \hbox (44.62386pt too wide) detected at line 5427
+\OMS/cmsy/m/n/10.95 L[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^R\OT1/cmr/m/n/10.95 ) = \U/msb/m/n/10.95 E[][]\OMS/cmsy/m/n/10.95 k\OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x; t\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x\OT1/cmr/m/n/10.95 )\OMS/cmsy/m/n/10.95 k[][]\OML/cmm/m/it/10.95 ;  \OMS/cmsy/m/n/10.95 L[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^R\OT1/cmr/m/n/10.95 ) = \U/msb/m/n/10.95 E[][]\OMS/cmsy/m/n/10.95 k\OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x; t\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x \OMS/cmsy/m/n/10.95 j \OML/cmm/m/it/10.95 z\OT1/cmr/m/n/10.95 )\OMS/cmsy/m/n/10.95 k[][]\OML/cmm/m/it/10.95 :
+ []
+
+[88]
+Overfull \hbox (66.65857pt too wide) detected at line 5473
+[][][][]\OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x \OMS/cmsy/m/n/10.95 j \OML/cmm/m/it/10.95 z\OT1/cmr/m/n/10.95 ) = [] = \OML/cmm/m/it/10.95 z \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 x[] []x \OT1/cmr/m/n/10.95 = (1 \OMS/cmsy/m/n/10.95 ^^@ \OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 x[] \OT1/cmr/m/n/10.95 + \OML/cmm/m/it/10.95 tz[]
+ []
+
+[89] [90]
+Chapter 11.
+
+Overfull \hbox (10.59557pt too wide) in paragraph at lines 5606--5611
+\T1/cmr/m/it/10.95 has the same gra-di-ents and min-imis-ers, in $\OML/cmm/m/it/10.95 ^^R$\T1/cmr/m/it/10.95 , as the (in-tractable) marginal loss $\U/msb/m/n/10.95 E[]\OT1/cmr/m/n/10.95 [\OMS/cmsy/m/n/10.95 k\OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 x; t\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 ^^@
+ []
+
+[91
+
+
+]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 5664.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 5664.
+
+
+Overfull \hbox (1.42168pt too wide) in paragraph at lines 5692--5697
+[]\T1/cmr/bx/n/10.95 Proposition 11.6 \T1/cmr/m/n/10.95 (Con-stant right-triv-i-alised ve-loc-ity of the geodesic)\T1/cmr/bx/n/10.95 . []\T1/cmr/m/it/10.95 Let $\OT1/cmr/m/n/10.95 ^^D := [](\OML/cmm/m/it/10.95 R[]R[]\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 2
+ []
+
+
+Overfull \hbox (20.83025pt too wide) in paragraph at lines 5706--5707
+[]\T1/cmr/bx/n/10.95 Proposition 11.7 \T1/cmr/m/n/10.95 (The cur-ren-t--point form: $\OML/cmm/m/it/10.95 SO\OT1/cmr/m/n/10.95 (3)$ \T1/cmr/m/n/10.95 spe-cial-i-sa-tion of The-o-rem [][]11.4[][])\T1/cmr/bx/n/10.95 . []$[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 R[]R[]\OT1/cmr/m/n/10.95 ) =
+ []
+
+[92]
+Overfull \hbox (20.1022pt too wide) detected at line 5750
+\OMS/cmsy/m/n/10.95 L[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 ^^R\OT1/cmr/m/n/10.95 ) = \U/msb/m/n/10.95 E[][][]\OML/cmm/m/it/10.95 u[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 R[]; t\OT1/cmr/m/n/10.95 ) \OMS/cmsy/m/n/10.95 ^^@ \OT1/cmr/m/n/10.95 ^^D[][][][]\OML/cmm/m/it/10.95 ;  R[] \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 R[] []\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 t\OT1/cmr/m/n/10.95 ^^D)\OML/cmm/m/it/10.95 ;  \OT1/cmr/m/n/10.95 ^^D = [](\OML/cmm/m/it/10.95 R[]R[]\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 ;
+ []
+
+[93]
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 5816.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `superscript' on input line 5816.
+
+
+Package hyperref Warning: Token not allowed in a PDF string (Unicode):
+(hyperref)                removing `math shift' on input line 5816.
+
+[94] [95
+
+
+]
+Chapter 12.
+
+Overfull \hbox (99.69435pt too wide) in alignment at lines 5860--5868
+ [] [] [] 
+ []
+
+
+Overfull \hbox (99.69435pt too wide) in alignment at lines 5868--5872
+ [] [] [] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 5873--5873
+[]|\T1/cmr/m/n/10.95 State space
+ []
+
+
+Underfull \hbox (badness 7415) in paragraph at lines 5873--5873
+\OMS/cmsy/m/n/10.95 M[] \OT1/cmr/m/n/10.95 = \OML/cmm/m/it/10.95 SE\OT1/cmr/m/n/10.95 (3)[]$\T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 5874--5874
+[]|\T1/cmr/m/n/10.95 Fragmentation
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 5874--5874
+\T1/cmr/m/n/10.95 (FR3D), tri-an-gu-
+ []
+
+
+Underfull \hbox (badness 2990) in paragraph at lines 5878--5878
+[]|\T1/cmr/m/n/10.95 Prior $\OML/cmm/m/it/10.95 p[]$\T1/cmr/m/n/10.95 , trans-la-
+ []
+
+
+Underfull \hbox (badness 2213) in paragraph at lines 5879--5879
+[]|$\OMS/cmsy/m/n/10.95 ^^Y U\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 SO\OT1/cmr/m/n/10.95 (3))$ \T1/cmr/m/n/10.95 (VE sched-ule's
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 5883--5883
+[]|\T1/cmr/m/n/10.95 Section [][]9.8.4[][]'s $\OML/cmm/m/it/10.95 t$\T1/cmr/m/n/10.95 -dependent
+ []
+
+
+Underfull \hbox (badness 3396) in paragraph at lines 5884--5884
+[]|\T1/cmr/m/n/10.95 four (\T1/zi4/m/n/10.95 T_score,R_score,T0,R0\T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 4108) in paragraph at lines 5885--5886
+[]|\T1/cmr/m/n/10.95 deterministic ODE (ar-chi-tec-
+ []
+
+
+Underfull \hbox (badness 1442) in paragraph at lines 5886--5887
+[]|$\OML/cmm/m/it/10.95 t \OT1/cmr/m/n/10.95 = 0$ \T1/cmr/m/n/10.95 noise, $\OML/cmm/m/it/10.95 t \OT1/cmr/m/n/10.95 = 1$ \T1/cmr/m/n/10.95 data
+ []
+
+
+Overfull \hbox (99.69435pt too wide) in alignment at lines 5872--5888
+ [] [] [] 
+ []
+
+ignored error: Infinite glue shrinkage found in box being split [96
+
+] [97] [98]
+Underfull \hbox (badness 10000) in paragraph at lines 6040--6045
+[]\T1/cmr/bx/n/10.95 Mathematical ob-ject: \T1/cmr/m/n/10.95 the net-work's pre-dicted vec-tor field,
+ []
+
+[99]
+Overfull \hbox (163.94997pt too wide) detected at line 6106
+[]
+ []
+
+
+Underfull \hbox (badness 1565) in paragraph at lines 6106--6128
+\T1/cmr/m/n/10.95 whose total-loss com-bi-na-tion $[] \OT1/cmr/m/n/10.95 = [] \OMS/cmsy/m/n/10.95 ^^A [] \OT1/cmr/m/n/10.95 +
+ []
+
+
+Overfull \hbox (69.48439pt too wide) in paragraph at lines 6154--6173
+[]\T1/cmr/bx/n/10.95 Get ini-tial (data-time) states. $[][]\OML/cmm/m/it/10.95 ;  [][];  R[];  [] \OT1/cmr/m/n/10.95 = []([])$\T1/cmr/m/n/10.95 :
+ []
+
+[100]
+Overfull \hbox (18.46437pt too wide) in paragraph at lines 6173--6178
+[]\T1/cmr/bx/n/10.95 Sample the con-di-tional path. $\OT1/cmr/m/n/10.95 ([][]\OML/cmm/m/it/10.95 ; R[]; u[]; u[]\OT1/cmr/m/n/10.95 ) = []([][]\OML/cmm/m/it/10.95 ; R[]; t[]\OT1/cmr/m/n/10.95 )$\T1/cmr/m/n/10.95 ,
+ []
+
+
+Overfull \hbox (5.12086pt too wide) in paragraph at lines 6185--6191
+\T1/cmr/m/n/10.95 dence), iden-ti-cal in cost and mech-a-nism to Sig-maDock's own single-network-call Newton--
+ []
+
+
+Overfull \hbox (12.34271pt too wide) in paragraph at lines 6191--6198
+[]\OT1/cmr/m/n/10.95 ([] )$ \T1/cmr/m/n/10.95 ([]); $\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 dT; []\OT1/cmr/m/n/10.95 ) = []([] )$
+ []
+
+
+Overfull \hbox (28.16478pt too wide) in paragraph at lines 6198--6201
+[]\T1/cmr/bx/n/10.95 Predicted vec-tor field. $\OT1/cmr/m/n/10.95 ([]\OML/cmm/m/it/10.95 ; []\OT1/cmr/m/n/10.95 ) = []([] )$\T1/cmr/m/n/10.95 ,
+ []
+
+
+Overfull \hbox (178.95009pt too wide) in paragraph at lines 6201--6208
+[]\T1/cmr/bx/n/10.95 Loss. \T1/cmr/m/n/10.95 Sec-tion [][]12.6[][]'s two-term \T1/zi4/m/n/10.95 compute_losses\T1/cmr/m/n/10.95 , weighted and summed by \T1/zi4/m/n/10.95 trainer.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 SigmaLightningModule._shared_step\T1/cmr/m/n/10.95 ,
+ []
+
+
+Overfull \hbox (25.35158pt too wide) in paragraph at lines 6223--6258
+\T1/cmr/bx/n/10.95 Implementation: \T1/zi4/m/n/10.95 sampling.py\T1/cmr/m/n/10.95 ::\T1/zi4/m/n/10.95 sampler \T1/cmr/m/n/10.95 (in \T1/zi4/m/n/10.95 SigmaFlow_Development/src/sigmadock/diff/\T1/cmr/m/n/10.95 ) 
+ []
+
+[101]
+Overfull \hbox (27.27432pt too wide) in paragraph at lines 6262--6283
+\T1/cmr/m/n/10.95 iso-lates a ques-tion this chap-ter's deriva-tions make pre-cise: does the ODE in-te-gra-tion/reconstruction
+ []
+
+[102] [103] [104
+
+
+]
+Chapter 13.
+
+Underfull \hbox (badness 2772) in paragraph at lines 6389--6389
+[]|\T1/zi4/m/n/10.95 Omega \T1/cmr/m/n/10.95 (an-gle from
+ []
+
+
+Overfull \hbox (57.02867pt too wide) in paragraph at lines 6389--6389
+[]|$[]\OT1/cmr/m/n/10.95 (\OMS/cmsy/m/n/10.95 ^^A\OML/cmm/m/it/10.95 ; \OMS/cmsy/m/n/10.95 ^^@\OT1/cmr/m/n/10.95 1[]10[]\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 1[]10[])$
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6389--6389
+\T1/cmr/m/n/10.95 (Sig-maFlow);
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6389--6389
+\OT1/cmr/m/n/10.95 (\OMS/cmsy/m/n/10.95 ^^@\OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 99\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 99)$
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6389--6389
+\T1/cmr/m/n/10.95 (orig-i-nal Sig-
+ []
+
+
+Underfull \hbox (badness 7151) in paragraph at lines 6389--6389
+\T1/cmr/m/n/10.95 maDock, now
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6389--6389
+\T1/cmr/m/n/10.95 recog-nised as
+ []
+
+
+Underfull \hbox (badness 1062) in paragraph at lines 6389--6389
+\T1/cmr/m/n/10.95 a bug for the
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6389--6389
+\T1/cmr/m/n/10.95 flow-matching
+ []
+
+
+Overfull \hbox (51.08557pt too wide) in paragraph at lines 6390--6390
+[]|\T1/zi4/m/n/10.95 rotation_vector_from_matrix| 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+[]|\T1/cmr/m/n/10.95 soft blend
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+\T1/cmr/m/n/10.95 (\T1/zi4/m/n/10.95 isclose\T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+[][]\OT1/cmr/m/n/10.95 10[]$\T1/cmr/m/n/10.95 )
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+\T1/cmr/m/n/10.95 near $\OML/cmm/m/it/10.95 ^^R[]\OT1/cmr/m/n/10.95 0$\T1/cmr/m/n/10.95 ;
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+\T1/cmr/m/n/10.95 hard/loose
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+\T1/cmr/m/n/10.95 blend
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6390--6390
+\T1/cmr/m/n/10.95 ($[][]\OT1/cmr/m/n/10.95 10[]$\T1/cmr/m/n/10.95 )
+ []
+
+
+Underfull \hbox (badness 6173) in paragraph at lines 6390--6391
+[]|\T1/cmr/m/n/10.95 avoids $[] \OML/cmm/m/it/10.95 ^^R[]\OT1/cmr/m/n/10.95 0$ \T1/cmr/m/n/10.95 di-vi-sion in $[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 R\OT1/cmr/m/n/10.95 ) =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6391--6391
+[]|\T1/zi4/m/n/10.95 d_log_f_d_omega
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6391--6391
+\T1/cmr/m/n/10.95 (IGSO(3) score
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6391--6391
+[]|\T1/cmr/m/n/10.95 hard branch
+ []
+
+
+Underfull \hbox (badness 1112) in paragraph at lines 6391--6391
+\T1/cmr/m/n/10.95 at $\OML/cmm/m/it/10.95 ^^[[] < \OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 3$\T1/cmr/m/n/10.95 :
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6391--6391
+\T1/cmr/m/n/10.95 ap-prox-i-ma-tion
+ []
+
+
+Overfull \hbox (40.13559pt too wide) in paragraph at lines 6392--6392
+[]|\T1/zi4/m/n/10.95 get_fragment_mass_inertia| 
+ []
+
+
+Overfull \hbox (47.1954pt too wide) in paragraph at lines 6392--6392
+[]\OT1/cmr/m/n/10.95 (10[] [](\OML/cmm/m/it/10.95 I\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 =\OT1/cmr/m/n/10.95 3\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 10[])$\T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6392--6392
+\T1/cmr/m/n/10.95 plus $\OT1/cmr/m/n/10.95 +10[]\OML/cmm/m/it/10.95 I$
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6393--6393
+[]|\T1/zi4/m/n/10.95 omega$\OT1/cmr/m/n/10.95 =
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6393--6393
+[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 dW\OT1/cmr/m/n/10.95 )$
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6393--6393
+\T1/cmr/m/n/10.95 clamped en-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6393--6393
+\T1/cmr/m/n/10.95 try-wise to
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6394--6394
+[]|\T1/zi4/m/n/10.95 d_f_igso3_d_omega\T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6394--6394
+[]|\T1/cmr/m/n/10.95 fixed trun-ca-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6394--6394
+\T1/cmr/m/n/10.95 terms; an-gle
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6394--6394
+\T1/cmr/m/n/10.95 grid ex-cludes
+ []
+
+
+Underfull \hbox (badness 6542) in paragraph at lines 6396--6396
+\OML/cmm/m/it/10.95 r[]\OT1/cmr/m/n/10.95 ]$\T1/cmr/m/n/10.95 , degree-
+ []
+
+
+Underfull \hbox (badness 1062) in paragraph at lines 6396--6396
+\T1/cmr/m/n/10.95 ish-ing (with 2
+ []
+
+
+Underfull \hbox (badness 3364) in paragraph at lines 6396--6396
+\T1/cmr/m/n/10.95 deriva-tives) at
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+[]|\T1/cmr/m/n/10.95 Assorted \T1/zi4/m/n/10.95 vee\T1/cmr/m/n/10.95 ,
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+[]|\T1/cmr/m/it/10.95 print\T1/cmr/m/n/10.95 -only
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+\T1/cmr/m/n/10.95 warn-ings (not
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+\T1/cmr/m/n/10.95 raised ex-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+\T1/cmr/m/n/10.95 cep-tions) on
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+\T1/cmr/m/n/10.95 a non-skew-
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6397--6397
+\T1/cmr/m/n/10.95 symmetric
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 6398--6398
+\T1/cmr/m/n/10.95 caught up-
+ []
+
+ignored error: Infinite glue shrinkage found in box being split [105
+
+]
+Overfull \hbox (18.76921pt too wide) in paragraph at lines 6406--6424
+\T1/cmr/m/n/10.95 Every per-fragment or per-molecule re-duc-tion en-coun-tered in Chap-ters [][]9[][] and [][]12[][] (net force/torque,
+ []
+
+[106]
+Overfull \hbox (335.1626pt too wide) in paragraph at lines 6449--6463
+ [] 
+ []
+
+[107] [108] [109
+
+] (./theory.aux)
+ ***********
+LaTeX2e <2025-11-01>
+L3 programming layer <2025-12-29>
+ ***********
+Package rerunfilecheck Info: File `theory.out' has not changed.
+(rerunfilecheck)             Checksum: 5958885D09A6D7C1B1831C353A5A6595;34604.
+ ) 
+Here is how much of TeX's memory you used:
+ 28551 strings out of 469519
+ 570490 string characters out of 5468256
+ 1001174 words of memory out of 5000000
+ 56297 multiletter control sequences out of 15000+600000
+ 671181 words of font info for 182 fonts, out of 8000000 for 9000
+ 14 hyphenation exceptions out of 8191
+ 106i,13n,108p,615b,1281s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbi1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0800.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2074.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1440.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2488.600pk><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4b.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4r.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmex8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on theory.pdf (111 pages, 918226 bytes).
+PDF statistics:
+ 3086 PDF objects out of 3580 (max. 8388607)
+ 2356 compressed objects within 24 object streams
+ 450 named destinations out of 1000 (max. 500000)
+ 981 words of extra memory for PDF output out of 10000 (max. 10000000)
+

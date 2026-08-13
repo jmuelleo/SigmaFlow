@@ -1,0 +1,20 @@
+1) src/diff/utils 
+Prüfen ob autograd_gradients wo verwendet wird <- potentiell toter Code
+
+2) src/diff/r3_flow_matcher
+self.sigma_min wird nicht weiter verwendet <- potentiell toter Code
+Im Moment direkte lineare Interpolation (1-t)x0 + tx1 <- potentiell anpassbar
+
+calc_trans_vector_field <- Vector field zum Zeitpunkt x_t könnte für Training notwendig sein <- nur fürs Debugging existent!
+
+3) src/diff/so3_utils
+expmap <-  skew_sym <- gibt Kommentar ob man average für numerische Stabilität wählen sollte
+sample_uniform <- verwendet Haar Maß <- wird das in flow matching wirklich benötigt?
+
+4) src/diff/so3_flow_matcher
+ Clamp $[-1+10^{-7}, 1-10^{-7}]$ <- war in so3_utils <- könnte man noch genauer machen wenn man will
+calc_rot_vector_field <- auch nur für Debugging nötig
+
+5) src/diff/se3_flow_matcher
+
+6) 

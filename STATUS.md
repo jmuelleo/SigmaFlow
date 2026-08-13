@@ -4,7 +4,2118 @@ Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
 neuen Session: diese Datei zuerst lesen, dann nahtlos weitermachen. Am Ende
 jeder Session (oder vor einer Pause): diese Datei aktualisieren.
 
-## 🔖 PAUSE-PUNKT #13 (2026-07-26) — AKTUELL, zuerst lesen
+**Paralleles Vorhaben, separat getrackt:** seit 2026-07-28 läuft zusätzlich
+ein vollständiger, Zeile-für-Zeile-Code-Walkthrough des gesamten Repos (alle
+66 `.py`-Dateien, ~20.225 Zeilen) zu reinen Lernzwecken für den User — siehe
+`CODE_WALKTHROUGH.md` für den Fortschritts-Tracker. Das ist unabhängig vom
+inhaltlichen Entwicklungsfortschritt unten (kein neuer Code, keine
+Änderungen) und sollte bei Session-Start ebenfalls geprüft werden, falls der
+User dort weitermachen will.
+
+---
+
+# ⏭️ HIER WEITERMACHEN (Stand 2026-08-13)
+
+## 🔴 BUG GEFUNDEN (2026-08-13): `sdf_regex` der Experimentdatei wird beim Sampling IMMER verworfen
+
+`sampling_setup.py::build_sampling_datafront`:
+
+```python
+ec = get_experiment_config(str(cfg.experiments.name), data_dir)  # laedt z.B. posebusters.yaml
+if "sdf_regex" in cfg.experiments:      # <- IMMER wahr, base.yaml definiert den Schluessel
+    ec.sdf_regex = str(cfg.experiments.sdf_regex)
+```
+
+Die Bedingung sollte "nur wenn der Nutzer etwas per CLI gesetzt hat" bedeuten.
+Weil `conf/sampling/base.yaml:15` aber `sdf_regex: ".*ligand.sdf$"` fest
+definiert, greift sie immer. **Der Wert aus `conf/experiments/*.yaml` ist beim
+Sampling toter Code.**
+
+**Wirkung, empirisch bestaetigt** (aufgeloeste Config aus `predictions.yaml`
+zeigt `.*ligand.sdf$`, obwohl `posebusters.yaml` `.*ligands.sdf$` sagt):
+- Alle Sampling-Laeufe ohne Override lasen `<cid>_ligand.sdf` — die
+  KANONISCHE Einzelkopie. Zufaellig die richtige Datei.
+- Der einzige abweichende Lauf war 8553984 (alter SigmaDock-Vergleich), der
+  `experiments.sdf_regex=".*ligands.sdf$"` explizit uebergab und dadurch die
+  Mehrkopie-Datei las. **Das erzeugte die 42 Phantom-Ausreisser.**
+- **Gute Nachricht fuer Ziel 1:** seeds10, Schritt-Sweep, rho-Sweep und die
+  12h-Laeufe lasen alle dieselbe kanonische Datei. Datenprovenienz geklaert.
+
+**⚠️ FIX NUR ALS PAAR ANWENDEN.** Nur den Guard zu reparieren macht es
+SCHLIMMER: dann greift wieder `posebusters.yaml` mit `.*ligands.sdf$`, also
+die Mehrkopie-Datei, und das Artefakt waere der Normalzustand.
+
+```yaml
+# conf/sampling/base.yaml
+experiments:
+  sdf_regex: null                 # null = Wert der Experimentdatei benutzen
+# conf/experiments/posebusters.yaml
+sdf_regex: ".*ligand.sdf$"        # SINGULAR, kanonische Einzelkopie
+```
+```python
+# sampling_setup.py
+if nonempty_cfg_str(cfg.experiments.get("sdf_regex")):
+    ec.sdf_regex = str(cfg.experiments.sdf_regex)
+```
+
+Betroffen ist NUR `sdf_regex`; `pdb_regex` steht nicht in `base.yaml`, dessen
+Guard greift korrekt. **Nebenbefund:** `dummy_crossdock.yaml` nutzt
+`sdf_regex: "query_.*\.sdf$"` — ueber den Sampling-Pfad ebenfalls
+ueberschrieben, das Cross-Docking-Experiment findet seine Query-SDFs also
+vermutlich nie. Nicht dringend, aber notiert.
+
+
+## 🚨🚨🚨 2026-08-13: die 42 SigmaDock-Ausreisser haben NIE EXISTIERT
+
+Auswertungsartefakt, kein Modellfehler. Vollstaendig nachgewiesen, nicht
+vermutet. Kette der Belege, jede einzeln gemessen:
+
+1. Der alte Vergleichslauf (Job 8553984, `sampling_output_pb_full_12h`)
+   uebergab `experiments.sdf_regex=".*ligands.sdf$"` und las damit die
+   PLURAL-Datei. **84 der 209 `_ligands.sdf` enthalten mehrere Ligandenkopien**
+   (bis zu 6). Der seeds10-Lauf liess das Flag weg, nahm per Default die
+   Singular-Datei mit genau einer Kopie.
+2. Alle Auswertungsskripte vergleichen gegen die ERSTE Kopie, weil `load_mol`
+   das erste Molekuel der Datei zurueckgibt.
+3. **Alle 42 Ausreisser stammen aus Mehrkopie-Dateien, keiner aus einer
+   Einkopie-Datei.** Bei 42 von 42 liegt die beste Uebereinstimmung auf einer
+   anderen Kopie als Nummer 0.
+4. Gegen die RICHTIGE Kopie gemessen faellt der Fehler von 45-80 A auf
+   **Median 3.44 A** (29 von 42 unter 5 A) — normaler Leistungsbereich.
+5. Zerlegung des Fehlers: 99% ist reine Verschiebung, Schwerpunktabstand
+   Median 36.5 A, RMSD nach Ausrichtung 1.71 A — also BESSER als die 1.91 A
+   der unauffaelligen Komplexe. Gute Posen am falschen Ort.
+
+**Konsequenz 1: Argument 1 der Verteidigungsliste ("Robustheit, 0 gegen 42")
+ist ersatzlos gestrichen.** Beide Methoden haben null Ausreisser jenseits
+20 A, ueber 2090 Posen je Methode.
+
+**Konsequenz 2: latenter Fehler im Auswertungswerkzeug.** `load_mol` nimmt
+willkuerlich Kopie 0 — bei 40% der Komplexe eine Wahl, nicht die Wahrheit.
+Betrifft `full_metrics.py`, `fragment_locality.py`, `seed_variance.py`,
+also auch alle SigmaFlow-Zahlen. SigmaFlow ist nur zufaellig unauffaellig
+(liest die Singular-Datei, dort steht Kopie 0). **Fix:** RMSD als Minimum
+ueber alle Kopien, wie in der Docking-Literatur ueblich — oder fuer beide
+Seiten konsequent die Singular-Datei als Referenz.
+
+**Nicht behaupten:** "der alte SigmaDock-Lauf war kaputt". Er war es nicht.
+Er wurde falsch gemessen. Das Modell lieferte durchgehend vernuenftige Posen.
+
+Zweiter Unterschied der beiden Laeufe, Wirkung noch nicht quantifiziert: der
+alte Lauf setzte zusaetzlich `graph.fragmentation_strategy=canonical`. Eine
+andere Fragmentierung ist ein anderes generatives Problem (jedes Fragment ein
+eigener starrer Koerper mit eigener SE(3)-Transformation). Erklaert
+vermutlich die ~1.02 A Grunddifferenz, die auch die 167 unauffaelligen
+Komplexe zwischen den beiden Laeufen zeigen.
+
+## ✅ Beide Job-Arrays vom 2026-08-12 sind fertig und geprueft
+
+Alle `COMPLETED`, ExitCode 0:0, und die Ausgaben gegengezaehlt (nicht nur der
+Slurm-State, siehe Falle unten):
+- **8554147** `sigmaflow-pb-seeds10`, 10 Tasks → 10 x 209 = 2090 SDF ✅
+- **8554149** `sigmadock-pb-seeds10`, 10 Tasks → 10 x 209 = 2090 SDF ✅
+- **8554148** `sigmaflow-pb-stepsweep`, 21 Tasks → 7 x 627 = 4389 SDF ✅
+- Kein `Traceback`/`Error`/`WARNING` in irgendeinem `.err`; jede `.out`
+  enthaelt genau einmal `frame fix verified`.
+
+Daten liegen lokal ausgepackt in `posebusters_full_comparison/`:
+`seeds10_sigmaflow/`, `seeds10_sigmadock/`, `stepsweep/`.
+
+## ✅ Seed-Varianz ausgewertet (`seed_variance.py`, 2026-08-13)
+
+**Kernbefund: das Rauschen einer Einzelziehung ist ~10x so gross wie der
+Methodenunterschied.** Derselbe Komplex bewegt sich zwischen zwei Seeds im
+Median um 4.46 A (SigmaFlow) bzw. 4.59 A (SigmaDock); der gepaarte
+Methodenunterschied betraegt 0.47 A. Jeder fruehere Einzelziehungs-Vergleich
+dieses Projekts las damit Rauschen.
+
+| | SigmaFlow | SigmaDock |
+|---|---|---|
+| Median-RMSD je Seed | 4.56–5.70 A | 4.15–4.87 A |
+| Anteil <2 A je Seed | 1.4–6.7% | 5.7–13.4% |
+| Mittel <2 A ueber 10 Seeds | 4.4% | 9.8% |
+| Ausreisser >20 A | 0 | 0 |
+| Best-of-10 <2 A | 29.2% | 45.9% |
+
+SigmaFlows bester Seed (6.7%) liegt UEBER SigmaDocks schlechtestem (5.7%) —
+mit Seed-Glueck haette man in beide Richtungen "gewinnen" koennen.
+
+**Gepaart auf Seed-Mittelwerten:** SigmaFlow minus SigmaDock **+0.47 A**,
+Bootstrap-CI **[+0.36, +0.59]**, schliesst Null aus. SigmaFlow bei 29% der
+Komplexe besser. Das ist die erste methodisch saubere Aussage des Projekts:
+SigmaDock ist gesichert besser, um einen kleinen Betrag.
+
+Konsistenzcheck geht auf: die Seed-zu-Seed-Streuung der Aggregate entspricht
+reiner Binomialstreuung (n=209, p=0.044 → erwartet 1.42, beobachtet 1.75
+Prozentpunkte; p=0.098 → erwartet 2.05, beobachtet 2.17). Kein unerklaerter
+Streuungsanteil.
+
+Reproduzierbarkeit verifiziert: SigmaFlow alt ↔ neuer seed_0 **209/209 Posen
+bitgleich**. Das Sampling-Geruest ist deterministisch; die SigmaDock-Differenz
+war deshalb ein echter Konfigurationsunterschied, kein Rauschen.
+
+## ✅ Kopien-Fix umgesetzt (2026-08-13)
+
+Neues gemeinsames Modul **`posebusters_full_comparison/ligand_reference.py`**:
+`load_copies()` liest ALLE Kopien, `best_copy()` waehlt die naechstgelegene.
+Umgestellt: `seed_variance.py`, `full_metrics.py`, `fragment_locality.py`.
+**Noch NICHT umgestellt** (gleicher Fehler, niedrigere Prioritaet):
+`bond_length_check.py`, `placement_vs_bond_error.py`, `placement_dummy.py`,
+`run_posebusters_ligandonly.py`.
+
+Alle 84 Mehrkopie-Dateien enthalten verifiziert IDENTISCHE Topologie, also
+echte Kristallkopien — Minimum-ueber-Kopien ist damit zulaessig und ist die
+uebliche Docking-Konvention. Bias ehrlich benennen: kann einen Fehler nur
+senken, nie heben; wird aber jedem Lauf gleich gewaehrt.
+
+Wirkung, gemessen: beim seeds10-Lauf gewinnt in **0 von 84** Faellen eine
+andere Kopie als 0, beim alten Plural-Lauf in **44 von 84**.
+
+**Die Seed-Varianz-Zahlen oben aendern sich durch den Fix NICHT** (die
+seeds10-Laeufe lesen die Singular-Datei und landen ohnehin bei Kopie 0) —
+sie waren bereits korrekt.
+
+**`full_metrics.py 12h` aendert sich dagegen deutlich, SigmaDock-Seite:**
+
+| | vorher (Kopie 0) | jetzt (naechste Kopie) |
+|---|---|---|
+| Ausreisser >20 A | 42 | **0** (max 9.8 A) |
+| Anteil <2 A | 4.8% | **6.7%** |
+| Median-RMSD | 5.35 A | **4.23 A** |
+| gematchte Teilmenge | 94 | **100** Komplexe |
+
+SigmaFlow 12h unveraendert: 1.9% unter 2 A, Median 4.78 A, 0 Ausreisser.
+Lokalitaetsluecke jetzt: SigmaFlow 12h −15.0°, SigmaDock 12h −18.6°
+(vorher −20.4°).
+
+## ✅ Stepsweep ausgewertet (`stepsweep_curve.py`, 2026-08-13)
+
+**Die Kurve ist flach. Mehr Integrationsschritte helfen nicht.**
+
+| Schritte | Median roh | <2 A | ausgerichtet |
+|---|---|---|---|
+| 5 | 4.61 ± 0.06 | 3.7% | 2.11 |
+| 25 (geerbt) | 4.76 ± 0.19 | 4.1% | 2.01 |
+| 100 | 5.17 ± 0.18 | 4.8% | 1.99 |
+| 200 | 4.93 ± 0.24 | 3.7% | 1.99 |
+
+Gepaart gegen den Default von 25: 10/15/50/100/200 alle **nicht
+signifikant**, jedes Bootstrap-CI schliesst Null ein. Auch der ausgerichtete
+RMSD bleibt bei ~2 A — nicht einmal die innere Geometrie profitiert.
+
+5 Schritte sind formal signifikant BESSER (−0.199 A, CI [−0.391, −0.007],
+besser bei 67%), aber **nicht als Effekt behaupten**: obere CI-Grenze
+praktisch auf Null, und bei sechs Vergleichen gegen dieselbe Referenz
+ueberlebt das keine Korrektur fuer multiples Testen. Korrekte Aussage:
+**keine Schrittzahl zwischen 5 und 200 ist nachweisbar besser als eine
+andere.**
+
+Groessenordnung: ein Komplex streut ueber 3 Seeds mit SD 1.36 A, ueber alle
+7 Schrittzahlen (seed-gemittelt) nur mit Spanne 1.66 A — bei reinem Rauschen
+waere die erwartete Spanne schon ~2.4 A. Die Schrittzahl traegt nichts bei.
+
+**Fuer Argument 2 (Sampling-Kosten) ist das die erste echte Substanz:**
+SigmaFlow liefert bei 5 Schritten dasselbe wie bei 25, kann also **5x
+billiger sampeln**. **Einschraenkung, nicht ueberdehnen:** SigmaDock wurde
+NICHT mit 5 Schritten getestet. Belegt ist "SigmaFlow braucht die geerbten
+25 nicht", nicht "SigmaFlow braucht weniger Schritte als SigmaDock". Dafuer
+fehlt der Gegen-Sweep auf der SigmaDock-Seite.
+
+## ✅ Berichte korrigiert (2026-08-13)
+
+`RESULTS.md` und `ERGEBNISSE_FrameFix_vs_SigmaDock.txt` sind fertig
+korrigiert. Vorgehen: widerlegte Aussagen NICHT geloescht, sondern als
+widerrufen markiert und die alten Zahlen danebengestellt — damit spaeter
+nachvollziehbar bleibt, was geprueft und verworfen wurde.
+
+- `ERGEBNISSE...txt` hat einen neuen **Abschnitt 0** ganz vorn (Widerruf +
+  Nachtrag), auf den alle korrigierten Stellen verweisen.
+- `RESULTS.md` hat zwei neue Abschnitte: Seed-Varianz und Schritt-Sweep.
+
+**Auch der paarweise Kernbefund kippte** (war nicht vorhergesehen): der
+Satz "auf einem typischen Komplex sind beide gleichauf" (Median der
+Differenz 0.03 Å, Mittel −6.73 Å zugunsten SigmaFlow) war vollstaendig
+Artefakt. Korrekt: **Median +0.48 Å, Mittel +0.77 Å CI [+0.44, +1.10]
+zugunsten SigmaDock**, SigmaFlow besser bei 37%. Unabhaengig bestaetigt
+durch die 10-Seed-Rechnung (+0.39 / +0.47 Å, CI [+0.36, +0.59], 29%).
+
+**`validity_significance.py` musste NICHT neu gerechnet werden.**
+`run_posebusters_ligandonly.py` wurde auf die naechstgelegene Kopie
+umgestellt und beide CSVs neu erzeugt (SigmaDock 44 Referenzen umgestellt,
+SigmaFlow 0). Das `<2 Å`-Urteil kippte bei **0 von 44** — PoseBusters
+rechnet symmetriekorrigiert und war gegen das Artefakt immun. Alle p-Werte
+unveraendert, `p=0.0347` eingeschlossen.
+
+## ⏭️ Naechste Schritte
+
+1. ✅ **ERLEDIGT 2026-08-13.** `bond_length_check.py` und
+   `placement_vs_bond_error.py` umgestellt und neu gerechnet.
+   `placement_dummy.py` ist NICHT betroffen — es arbeitet auf dem
+   Dummy-Datensatz, liest bewusst die Singular-Datei (mit begruendendem
+   Kommentar im Code) und alle 10 Dateien dort enthalten genau ein Molekuel.
+   Bewusst unveraendert gelassen.
+
+   **Zwei weitere Berichtsaussagen fielen dabei:**
+   - *Uebergangsbindungen, Trade-off-Lesart:* lautete "SigmaFlow hat weniger
+     betroffene Bindungen, SigmaDock die kleinere Abweichung". Korrigiert hat
+     SigmaDock **beides** — 12.8% gegen 13.1% betroffene Bindungen (vorher
+     14.9%) UND 1.22 gegen 2.68 Å Mittel. Es gibt keinen Trade-off.
+   - *Fragment-Platzierung:* SigmaDock-Schwerpunktfehler 12.92/6.39 →
+     **6.26/5.29 Å**, Rotationsfehler 118.7° → **116.4°**, Gesamt-RMSD
+     13.57/6.55 → **6.40/5.59 Å**. Kernaussage bleibt: beide nahe der
+     Zufallsgrenze 126.5°, beide 0 Komplexe unter 2 Å bei 12h.
+
+   **Gegengeprueft und STANDGEHALTEN:** die Uebergangsbindungs-Aussage des
+   Frame-Fix-Berichts (SigmaFlow 0.36 Å vs SigmaDock 0.38 Å auf der
+   korrigierten 118er-Teilmenge, vorher 0.36/0.37 auf 94) — innermolekulare
+   Distanzen sind gegen die Kopienwahl unempfindlich.
+
+   ⚠️ **NICHT nachgerechnet: alle 24h-Zeilen.** Die zugehoerigen
+   Vorhersageordner liegen nicht lokal. Betroffen sind die Aussagen ueber
+   SigmaDocks schrumpfenden Einzelausreisser (18.08 → 5.33 Å) und ueber
+   `7T1D_E7K`/`6TW5_9M2` als "komplex-spezifisches strukturelles Problem" —
+   `6TW5_9M2` ist einer der 42 Phantom-Ausreisser (3 Kopien, alt 68.9 Å,
+   korrigiert 4.29 Å). In RESULTS.md entsprechend markiert.
+
+2. **Billig, schliesst Argument 2 ab:** SigmaDock-Stepsweep als Gegenstueck
+   (~10 min GPU). Erst damit laesst sich "SigmaFlow braucht weniger Schritte
+   als SigmaDock" belegen statt nur "SigmaFlow braucht die geerbten 25 nicht".
+3. Danach der alte Punkt: **Frame-Fix nach `SigmaFlow_Development/`
+   zurueckportieren** (lebt weiterhin NUR in `SigmaFlow_Variants/d_frame_fix/`).
+4. **Der eigentliche Engpass bleibt die absolute Orientierung.** Der
+   Schritt-Sweep hat die Sampling-Aufloesung als Ursache AUSGESCHLOSSEN: das
+   Modell integriert sein Vektorfeld sauber, das Vektorfeld zeigt nur nicht
+   auf die richtige Stelle.
+
+---
+
+# Aeltere Notizen (Stand 2026-08-12)
+
+**Die zwei Job-Arrays** (2026-08-12 hochgeladen und gestartet — erledigt,
+siehe oben):
+- `d_frame_fix/slurm/sample_pb_seeds10.sh` + das SigmaDock-Gegenstück
+  `sample_pb_seeds10_sigmadock.sh` — je 10 unabhängige Sampling-Seeds bei 25
+  Schritten. **Zweck:** die Seed-Varianz messen. Bisher steht JEDER Vergleich
+  auf EINEM Zug pro Methode; wir wissen daher nicht, ob die gemessenen
+  Unterschiede überhaupt außerhalb des Rauschens liegen.
+- `d_frame_fix/slurm/sample_pb_stepsweep.sh` — 7 Schrittzahlen
+  (5/10/15/25/50/100/200) × 3 Seeds. **Zweck:** SigmaFlow hat die 25 Schritte
+  von SigmaDock GEERBT; das Paper hat sie für Diffusion optimiert, nicht für
+  eine ODE.
+
+**Auswertung dieser beiden steht noch aus** — sie braucht zwei neue Skripte:
+Streuung pro Komplex über die 10 Seeds, und die Kurve RMSD-über-Schrittzahl
+mit Fehlerbalken.
+
+6h- und 12h-Stufe sind komplett gefahren, gesampelt und
+ausgewertet. Zahlen und Vorbehalte: RESULTS.md, "12h-Stufe: sauberer
+compute-gematchter Vergleich" und "Vollständiger Metrikvergleich".
+
+## 🚨 Wichtigste Einordnung (2026-08-12): kein belegter Vorteil von SigmaFlow
+
+Nach gepaarten Signifikanztests (`validity_significance.py`) ist der **einzige
+statistisch gesicherte Unterschied** zwischen SigmaFlow und SigmaDock die
+Erfolgsquote unter 2 Å — **8.1% gegen 2.9%, p=0.035, zugunsten SigmaDock**.
+Chemische Plausibilität: nicht unterscheidbar (alle p ≥ 0.076) — **beides am
+2026-08-13 gegen das Kopien-Artefakt geprüft und unverändert gültig**
+(PoseBusters rechnet symmetriekorrigiert; bei 44 umgestellten Referenzen
+kippte das <2-Å-Urteil bei 0).
+
+~~Typischer Komplex: nicht unterscheidbar (Median der RMSD-Differenz
+0.03 Å).~~ **KORRIGIERT 2026-08-13:** Das war ebenfalls das Artefakt.
+Korrekt ist **+0.48 Å Median zugunsten SigmaDock**, Mittel +0.77 Å
+CI [+0.44, +1.10]; über 10 Seeds gemittelt +0.39 Å Median, +0.47 Å Mittel
+CI [+0.36, +0.59]. SigmaDock ist auch auf dem typischen Komplex besser —
+aber der Unterschied ist mit ~0.5 Å auf einem Fehlerniveau von ~4.5 Å klein.
+
+Verteidigbare Argumente für SigmaFlow, in dieser Reihenfolge:
+1. ~~**Robustheit** — 0 gegen 42 Komplexe jenseits 20 Å.~~ **GESTRICHEN
+   2026-08-13.** Die 42 Ausreißer waren ein Auswertungsartefakt
+   (Mehrkopie-Referenzdateien, siehe ganz oben). Beide Methoden haben null
+   Ausreißer jenseits 20 Å über je 2090 Posen. Dieses Argument existiert
+   nicht mehr.
+2. **Sampling-Kosten** — Schritt-Sweep gelaufen, Auswertung steht aus.
+3. **Weniger Hyperparameter** (kein Rauschplan, keine Score-Skalierung).
+4. **Erweiterbarkeit** (freie Quellverteilung, exakte Likelihood) —
+   Möglichkeit, kein gemessener Vorteil.
+
+NICHT behaupten: "chemisch bessere Moleküle" (n.s.), "genauer" (falsch),
+"Flow Matching gewinnt bei Konvergenz" (keine Evidenz).
+
+Das Projektziel war eine minimalinvasive Ersetzung, nicht SigmaDock zu
+schlagen. "Generativen Prozess ausgetauscht, nichts kaputtgemacht" ist das
+korrekte Ergebnis — ausführlich in
+`ERGEBNISSE_FrameFix_vs_SigmaDock.txt`, Abschnitt 2e.
+
+## Stand in einem Satz
+
+Der Frame-Fix war real und wirksam (Lokalitätslücke +1.1° → −12.8°,
+Übergangsbindungsfehler 1.20 → 0.36 Å, damit gleichauf mit SigmaDock). Mehr
+Rechenzeit hilft danach nur noch wenig, und alle drei Loss-Varianten sind
+tot. Der Engpass ist jetzt die **absolute** Orientierung/Verankerung, nicht
+die innere Geometrie.
+
+## Abgeschlossene Läufe
+
+| Job | Lauf | Ergebnis |
+|---|---|---|
+| 8512798 | SigmaFlow 6h ohne Fix | Lücke +1.1° (keine Lokalität) |
+| 8530243 | SigmaFlow 6h Frame-Fix | Lücke −12.8° |
+| 8541310 | SigmaFlow 12h Frame-Fix | Lücke −15.0°, <2Å 1.9% |
+| 8512922 | SigmaDock 6h | Lücke −22.0° |
+| 8541439 | SigmaDock 12h | Lücke −20.4°, <2Å 4.8% |
+| 8540758 | + Variante a (time weight) | −12.8° = ECHTES Nullergebnis |
+| 8534746 | + Variante b (rot-data-space) | −12.8° = echtes Nullergebnis |
+| 8534747 | + Variante c (anchor-dist) | No-Op, nie getestet |
+
+Das 12h-Paar ist compute-gematcht (`max_epochs=6`, SigmaFlow global_step
+13.750). **Noch offen:** SigmaDocks `global_step` gegenprüfen — sein höchster
+Top-k-Checkpoint zeigt 13.200. Bei ~4% Abweichung ändert sich inhaltlich
+nichts, es gehört aber dokumentiert statt als "gleich" verbucht:
+`python -c "import torch; ck=torch.load('<sigmadock>/experiments/sigmadock/0-08-11_17-57-05/checkpoints/last.ckpt', map_location='cpu', weights_only=False); print(ck['epoch'], ck['global_step'])"`
+
+## Nächste Schritte, in dieser Reihenfolge
+
+1. **Frame-Fix nach `SigmaFlow_Development/` zurückportieren.** Er lebt
+   weiterhin NUR in `SigmaFlow_Variants/d_frame_fix/`. Die Hauptcodebasis
+   trägt den Rahmenfehler noch. Einzeiler in
+   `sigma_flow_generator.py::_compute_vector_field`, davor Oracle- und
+   Smoke-Test wie beim ersten Mal.
+2. **Den echten Engpass angehen: absolute Orientierung.** Der absolute
+   Fragment-Rotationsfehler liegt bei SigmaFlow über alle Budgets an der
+   Zufallsgrenze (~123-128°), während die relative Orientierung
+   funktioniert. Das Modell lernt innere Geometrie, aber keine Verankerung
+   in der Bindetasche. **Vor jedem weiteren Compute-Einsatz diagnostizieren,
+   nicht mehr Stunden draufwerfen** — die 6h→12h-Verdopplung hat <2Å nur
+   von 1.0 auf 1.9% bewegt.
+3. **KEINE weiteren Loss-Varianten**, bis Punkt 2 verstanden ist. Drei
+   Versuche, drei Nullergebnisse (bzw. ein No-Op).
+4. **Variante c reparieren** — nur falls ihre Idee nach Punkt 2 noch
+   relevant erscheint. Sie braucht ein `pos_1_hat` MIT Gradientenpfad,
+   siehe unten "Variante c ist ein NO-OP".
+5. **3-Tage-Stufe: Freigabe NICHT mehr automatisch einholen.** Die
+   Compute-Skalierung von 6h→12h spricht dagegen, dass Laufzeit allein
+   reicht. Wirksamere Hebel wären Batch-Size 32 (Paper-Wert statt unserer 8)
+   und/oder DDP über mehrere GPUs. Erst Punkt 2.
+
+## Werkzeuge (neu, reproduzierbar)
+
+- `posebusters_full_comparison/full_metrics.py` — RMSD, Ausreißer,
+  Übergangsbindungen, Fragmentmetriken. **RUNS-Liste klein halten:** der
+  Matched-Subset schrumpft mit jedem Lauf (3 Läufe → 94 Komplexe,
+  4 Läufe → 57).
+- `posebusters_full_comparison/fragment_locality.py` — nur die
+  Lokalitätslücke, braucht KEIN Matching, steht auf n≈133.
+- `ERGEBNISSE_FrameFix_vs_SigmaDock.txt` (Repo-Root) — Ergebnisbericht für
+  den User inkl. fertigem PyMOL-Code.
+
+## ⚠️ Zwei Fallen, die diese Sessions Zeit gekostet haben
+
+1. **Subset-abhängige Zahlen nicht über Sessions vergleichen.** Derselbe
+   Lauf (SigmaFlow 6h) hat 0.36 Å Bindungsfehler auf dem 94er-Subset und
+   0.40 Å auf dem 57er; absoluter Rotationsfehler 128.1° vs. 126.1°. Ohne
+   den Subset dazuzuschreiben liest sich das wie Fortschritt.
+2. **Dateinamen unterscheiden sich zwischen den Codebasen:** SigmaDock
+   schreibt `..._ligands_seed0.sdf` (Plural), SigmaFlow
+   `..._ligand_seed0.sdf` (Singular). Ein festes Namensmuster lädt für eine
+   der beiden Seiten stillschweigend nichts. Immer `glob` benutzen — das
+   traf sowohl das PyMOL-Skript als auch einen meiner Prüfbefehle, der
+   dadurch "0 verschieden" meldete, obwohl er gar nichts verglichen hatte.
+3. `tar --exclude='experiments'` ist nicht an den Pfadanfang gebunden und
+   verschluckt auch `conf/experiments/`. Muster binden:
+   `--exclude='<ordner>/experiments'`, danach Dateiliste gegen einen
+   funktionierenden Ordner diffen.
+4. Die Lightning-Abschlusszeile lautet ``​`Trainer.fit` stopped:`` MIT
+   Backticks — nach `"stopped:"` suchen.
+5. Top-k-Checkpointnamen sind bei konstantem `val_loss=0.0000` keine
+   verlässliche Quelle für die Endschrittzahl. `global_step` aus
+   `last.ckpt` lesen.
+6. **Wall-Clock aus einem Job-Array ist keine Kostenmessung.** Im Stepsweep
+   (`--array=0-20%5`) reichte die Laufzeit nur von 1:26 bis 15:03, obwohl
+   zwischen 5 und 200 ODE-Schritten Faktor 40 an Arbeit liegt: die frühen
+   Indizes liefen zu fünft parallel und teilten sich Dateisystem und CPU.
+   Nur die zuletzt gelaufenen Tasks (Seed 2) skalieren sauber
+   (~1.3 min Fixkosten + ~2.4 s je Schritt). Für echte Sampling-Kosten ein
+   Extra-Lauf mit `%1` oder die reine GPU-Zeit aus den Logs.
+7. **Mehrere Ligandenkopien pro Referenzdatei** (84 von 209, bis zu 6).
+   `Chem.SDMolSupplier` liefert sie der Reihe nach; das erste Molekül zu
+   nehmen ist eine WILLKÜR, keine Referenz. Hat 42 Phantom-Ausreißer
+   erzeugt, die als Robustheitsvorteil in den Bericht gewandert waren.
+   RMSD immer als Minimum über alle Kopien bilden.
+
+---
+
+## 🔖 PAUSE-PUNKT #14 (2026-08-05) — AKTUELL, zuerst lesen
+
+**Kontext:** Neue Session, losgelöst vom Trainingslauf-Thema aus #13 (das
+bleibt unverändert offen, siehe dort). Auftrag: ein vollständiges,
+unvoreingenommenes, kritisches Audit von SigmaFlow gegen SigmaDock, mit
+Fokus auf (a) ob SigmaFlow die Triangulation-Constraints korrekt nutzt und
+(b) ob SigmaFlow strukturell längere Bindungen an Fragmentübergängen baut
+als SigmaDock. Anschließend, nach Vorliegen einer empirisch gestützten
+Bond-Length-Hypothese: erster Kausalitätstest ("Test 1").
+
+### ✅ Vollständiges Audit erstellt: `AUDIT_SigmaDock_vs_SigmaFlow.txt` (Repo-Root)
+
+Arbeitsteilig erstellt (zwei unabhängige Analyse-Durchläufe + eigene
+Verifikation, u.a. echter Abgleich der lokalen `SigmaDock/`-Referenz gegen
+das tatsächliche GitHub-Repo `alvaroprat97/sigmadock` per `gh api` — 5
+Kerndateien identisch, Referenz vertrauenswürdig). Kernergebnisse:
+
+- **Triangulationsmechanismus**: code-identisch zwischen SigmaDock und
+  SigmaFlow (`fragmentation.py`/`processing.py`, `diff`-Exit-Code 0),
+  identisch konfiguriert (`ignore_triangulation: false`, auch in echten
+  persistierten Trainingsläufen bestätigt). Es ist in BEIDEN Methoden ein
+  weiches Graph-Kanten-Signal fürs Netzwerk, kein hartes geometrisches
+  Constraint, keine Reprojektion — das war im Original schon so. Kein
+  Implementierungsfehler bei SigmaFlow.
+- **Bond-Length-Hypothese**: EMPIRISCH BESTÄTIGT, nicht nur Spekulation —
+  drei unabhängige Messungen (RDKit an echten SDF-Sampling-Outputs, 10
+  Komplexe) zeigen übereinstimmend: SigmaFlow baut an den
+  (ehemaligen) Torsionsbindungen zwischen Fragmenten deutlich längere/
+  stärker gebrochene Bindungen als SigmaDock (1.5-2x größere
+  Maximallängen, 2.5-3x mehr Bindungen >2.0 Å). Das korrigiert die
+  bisherige Einschätzung in RESULTS.md/#10 ("kein Unterschied"), die auf
+  einem binären PoseBusters-Pass/Fail-Kriterium mit Deckeneffekt beruhte
+  (0% bei allen Methoden verdeckt reale Größenunterschiede).
+- Einziger echter Code-Unterschied mit potenzieller Kausalrolle: SigmaDock
+  gewichtet den Trainings-Score zeitabhängig (`1/score_scaling(t)²`, aus
+  dem Diffusions-Rauschplan), SigmaFlows Flow-Matching-Loss ist eine rohe,
+  ungewichtete MSE über alle `t` gleich (bewusste, kommentierte
+  Design-Entscheidung: "no time dependent scaling needed, unlike the
+  diffusion score", `sigma_flow_generator.py:884`). Widerlegt: fehlender
+  Reprojektionsschritt, seltenere Nutzung der Triangulation, falsche
+  Implementierung — nichts davon trifft zu (Mechanismus ist identisch).
+- Nebenbefund: SO(3)-Winkel-Clamp-Bugfix (`so3_utils.py::Omega`,
+  `[-0.99,0.99]`→`[-1+1e-7,1-1e-7]`, bereits in #12 dokumentiert) wurde
+  tiefer analysiert — ist eine echte Verbesserung (aktiviert einen
+  bereits vorhandenen, aber durch den alten Clamp nie erreichbaren
+  `mask_pi`-Sicherheitszweig in `rotation_vector_from_matrix`), keine
+  plausible Erklärung für längere Bindungen.
+
+### ✅ Test 1 durchgeführt: Oracle-Vektorfeld widerlegt ODE-Integration als Ursache
+
+**Idee:** `sampler(..., use_true_vector_field=True)` ersetzt bei jedem
+ODE-Schritt die Netzwerk-Vorhersage durch das exakte geschlossene
+Vektorfeld (`u_t=(x_1-x_t)/(1-t)` bzw. SO(3)-Analogon) — das Netzwerk wird
+dabei gar nicht aufgerufen. Das isoliert: liegt die zu lange
+Übergangsbindung an der ODE-Integrations-/Rekonstruktions-MECHANIK selbst,
+oder an dem, was das trainierte Netzwerk vorhersagt?
+
+**Setup (neu, diese Session):** lokale Python-Umgebung auf diesem
+Windows-Rechner von Grund auf aufgebaut (`pip install rdkit torch
+torch_geometric matplotlib pillow hydra-core omegaconf pytorch-lightning
+wandb biopython spyrmsd posebusters tqdm e3nn` — vorher war nur Basis-Python
+installiert), `scripts/sample.py` lief danach sauber lokal auf CPU (kein
+ARC/GPU nötig, da `use_true_vector_field=True` das Netzwerk überspringt).
+Genutzter Checkpoint: `experiments/sigmadock/0-07-21_11-01-39/checkpoints/
+last.ckpt` (früher, nur ~15-20 Trainingsschritte — bewusst irrelevant,
+siehe unten).
+
+**Ergebnis (RDKit-Bindungslängen-Messung, 10 Komplexe, identisch zur
+Audit-Methodik):**
+
+| Lauf | mean Übergangsbindung | max |
+|---|---|---|
+| Oracle-Vektorfeld (Netzwerk übersprungen) | **praktisch exakt** (≤0.0002 Å Abweichung, 0 von 278 Bindungen als Übergang auffällig) | — |
+| Netzwerk-Vorhersage, selber (kaum trainierter) Checkpoint | 6.93 Å | 12.18 Å |
+| (zum Vergleich, SigmaFlow prodhparams, aus Audit) | 2.67 Å | 8.64 Å |
+| (zum Vergleich, SigmaDock prodhparams, aus Audit) | 1.81 Å | 5.12 Å |
+
+**Schlussfolgerung:** Die ODE-Integration + starre Fragment-Rekonstruktion
+ist NICHT der Fehler — mit dem exakten Vektorfeld rekonstruiert derselbe
+Code (25 Euler-Schritte, `power`-Diskretisierung, identisches Batching/
+Kanten-Handling wie beim echten Sampling) die wahre Struktur bis auf
+Fließkomma-Rauschen exakt, auch an den Fragmentübergängen — unabhängig vom
+verwendeten (hier: kaum trainierten) Checkpoint, da die Checkpoint-Gewichte
+in diesem Modus gar nicht befragt werden. Das **widerlegt die
+1/(1-t)-Singularitäts-Hypothese (E.4 aus dem Audit) endgültig** als
+Erklärung. Der Fehler sitzt vollständig in der NETZWERK-VORHERSAGE:
+schlechter trainiert → schlechter (6.93 Å), besser trainiert → näher am
+Oracle (2.67 Å), aber selbst beim besten verfügbaren Checkpoint bleibt eine
+Lücke zum Oracle (~0 Å) UND zu SigmaDock (1.81 Å). Das stützt die
+Trainings-Loss-Hypothese (E.3, fehlende zeitabhängige Gewichtung) deutlich,
+beweist aber noch nicht, dass GENAU das (statt allgemein "SigmaFlow lernt
+Fragmentübergänge schlechter") ursächlich ist — dafür ist Test 3 nötig.
+
+### ✅ Neue Ordnerstruktur angelegt: `SigmaFlow_MinimalChange` / `SigmaFlow_Adapted`
+
+Auf User-Wunsch, um chirurgische Konversion (Projektziel laut `CLAUDE.md`
+§1) und künftige, darüber hinausgehende Verbesserungen sauber zu trennen:
+
+- **`SigmaFlow_MinimalChange/`** (neu, exakte Kopie von
+  `SigmaFlow_Development/` zum Zeitpunkt 2026-08-05, inkl. `experiments/`-
+  Checkpoints): eingefrorener Referenzstand der rein chirurgischen
+  Flow-Matching-Konversion (das, was das obige Audit beschreibt). Test 1
+  wurde hier durchgeführt. Bleibt unverändert, dient als Vergleichsbasis.
+- **`SigmaFlow_Adapted/`** (neu, ebenfalls exakte Kopie zum selben
+  Zeitpunkt): Sandbox für größere, über den chirurgischen Eingriff
+  hinausgehende Änderungen. **Test 3 (zeitabhängige Loss-Gewichtung für
+  Flow Matching einführen) wird hier implementiert**, nicht in
+  `SigmaFlow_MinimalChange`.
+- **`SigmaFlow_Development/`** (bestehend, unverändert): Rolle für künftige
+  Sessions noch nicht neu festgelegt — bis auf Weiteres unangetastet
+  gelassen, nicht gelöscht/umbenannt.
+- Alle drei Ordner waren zum Zeitpunkt der Kopie (vor jeder Test-1-Änderung)
+  identisch, je 1.9 GB (dominiert von `experiments/`-Checkpoints).
+
+### ✅ Paper-Recherche zu Test 3 (Fork, `papers/`-Verzeichnis geprüft statt geraten)
+
+Bevor eine zeitabhängige Loss-Gewichtung implementiert wurde: geprüft, ob
+die Flow-Matching-Literatur (`papers/`) eine theoretische Grundlage dafür
+hergibt (Pflicht laut `CLAUDE.md` §2). Ergebnis: Holderrieth & Erives und
+Chen & Lipman (RFM) definieren den CFM-Loss durchgehend UNGEWICHTET
+(`w(t)=1`). Das einzige Paper mit einem zeitabhängigen Faktor ist **Yim et
+al. 2023 (FrameFlow, SE(3)-Flow-Matching für Protein-Backbones)** — deren
+geclipptes `1/(1-t)²` folgt aber rein algebraisch aus IHRER
+Netzwerk-Parametrisierung (Netzwerk sagt x̂1 direkt vorher, nicht das
+Vektorfeld) und ist bei genauerem Nachrechnen **mathematisch äquivalent**
+zu einem UNGEWICHTETEN v-Raum-Loss, wie SigmaFlow ihn bereits hat — bis auf
+den Clip (reine Stabilitätsmaßnahme, kein Genauigkeits-Gewinn). Es gibt
+also **keine saubere theoretische Stütze** in der geprüften Literatur für
+"SigmaFlow fehlt eine zeitabhängige Gewichtung". Klarstellung/Korrektur
+einer eigenen Fehlüberlegung währenddessen: das Draufmultiplizieren eines
+`1/(1-t)²`-artigen Faktors AUF SigmaFlows bestehenden (bereits im v-Raum
+formulierten) Loss ist trotzdem ein echter, anderer (nicht äquivalenter)
+Loss — nur eben ohne FrameFlow-Herleitung dahinter. **Test 3 ist damit
+explizit als unbewiesene EMPIRISCHE EXPLORATION eingeordnet**, nicht als
+theoretisch fundierte Korrektur.
+
+### ✅ Variante (a) implementiert + geprüft: zeitabhängige Loss-Gewichtung (`SigmaFlow_Variants/a_time_weighting/`)
+
+User hat `compute_losses()` in `sigma_flow_generator.py` selbst geändert
+(Lehr-Workflow, Claude hat Interface/Mathematik erklärt und danach
+reviewt): neue Methode
+
+```python
+def _time_weight(self, t: torch.Tensor, cap_t: float = 0.9) -> torch.Tensor:
+    t_clamped = torch.clamp(t, max=cap_t)
+    return 1.0 / (1.0 - t_clamped) ** 2
+```
+
+wird in `compute_losses()` als `weight = self._time_weight(t_batch)`
+berechnet und NACH dem Quadrieren mit `loss_trans`/`loss_R` multipliziert
+(`weight * (pt-tt).pow(2).sum(-1)` bzw. analog für Rotation) — korrekt,
+da eine Gewichtung VOR dem Quadrieren `weight` selbst mitquadrieren würde
+(anderer Fehler, der in der Diskussion mit dem User geklärt wurde).
+
+**Review bestanden, zweifach getestet:**
+1. Isolierter Unit-Test von `_time_weight` (Grenzwerte `t=0, 0.01, 0.5,
+   0.9, 0.99, 0.999999, 1.0`): alle Werte endlich (max. 100, durch
+   `cap_t=0.9` beschränkt, auch exakt bei `t=1.0` kein Blow-up), Shape
+   korrekt, Broadcast gegen `[B x F]`-Loss-Werte korrekt.
+2. Echter End-to-End-Smoke-Test (`scripts/train.py`, 2 Epochen, CPU,
+   `dummy_train`, `--debug --offline_run`, lokal in
+   `SigmaFlow_Variants/a_time_weighting/`): lief fehlerfrei durch, endliche
+   Loss-Werte (`loss_train/total=40.77`, `loss_val/loss_trans=71.16`, kein
+   NaN/Crash).
+
+**Cap-Wert `cap_t=0.9`** ist wie bei Yim et al. eine reine
+Stabilitätsmaßnahme (verhindert Explosion bei `t→1`, da `sample_time()`
+`t`-Werte beliebig nah an 1 zieht) — keine theoretisch hergeleitete Zahl,
+bei Bedarf später als Hyperparameter exponierbar (aktuell hartkodierter
+Default-Parameter der Methode).
+
+### ✅ Variante (a) auf ARC eingereicht
+
+`SigmaFlow_Variants/a_time_weighting/slurm/train_dummy_overfit_gpu_3h_time_weighting.sh`
+geschrieben (analog `train_dummy_overfit_gpu_3h_prodhparams.sh`, gleiche
+Produktions-Hyperparameter `trans_score_weight=2.0 rot_score_weight=0.5
+rot_vector_field_scaling=rms`, plus explizites `PYTHONPATH`-Override, da
+`sigmaflow_env` sonst standardmäßig den unveränderten Code aus
+`SigmaFlow_Development` laden würde statt dieser Variante — Sicherheitscheck
+via `sigmadock loaded from: ...`-Print im Log). `sample_dummy.sh` im
+selben Ordner ebenfalls auf die richtigen Pfade korrigiert (für den
+Sampling-Schritt danach). Hochgeladen (`scp -r`) und via `sbatch`
+eingereicht (Job 8443875, 2026-08-05) — ARC war ausgelastet, Job wartet in
+der Queue, Startzeitpunkt unklar. **Noch nicht verifiziert:** ob die
+`sigmadock loaded from`-Zeile tatsächlich auf den richtigen Pfad zeigt
+(User schaut rein, sobald der Job läuft).
+
+### ❌ Variante (b) (x̂1-Reparametrisierung) verworfen, NICHT implementiert
+
+Vor der Implementierung durchgerechnet (User-Frage "wieso sollte das
+überhaupt einen Effekt haben, wenn's äquivalent ist" führte zur
+entscheidenden Klärung): für SigmaFlows Parametrisierung gilt exakt
+`‖x̂1_pred - x1_true‖² = (1-t)² · ‖v_pred - v_true‖²` — ein UNGEWICHTETER
+x̂1-Loss ist also mathematisch äquivalent zu einem `(1-t)²`-GEWICHTETEN
+v-Raum-Loss, der Fehler nahe `t=1` (die Problemzone) damit RUNTER- statt
+hochgewichtet — analytisch die falsche Richtung, kein Implementierungs-
+Detail, das ein 3h-ARC-Lauf erst zeigen müsste. FrameFlows tatsächlicher
+Loss kompensiert das mit einem geclippten `1/(1-t)²`-Faktor, ist dadurch
+aber (bis auf den Clip-Bereich `t>0.9`) selbst wieder fast äquivalent zu
+Variante (a)/dem aktuellen Loss — eine Kombination aus beidem hätte also
+im Wesentlichen (a) über einen komplizierteren Umweg reproduziert, keine
+neue Hypothese getestet.
+
+**Entscheidung (mit User):** verworfen. Code (unveränderte
+MinimalChange-Basis, keine Loss-Änderung vorgenommen) nach
+`SigmaFlow_Variants/not_implemented/b_x1_reparam/` verschoben, mit
+`WARUM_NICHT_IMPLEMENTIERT.md` (Kurzfassung der obigen Herleitung) als
+Archiv der Design-Diskussion.
+
+### ✅✅ Test 2 durchgeführt: ODE-Schrittzahl bestätigt wirkungslos (zweite, unabhängige Widerlegung von E.4)
+
+Sampling desselben `prodhparams`-Checkpoints (`experiments/sigmadock/
+0-07-25_21-40-56/checkpoints/last.ckpt`) mit `ode.num_steps=10` bzw. `=100`
+statt des Defaults `25` (Skripte `slurm/sample_dummy_10steps.sh`/
+`_100steps.sh` in `SigmaFlow_MinimalChange/`, kein Retraining, reine
+Sampling-Config-Änderung). RDKit-Bindungslängen-Messung (gleiche Methodik
+wie Test 1/Audit Teil 5.2, 10 Komplexe):
+
+| Lauf | n Übergangsbindungen | mean | median | max | >3.0 Å | >5.0 Å |
+|---|---|---|---|---|---|---|
+| 10 Schritte | 41 | 2.675 Å | 2.489 Å | 8.546 Å | 13 | 3 |
+| 25 Schritte (Baseline) | 40 | 2.672 Å | 2.456 Å | 8.638 Å | 13 | 3 |
+| 100 Schritte | 40 | 2.670 Å | 2.457 Å | 8.747 Å | 13 | 3 |
+
+**Praktisch identisch über einen 10-fachen Schrittzahl-Bereich.** Bestätigt
+unabhängig von Test 1 (dort: exaktes Vektorfeld → exakte Rekonstruktion;
+hier: reales Netzwerk-Feld, Diskretisierung variiert → kein Effekt): Kandidat
+E.4 (`1/(1-t)²`-Singularität/Diskretisierungsfehler) ist damit **zweifach,
+über zwei verschiedene Experimente**, als Erklärung für die
+Bindungslängen-Differenz widerlegt. Der Fehler sitzt vollständig in der
+Netzwerk-Vorhersage selbst (Trainings-Frage, nicht Sampling-Frage).
+
+### ⚠️ Echter Skript-Bug gefunden + gefixt: stiller Fehlschlag als `COMPLETED` getarnt
+
+Erste Einreichung von Job 8443875 (Variante a, `train_dummy_overfit_gpu_3h_
+time_weighting.sh`) meldete `sacct`-Status `COMPLETED, ExitCode=0:0`, lief
+aber nur 5:04 Min statt der vorgesehenen 2:45h. Ursache: das Skript enthielt
+`--rot_vector_field_scaling rms`, kopiert aus der älteren
+`train_dummy_overfit_gpu_3h_prodhparams.sh`-Vorlage — dieser CLI-Flag wurde
+aber bereits in PAUSE-PUNKT #12 als toter Code aus `config.py` entfernt.
+`scripts/train.py` brach sofort mit `argparse`-Fehler ab; da das Skript kein
+`set -e` hatte, lief die letzte (immer erfolgreiche) `echo`-Zeile trotzdem
+durch, und SLURM sah nur deren Exit-Code. **Exakt das Muster, das schon in
+PAUSE-PUNKT #13 als Risiko notiert, aber nie behoben wurde** — jetzt real
+aufgetreten. Bemerkenswert: der Grep-Check aus PAUSE-PUNKT #13 ("keine
+Treffer... auch nicht in den SLURM-Skripten") hat diesen Fund nicht
+verhindert — entweder war die Prüfung unvollständig, oder die Datei wurde
+danach nochmal mit dem alten Flag angelegt; nicht abschließend geklärt.
+
+**Gefixt:** `--rot_vector_field_scaling rms` aus allen drei betroffenen
+Skripten entfernt (`a_time_weighting/slurm/train_dummy_overfit_gpu_3h_
+time_weighting.sh`, `SigmaFlow_MinimalChange/slurm/train_pdbbind_general_6h.sh`
+— Letzteres war noch nicht submittet, Fehler rechtzeitig gefunden). `set
+-euo pipefail` in allen drei neuen Skripten dieser Session ergänzt
+(inkl. des SigmaDock-6h-Skripts, dort zur Sicherheit, der eigentliche Fehler
+betraf nur die SigmaFlow-Skripte, da SigmaDocks `--rot_score_method`/
+`--rot_score_scaling` echte, nicht entfernte Flags sind). Variante (a)
+danach neu submittet (Job-ID noch nicht bestätigt/geprüft).
+**Lehre, jetzt wirklich verstanden statt nur notiert:** `set -euo pipefail`
+gehört in JEDES `slurm/*.sh` in diesem Repo, nicht nur in neu geschriebene —
+die älteren Skripte (`train_dummy_overfit_gpu_3h_prodhparams.sh` etc.) haben
+es weiterhin nicht.
+
+### ✅ ARC-Infrastruktur für den großen Lauf geklärt (mehrere offene Punkte aus #13 beantwortet)
+
+- **Partitions-Zeitlimits** (User hat ARC-Doku geprüft): `short` = 12h max,
+  `medium` = 48h max, `long` = 30 Tage max, `devel` = 10 Min (nur Tests),
+  `interactive` = 24h. Damit ist `short` für den geplanten 6h/12h/24h-Stufen-
+  plan durchgehend ausreichend, `long` für den späteren 3-/7-Tage-Lauf.
+- **Gestuftes grünes Licht für den großen Lauf** (User-Info, neu): 6h → 12h →
+  max. 24h auf Dummy-Daten/PDB-Subsets vs. SigmaDock, **erst danach**
+  Freigabe für 3-Tage-, dann 7-Tage-Lauf. Ändert die Priorität aus #13
+  (7-Tage-Infrastruktur) — der 6h-Lauf ist jetzt der unmittelbar nächste
+  Schritt, nicht mehr blockiert durch die Mehrtages-Fragen.
+- **PDBbind-Datenpfade auf ARC prospektiv geprüft** (`ls`/`find`, nicht
+  angenommen): `pdbbind/general-set/` ist befüllt (~19k Komplexe, Dateinamen
+  passen exakt zur Config-Regex, z.B. `10gs_pocket.pdb`/`10gs_ligand.sdf`).
+  `pdbbind/refined-set/` und `pdbbind/core-set/` sind dagegen LEER (Link-Count
+  2, kein Unterordner — nie aus `pdbbind/raw/P-L.tar.gz` extrahiert).
+  `posebusters_paper/posebusters_benchmark_set/` (209 Komplexe) und
+  `.../astex_diverse_set/` (85 Komplexe) sind befüllt, Dateinamen passen zur
+  `posebusters.yaml`/`astex.yaml`-Regex (`ligands.sdf`-Plural beachtet).
+- **Angepasster Split für den 6h-Lauf:** da `refined-set`/`core-set` leer
+  sind, `train_exps=pdbbind-general` + `val/test_exps=posebusters` statt
+  SigmaDocks eigentlich vorgesehenem `[general,refined]`/`[core]`/
+  `[posebusters,astex]`-Split (`SigmaDock/conf/training/slurm.yaml`).
+- **Zwei 6h-SLURM-Skripte fertig** (`SigmaFlow_MinimalChange/slurm/
+  train_pdbbind_general_6h.sh`, `train_sigmadock_pdbbind_general_6h.sh`):
+  SigmaFlow mit den validierten `prodhparams`-Gewichten (siehe Sweep-Zahlen
+  oben), SigmaDock mit seiner eigenen Produktionsconfig (`trans_score_
+  weight=2.0, rot_score_weight=0.5, rot_score_method=space,
+  rot_score_scaling=rms`, direkt aus `SigmaDock/conf/training/slurm.yaml`
+  verifiziert). `--batch_size 8`, `--val_check_interval 200` sind
+  ungetestete Schätzungen (General-Set-Komplexe sind größer als die 10
+  Dummy-Komplexe), im Skript als solche markiert. SigmaDock-Skript läuft im
+  separaten ARC-Klon aus PAUSE-PUNKT #9. **Noch nicht submittet.**
+
+### ✅✅✅ Test 3 durchgeführt: Variante (a) (Zeitgewichtung) schließt die Bindungslängen-Lücke NICHT
+
+Nach dem Flag-Fix (`--rot_vector_field_scaling rms` entfernt, `set -euo
+pipefail` ergänzt) lief Job 8447496 sofort wieder in 6s fehl (identisches
+Muster — separat nicht weiter untersucht, da der direkt danach gestartete
+Retry, Job **8447571**, sauber durchlief). 8447571 lief bis zur Walltime
+(2:45h, Epoche 632, `TIMEOUT`-Status — hier KEIN Fehlschlag, sondern
+erwartetes Verhalten, da `Early stopping is disabled` und das Skript
+bewusst bis zum Zeitlimit trainiert). `last.ckpt` wurde 3 Minuten vor dem
+Kill sauber gespeichert (`experiments/sigmadock/0-08-06_09-42-56/
+checkpoints/last.ckpt`).
+
+**Nebenbefund, geklärt:** die drei `checkpoint-step=*-val_loss=0.0000.ckpt`-
+Dateinamen sind ein reiner Kosmetik-Bug, kein Auswahlfehler — `scripts/
+train.py:311-319` übergibt `monitor=args.monitor_metric` (korrekt
+`"loss_val/total"`, `config.py:160`) an `ModelCheckpoint` für die
+tatsächliche `save_top_k`-Auswahl, aber der `filename`-String ist
+hartkodiert `"checkpoint-{step:02d}-{val_loss:.4f}"` — der Platzhalter
+`val_loss` existiert nicht unter diesem Namen in den geloggten Metriken,
+Lightning füllt daher `0.0000` ein. Vorbestehend (nicht durch diese
+Session verursacht), betrifft vermutlich alle bisherigen Läufe mit diesem
+Skript. Nicht dringend gefixt.
+
+Gesampelt (Job 8448647, `sample_dummy.sh`, `COMPLETED`, `sigmadock loaded
+from`-Check bestätigt korrekten Variante-a-Code), SDFs per `scp`
+heruntergeladen, mit einem neu geschriebenen RDKit-Skript (`bond_length_
+check_time_weighting.py`, Scratchpad, Methodik identisch zu Audit Teil
+8.5/9.2: pro Bindung `|vorhergesagte Länge - wahre Länge| > 0.02 Å` =
+"Übergangsbindung") gegen die bestehenden SigmaFlow-/SigmaDock-
+`prodhparams`-Baselines verglichen — Baseline-Zahlen reproduzieren dabei
+exakt die im Audit dokumentierten Werte (Skript methodisch verifiziert):
+
+| Lauf | n Übergangsbindungen | mean | median | max |
+|---|---|---|---|---|
+| SigmaFlow, **time_weighting (Variante a)** | 41 | 2.816 Å | 2.290 Å | 7.066 Å |
+| SigmaFlow, prodhparams (Baseline, ungewichtet) | 40 | 2.672 Å | 2.456 Å | 8.638 Å |
+| SigmaDock, prodhparams (Baseline) | 35 | 1.811 Å | 1.485 Å | 5.120 Å |
+
+**Ergebnis: kein Effekt.** Variante (a) liegt praktisch auf demselben
+Niveau wie die ungewichtete SigmaFlow-Baseline (41 vs. 40 Übergangs-
+bindungen, mean 2.82 Å vs. 2.67 Å — tendenziell sogar leicht schlechter),
+der Abstand zu SigmaDock (1.81 Å) bleibt in beiden Fällen etwa gleich
+groß. Deckt sich mit der fehlenden theoretischen Stütze aus der
+Paper-Recherche weiter oben — die Zeitgewichtungs-Hypothese (E.3) ist
+damit auch empirisch widerlegt, nicht nur theoretisch unbegründet.
+
+**Stand der Kausalitätsfrage nach drei Tests:** ODE-Integrations-Mechanik
+(Test 1: Oracle-Vektorfeld rekonstruiert exakt; Test 2: Schrittzahl
+wirkungslos) UND globale Zeitgewichtung des Trainingsloss (Test 3, s.o.)
+sind beide als Erklärung ausgeschlossen. Der Fehler sitzt nachweisbar in
+der gelernten Netzwerk-Vorhersage selbst (Test 1 zeigt das indirekt: je
+besser trainiert, desto näher am Oracle, aber auch der beste bisherige
+Checkpoint bleibt hinter SigmaDock zurück) — aber WARUM SigmaFlows
+Netzwerk an den Fragmentübergängen ein ungenaueres Vektorfeld lernt als
+SigmaDocks Netzwerk einen Score, ist nach diesen drei Tests weiterhin
+nicht kausal geklärt (siehe Antwort an den User unten für die aktuell
+plausibelste, aber unbewiesene Erklärung).
+
+### 💡 Idee (zurückgestellt, noch nicht implementiert): gezielter Anker-Atom-Distanz-Loss
+
+Diskutiert nach Test 3, User-Entscheidung: erstmal zurückgestellt, zuerst die
+6h-Läufe (s.u.) auswerten und schauen, ob das Problem dort in derselben
+Deutlichkeit auftritt, bevor daran weitergearbeitet wird. Festgehalten,
+damit die Ausarbeitung nicht verloren geht:
+
+**Plausible (unbewiesene) Erklärung, warum SigmaFlow überhaupt schlechter
+lernt als SigmaDock, trotz identischer Architektur/Daten/Triangulation:**
+SigmaDock sagt einen Diffusions-Score vorher, dessen Größe bei kleinem
+Rauschen (t nah am fertigen Zustand) intrinsisch explodiert (`~1/σ(t)²`) —
+das zwingt das Netzwerk architekturbedingt zu hoher Präzision in der
+Endphase, unabhängig von jeder expliziten Loss-Gewichtung. SigmaFlows
+CondOT-Vektorfeld-Ziel (`x1-x0`) ist dagegen konstant in `t` und hat diese
+eingebaute Verschärfung nicht. Das würde erklären, warum Test 3
+(Gewichtung draufmultiplizieren) wirkungslos war: das zugrunde liegende
+Regressionsproblem unterscheidet sich in seiner Struktur, nicht nur in
+seiner Gewichtung — das lässt sich nicht durch Reskalieren nachbauen.
+Alternative, ebenfalls nicht ausgeschlossene Erklärung: Netzwerkkapazität
+(dasselbe Netz könnte für die FM-Zielgröße an genau dieser geometrischen
+Größe grundsätzlich schwerer zu trainieren sein) — dafür gibt es noch
+keinen eigenen Test.
+
+**Die Idee selbst:** statt einer globalen Zeitgewichtung (Test 3, negativ)
+einen zusätzlichen, RÄUMLICH gezielten Loss-Term einbauen, der direkt den
+Abstand zwischen den beiden Anker-Atomen einer (ehemals) geschnittenen
+Torsionsbindung bestraft — dem exakten Ort, an dem die RDKit-Messung das
+Problem verortet. Die Atompaare sind bereits bekannt:
+`fragmentation.py::fragment_ligand()`s `frag_map["torsional_bonds"]`
+(Zeile ~245) enthält pro geschnittener Bindung das Paar `(anchor1,
+anchor2)`.
+
+**Wie man an eine "aktuelle Vorhersage" der Anker-Position kommt:** aus der
+Netzwerk-Vorhersage `pred_u_t_trans`/`pred_u_t_R` bei Zeit `t` lässt sich
+(dieselbe Reparametrisierung, die für Variante (b) durchgerechnet und
+verworfen wurde — hier als Werkzeug wiederverwendet, nicht als Ersatz-Loss)
+ein `trans_1_pred`/`R_1_pred`-Schätzwert pro Fragment ableiten
+(`x̂1 = x_t + (1-t)·v_pred`-artig). Dieselbe starre Transformation, die
+`get_transformations_from_rototranslations` (`sigma_flow_generator.py:298`)
+auf echte Atome anwendet, liefert damit angewandt auf die beiden
+Anker-Atome ihre vorhergesagten 3D-Positionen `p̂_A`, `p̂_B` — bei JEDEM
+`t`, nicht nur bei `t=1`.
+
+**Zwei Formulierungs-Varianten:**
+- **Direkter Abstands-Loss** (empfohlen): `(‖p̂_A - p̂_B‖ - ‖A_true -
+  B_true‖)²`. Bestraft nur die relative Anordnung der zwei Fragmente
+  zueinander, trifft exakt das, was die RDKit-Messung als "Übergangs-
+  bindung" mist, unempfindlich gegen globale Verschiebung. Erfordert die
+  Kreuz-Fragment-Paarbildung explizit im Loss.
+- **Positions-Loss auf Anker-Atomen**: `‖p̂_A - A_true‖² + ‖p̂_B -
+  B_true‖²`. Einfacher (reine Erweiterung der bestehenden COM-Loss-Logik),
+  aber nur ein indirekter Proxy für die Bindungslänge.
+
+**Offene Frage, VOR der Implementierung zu klären (Schritt 1: erst
+inspizieren):** überlebt die `torsional_bonds`-Atompaar-Liste aus der
+Fragmentierung bis zum Zeitpunkt von `compute_losses()` im `batch`-Objekt,
+oder wird sie nur beim Graph-Aufbau (`data.py`) verwendet und danach
+verworfen? Falls letzteres, müsste sie zusätzlich durchgereicht werden —
+das würde den Eingriff größer machen als der reine Loss-Term.
+
+### ✅✅✅ 6h-Real-Daten-Vergleich ausgewertet: Bindungslängen-Lücke DREHT SICH UM
+
+Beide 6h-Läufe (SigmaFlow Job 8447572, SigmaDock Job 8447498, beide
+`train_exps=pdbbind-general`/`val_exps=posebusters`, identische
+Produktions-Hyperparameter je Methode, s.o.) liefen sauber bis zur vollen
+Walltime (`TIMEOUT` bei exakt 6:00:0x, kein Fehlschlag). Checkpoints:
+`SigmaFlow_Development/experiments/sigmadock/0-08-06_09-42-56/checkpoints/
+last.ckpt`, `SigmaDock_Reproduction_JulianMueller/sigmadock/experiments/
+sigmadock/0-08-06_09-26-06/checkpoints/last.ckpt`.
+
+**Fairness der Trainingsläufe verifiziert** (auf expliziten User-Wunsch, vor
+der Auswertung): beide exakt 6:00h gelaufen, beide Checkpoints <1 Min vor
+Kill gespeichert, kein NaN/Crash in beiden Logs, `sigmadock loaded from`
+zeigt in beiden Fällen auf den richtigen Code-Pfad. Einzige Asymmetrie:
+SigmaDock übersprang mehr `[WARN] Fragment mass below 2`-Batches (170) als
+SigmaFlow (111) — ein Datenqualitätsproblem im gemeinsamen
+`pdbbind-general`-Datensatz, das BEIDE Methoden trifft; falls überhaupt ein
+Bias, dann zulasten SigmaDock (weniger effektive Trainingsschritte), nicht
+zugunsten SigmaFlow.
+
+**Gesampelt** auf 10 zufällig gewählten, NIE gesehenen PoseBusters-Komplexen
+(`5S8I_2LY, 5SAK_ZRY, 5SD5_HWI, 5SIS_JSM, 6T88_MWQ, 6TW5_9M2, 6VTA_AKN,
+6XAF_GDP, 6XG5_TOP, 6XUM_30L`) — ein echter Generalisierungstest, kein
+Auswendiglernen wie bei den 10 Dummy-Komplexen. Wichtige Methodik-Lektion
+unterwegs: der erste Versuch nutzte `graph.sample_conformer=true` (frisch
+generierter Konformer statt Kristallpose als Fragmentierungs-Basis) — das
+bricht die RDKit-Bindungslängen-Messmethodik (Intra-Fragment-Bindungen sind
+dann nicht mehr garantiert längenerhaltend gegenüber der wahren Pose),
+sichtbar daran, dass beide unabhängig trainierten Methoden EXAKT dieselbe
+Anzahl "Übergangsbindungen" pro Komplex zeigten (Artefakt des gemeinsamen,
+seed-deterministischen Fresh-Konformers, nicht der Modelle). Korrigiert
+durch Neu-Sampling mit `graph.sample_conformer=false` (wie bei allen
+bisherigen Tests), verifiziert per Code-Inspektion (`data.py:156-159`: die
+"Sample conformer is set to True"-Logzeile erscheint nur im `True`-Fall,
+ihr Fehlen im korrigierten Lauf bestätigt `False`).
+
+**Ergebnis (RDKit-Bindungslängen-Messung, identische Methodik wie
+Test 1/2/3, `TOL=0.02 Å`, 264 Bindungen über 10 Komplexe):**
+
+| Lauf | n Übergangsbindungen | mean | median | max |
+|---|---|---|---|---|
+| **SigmaFlow**, 6h, echte Generalisierung | **37** | **2.93 Å** | 2.56 Å | **10.83 Å** |
+| **SigmaDock**, 6h, echte Generalisierung | **46** | **13.09 Å** | 3.29 Å | **81.73 Å** |
+
+**SigmaFlow schneidet hier BESSER ab als SigmaDock** — umgekehrt zum
+bisherigen Befund auf den 10 auswendig gelernten Dummy-Komplexen (Audit,
+Test 1-3: SigmaFlow ~2.7 Å vs. SigmaDock ~1.8 Å mean). SigmaDocks
+13.09-Å-Mittelwert wird von einem einzelnen katastrophalen Ausreißer
+(81.73 Å, konzentriert auf Komplex `6TW5_9M2`: 12 von 34 Bindungen dort
+Übergänge, gegenüber nur 4 von 34 bei SigmaFlow) dominiert — kein
+"leicht zu lange", sondern ein komplett zerschossenes Atom. Bei 8 von 10
+Komplexen sind sich beide Methoden dagegen fast identisch (gleiche Anzahl
+Übergangsbindungen) — plausibel bei nur 6h Training (deutlich weniger
+Feinschliff als die stark überangepassten Dummy-Checkpoints), beide
+Methoden sind bei den "leichteren" Komplexen ähnlich grob und
+unterscheiden sich vor allem dort, wo es schwer wird.
+
+**Einordnung, mit Vorsicht:** dieser Befund relativiert die bisherige
+Erzählung ("SigmaFlow baut systematisch längere Übergangsbindungen")
+deutlich, beweist aber nicht ihr Gegenteil — Stichprobe ist klein (10
+Komplexe, 1 Ausreißer dominiert den Mittelwert), und beide Checkpoints sind
+mit 6h nur kurz trainiert (nicht das Konvergenz-Regime der
+Dummy-Overfit-Tests). Naheliegende, unbewiesene Hypothese: der bisherige
+Befund könnte stärker mit ÜBERANPASSUNGSVERHALTEN an die 10 Dummy-Komplexe
+zusammenhängen als mit einer grundsätzlichen Flow-Matching-Schwäche an
+Fragmentübergängen — dafür bräuchte es aber einen direkten Vergleich bei
+längerem Training auf echten Daten (12h/24h-Stufe), nicht nur diese
+6h-Momentaufnahme.
+
+### ✅ Fairness des 6h-Vergleichs verifiziert (auf User-Wunsch, vor dem Festhalten der Ergebnisse)
+
+Vier Punkte geprüft, alle bestanden:
+1. Beide Läufe exakt 6:00:0x gelaufen (`TIMEOUT`), beide Checkpoints <1 Min
+   vor Kill gespeichert, kein NaN/Crash in beiden Logs.
+2. `[WARN] Fragment mass below 2`-Skips: SigmaFlow 111/~7550 Steps (1.47%),
+   SigmaDock 170/~7850 Steps (2.17%) — klein, für beide vergleichbar, falls
+   überhaupt ein Bias dann zulasten SigmaDock.
+3. **Herkunft dieser Warnung geklärt:** der zugrundeliegende `assert
+   M.min() >= 2` (`sigma_flow_generator.py:823`) existiert wortgleich im
+   Original (`SigmaDock/src_sigmadock/src_sigmadock_diff/denoiser -
+   UMBAUEN.py:950-951`, per Grep verifiziert) — geerbte SigmaDock-
+   Design-Eigenschaft (Starrkörper-Physik braucht Mindestmasse pro
+   Fragment), kein SigmaFlow-Bug. Der `try/except`-Skip-Wrapper drumherum
+   (`trainer.py:320-328`, macht aus dem harten Crash ein `[WARN]`) existiert
+   im Original NICHT — wurde vor dieser Session ergänzt (uncommitted lokale
+   Änderung), nötig weil die 10 kuratierten Dummy-Komplexe nie einen so
+   entarteten Fall enthielten.
+4. **Der exakt selbe Skip-Wrapper existiert auch in der separaten
+   SigmaDock-ARC-Kopie** (`SigmaDock_Reproduction_JulianMueller/sigmadock/
+   src/sigmadock/trainer.py`, per Grep byte-identisch bestätigt, sogar
+   derselbe Kommentar-Verweis auf `STATUS.md PAUSE-PUNKT #14) — beide
+   Trainingsläufe wurden also unter identischen Bedingungen gefahren.
+
+### ⏳ 12h-Stufe gestartet: Fortsetzung der 6h-Checkpoints (nicht neu von Null)
+
+Auf User-Entscheidung: **Fortsetzen statt neu starten** (spart Compute,
+kumulativ 12h Training). Neue Skripte `train_pdbbind_general_resume_6more.sh`
+(SigmaFlow + SigmaDock-Analog, beide mit `--resume_from_checkpoint`, das
+laut `scripts/train.py:81-95` sowohl den Checkpoint als auch das zugehörige
+`EXP_DIR`/W&B-Run automatisch weiterführt statt einen neuen Ordner
+anzulegen). Jeweils nur 6 WEITERE Stunden angefordert (nicht 12h) — `short`
+(12h-Limit) reicht damit komfortabel, keine Partitions-Grenzfall-Frage.
+
+**Erster Versuch (Jobs 8451879/8451880) FAILED nach ~5 Min bei beiden** —
+echter Fehlschlag, kein stiller Erfolg (`set -euo pipefail` griff). Ursache
+(`.err`-Log, nicht `.out`): `_pickle.UnpicklingError: Weights only load
+failed` beim Wiederherstellen des vollen Trainer-Zustands
+(`trainer.fit(..., ckpt_path=...)`). **Root Cause:** PyTorch ≥2.6 hat den
+Default von `torch.load(weights_only=...)` von `False` auf `True`
+umgestellt (Sicherheits-Härtung) — verweigert seitdem das Laden eigener
+Klassen aus dem Checkpoint (`sigmadock.oracle.HParams` bei SigmaFlow,
+`pathlib.PosixPath` bei SigmaDock), außer man erlaubt sie explizit. Trat
+nur beim FORTSETZEN auf (voller Trainer-Zustand inkl. Optimizer), nicht
+beim ursprünglichen 6h-Start (kein Checkpoint zu laden) oder beim Sampling
+(anderer Lade-Pfad). **Gefixt:** `Trainer.fit()` akzeptiert `weights_only`
+direkt als Parameter (per `inspect.signature` verifiziert) —
+`scripts/train.py`s Resume-Zweig ruft jetzt `trainer.fit(...,
+weights_only=False)` (unbedenklich, da immer der eigene, vertrauenswürdige
+Checkpoint). Gepatcht in BEIDEN Codebasen (SigmaFlow lokal editiert + hochgeladen,
+SigmaDock direkt auf ARC per `sed`, da kein lokaler Klon existiert).
+
+Submittet 2026-08-06: **Job 8452085** (SigmaFlow, resumed von
+`experiments/sigmadock/0-08-06_09-42-56/checkpoints/last.ckpt`), **Job
+8452088** (SigmaDock, resumed von `experiments/sigmadock/
+0-08-06_09-26-06/checkpoints/last.ckpt`). Beide liefen sauber die vollen 6
+weiteren Stunden (`TIMEOUT`, 21:1x→03:1x über Nacht) — kumulativ 12h
+Training. **Fairness auch für diese Stufe verifiziert:** kein NaN/Crash in
+beiden Logs (nur die Standard-"NaN Check Callback enabled"-Zeile),
+Fragment-mass-Warnungen im zweiten 6h-Abschnitt SigmaFlow 147/~7950 Schritte
+(≈1.85%) vs. SigmaDock 172/~7950 (≈2.16%) — ähnliche Größenordnung wie im
+ersten Abschnitt, kein neuer Bias. Checkpoints frisch gespeichert kurz vor
+Kill (SigmaFlow Step 15500, SigmaDock Step 15800 — beide ca. verdoppelt
+gegenüber dem 6h-Stand, konsistent).
+
+### ✅✅ 12h-Ergebnis ausgewertet: 6h-Führung von SigmaFlow schmilzt deutlich
+
+Dieselben 10 PoseBusters-Komplexe, dieselbe Methodik (`sample_conformer=
+false`, RDKit-Bindungslängen-Messung, `TOL=0.02 Å`):
+
+| Lauf | n Übergangsbindungen | mean | median | max |
+|---|---|---|---|---|
+| SigmaFlow, 6h | 37 | 2.93 Å | 2.56 Å | 10.83 Å |
+| **SigmaFlow, 12h** | **36** | 2.59 Å | 2.31 Å | 6.77 Å |
+| SigmaDock, 6h | 46 | 13.09 Å | 3.29 Å | 81.73 Å |
+| **SigmaDock, 12h** | 43 | **1.26 Å** | **1.31 Å** | **3.17 Å** |
+
+**SigmaDocks katastrophaler 81.7-Å-Ausreißer (`6TW5_9M2`) ist mit mehr
+Training praktisch verschwunden** (max jetzt 3.17 Å) — die Anzahl der
+Übergangsbindungen bei diesem Komplex blieb bei 12 (unverändert), aber ihre
+Schwere sank massiv. SigmaFlow veränderte sich dagegen kaum: die
+Pro-Komplex-Anzahl der Übergangsbindungen ist zwischen 6h und 12h fast
+identisch (nur `6XUM_30L` um 1 verbessert), nur die Beträge sanken moderat.
+
+**Ergebnis jetzt gemischt, nicht mehr eindeutig:**
+- SigmaFlow gewinnt bei der ANZAHL (36 vs. 43)
+- SigmaDock gewinnt jetzt klar bei der SCHWERE (mean/median/max alle
+  niedriger)
+
+SigmaDock hat sich von 6h auf 12h deutlich stärker verbessert als
+SigmaFlow. Der 6h-Befund ("SigmaFlow klar vor SigmaDock") ist damit **nicht
+bestätigt** — er war vermutlich stark von SigmaDocks einzelnem, noch nicht
+ausgeheiltem Trainings-Ausreißer getrieben, nicht von einem grundsätzlichen
+Methodenunterschied.
+
+### Nebenuntersuchung: warum sampelt SigmaFlow langsamer als SigmaDock?
+
+User-Frage nach Beobachtung 5:38 Min (SigmaFlow) vs. 52s (SigmaDock) für
+dieselben 10 Komplexe. Per Code-Vergleich geprüft (nicht spekuliert):
+- **Schrittzahl identisch:** beide `num_steps: 25` (`conf/sampling/
+  base.yaml` in beiden Bäumen).
+- **Solver identisch:** beide `solver: euler`.
+- **Pro-Schritt-Struktur identisch:** `SigmaFlow_Development/src/sigmadock/
+  diff/sampling.py::sampler()` und die Original-Referenz (`SigmaDock/
+  src_sigmadock/src_sigmadock_diff/sampling - UMBAUEN.py::sampler()`) rufen
+  BEIDE pro Schritt genau EINEN Netzwerk-Forward-Pass auf
+  (`_predict_vector_field_step`/`_reverse_step`) plus eine geschlossene
+  "wahres Feld/wahrer Score"-Berechnung fürs Loss-Logging (kein Netzwerk-
+  Aufruf, nur Formel) — strukturell identisches Muster in beiden Bäumen,
+  keine Asymmetrie gefunden.
+- Direkt gemessen (aus dem Log, `Predicting DataLoader 0`-Zeile): 27s
+  (SigmaFlow) vs. 7s (SigmaDock) für den reinen Vorhersageschritt — ein
+  echter ~4x-Unterschied, der aber algorithmisch NICHT erklärt werden
+  konnte. Beide Jobs liefen laut `squeue` zufällig auf demselben Knoten
+  (`htc-g065`), zeitgleich gestartet — GPU-Konkurrenz auf demselben Knoten
+  ist ein möglicher, nicht verifizierter Störfaktor.
+- **Offen, nicht abschließend geklärt:** die Restdifferenz zwischen
+  Gesamtlaufzeit (338s vs. 52s) und der gemessenen Vorhersagezeit (27s vs.
+  7s) liegt vor der `Predicting`-Zeile (Environment-Aktivierung,
+  Imports, Modellaufbau) und ist im Log nicht zeitgestempelt — Ursache
+  unbekannt, für die Bindungslängen-Ergebnisse irrelevant (betrifft nur
+  Sampling-Geschwindigkeit, nicht Trainings-Fairness oder Ergebnisqualität).
+
+### ✅✅✅ Vollständiges PoseBusters-Set (209 Komplexe) ausgewertet — 10-Komplexe-Befund bestätigt, jetzt statistisch robust
+
+Auf User-Wunsch, um die Kleine-Stichprobe-Problematik zu beheben (der
+6h→12h-Vergleich hatte gezeigt, wie stark 10 Komplexe von einem einzelnen
+Ausreißer dominiert werden können): dasselbe Sampling+Mess-Verfahren auf
+ALLEN 209 PoseBusters-Komplexen wiederholt, mit den 12h-Checkpoints. Neue
+Skripte `sample_posebusters_full.sh` (SigmaFlow + SigmaDock-Analog, gleiche
+Methodik wie `sample_posebusters_10.sh` nur ohne Whitelist) und
+`bond_length_check_posebusters_full.py` (Scratchpad, Komplexliste wird aus
+dem Ordner ermittelt statt hartkodiert, robust gegen Parse-Fehler/
+Bindungszahl-Mismatches). Beide Sampling-Jobs liefen sauber und schnell
+(SigmaFlow 6:34 Min, SigmaDock 2:02 Min, Jobs 8464306/8464307) — bei 209
+statt 10 Komplexen skaliert die Zeit weit unterlinear, wie vermutet
+(Fixkosten pro Job dominieren gegenüber Pro-Komplex-Kosten). Wahre
+Referenz-Liganden aus `posebusters_paper/posebusters_benchmark_set/` per
+`tar` gebündelt heruntergeladen (209 Dateien einzeln per `scp` wäre
+unpraktikabel gewesen).
+
+**Ergebnis (5576 Bindungen über alle 209 Komplexe, KEIN Komplex
+übersprungen — 0 Parse-Fehler, 0 Bindungszahl-Mismatches):**
+
+| Lauf | n Übergangsbindungen | % aller Bindungen | mean | median | max |
+|---|---|---|---|---|---|
+| **SigmaFlow**, 12h | 728 | 13.1% | 2.68 Å | 2.23 Å | 15.73 Å |
+| **SigmaDock**, 12h | 830 | 14.9% | 1.25 Å | 1.22 Å | 18.08 Å |
+
+**Bestätigt das gemischte 10-Komplexe-Ergebnis bei 12h, jetzt mit
+statistisch robuster Basis (5576 statt 264 Bindungen):**
+- SigmaFlow hat WENIGER betroffene Bindungen (13.1% vs. 14.9%)
+- SigmaDock hat KLEINERE Abweichungen, wenn eine Bindung betroffen ist
+  (mean/median etwa halb so groß wie bei SigmaFlow)
+- Beide haben noch einzelne schwere Ausreißer (SigmaFlow max 15.73 Å,
+  SigmaDock max 18.08 Å) — keine Methode ist frei davon; die schlimmsten
+  Komplexe unterscheiden sich zwischen den Methoden (z.B. `7T1D_E7K`: 26
+  von 39 Bindungen bei SigmaDock betroffen, deutlich schlimmer als bei
+  SigmaFlow für diesen Komplex).
+
+**Einordnung:** dies ist jetzt ein belastbares Ergebnis (volle Stichprobe,
+kein Ausreißer-Artefakt), aber weiterhin **kein klarer Sieger** — echter
+Trade-off zwischen Häufigkeit (SigmaFlow besser) und Schwere (SigmaDock
+besser) der Fragmentübergangs-Fehler, bei nur 12h Training für beide. Die
+ursprüngliche Audit-Erzählung ("SigmaFlow baut systematisch längere
+Übergangsbindungen als SigmaDock") ist damit für echte
+Generalisierungs-Checkpoints NICHT bestätigt — sie galt nur für die stark
+überangepassten 10-Dummy-Komplexe-Checkpoints.
+
+### ✅ 24h-Stufe gestartet: FRISCH von Null (kein Fortsetzen)
+
+User-Entscheidung: 24h-Läufe diesmal **komplett neu von Null trainiert**,
+nicht fortgesetzt — auch weil die 6h/12h-Checkpoints ohnehin nicht mehr
+existieren (siehe oben: `--resume_from_checkpoint` schreibt in denselben
+Ordner, `save_top_k=3` hat die alten Checkpoint-Dateien beim Fortsetzen
+verdrängt). Ziel: prüfen, ob der bei 12h beobachtete Trade-off (SigmaFlow
+weniger, aber größere Übergangsbindungs-Abweichungen; SigmaDock mehr, aber
+kleinere) bei 24h Training bestehen bleibt.
+
+Neue Skripte `train_pdbbind_general_24h.sh` (SigmaFlow + SigmaDock-Analog),
+identische Hyperparameter wie die 6h/12h-Läufe, `--partition=medium` (24h
+überschreitet `short`s 12h-Limit; `medium` erlaubt bis 48h). Eigene neue
+Experiment-Ordner (kein `--resume_from_checkpoint`).
+
+Submittet 2026-08-07: **Job 8465054** (SigmaFlow), **Job 8465055**
+(SigmaDock), beide `medium`, `--time=24:00:00`, frisch von Null (eigene
+neue Experiment-Ordner).
+
+### ✅✅✅ 24h-Ergebnis ausgewertet (2026-08-08): 12h-Trade-off bestätigt, bleibt bestehen
+
+Beide Jobs sauber `TIMEOUT` nach exakt 24h (`sacct`: `1-00:00:17`,
+ExitCode `0:0`). **Fairness verifiziert** wie bei 6h/12h: kein NaN/Crash in
+beiden Logs (nur die erwartete `CANCELLED ... DUE TO TIME LIMIT`-Zeile im
+`.err`); Fragment-mass-Skips SigmaFlow 564, SigmaDock 694 (vergleichbare
+Größenordnung); Checkpoints frisch vor Kill gespeichert (SigmaFlow 09:53,
+SigmaDock 09:33, beide <30 Min vor `CANCELLED AT 09:59:23`). **Eine neue,
+nicht sofort erklärte Asymmetrie:** SigmaFlow zeigt ~30
+`Failed to parse pocket`-Skips (verstreut über verschiedene PDB-Komplexe,
+bekannte harmlose Warnung, s. PAUSE-PUNKT #4/Runde 2), SigmaDock zeigt
+**0** über den ganzen Lauf — bei vergleichbarer Step-Zahl (SigmaFlow
+~31700, SigmaDock ~31000+) auf demselben Datensatz eher unwahrscheinlich
+als reiner Zufall der Sampling-Reihenfolge, aber auch nicht crash-relevant
+(<0.1% der Steps) — als offene Beobachtung notiert, nicht weiter verfolgt.
+
+Checkpoints: `experiments/sigmadock/0-08-07_10-03-37/checkpoints/last.ckpt`
+(SigmaFlow, im `SigmaFlow_Development`-Baum) bzw.
+`experiments/sigmadock/0-08-07_09-59-31/checkpoints/last.ckpt` (SigmaDock,
+im separaten `sigmadock`-ARC-Baum). Sampling auf dem vollen 209-Komplexe-
+PoseBusters-Set mit `sample_posebusters_full.sh` (Jobs 8489346/8489347,
+je ~1 Min), Download der Vorhersagen per `tar`+`scp` (lokales Windows-
+`scp.exe` unterstützt keine Remote-Wildcards mehr — Workaround: erst
+`tar czf` auf ARC, dann einzelne Archivdatei runterladen). RDKit-
+Bindungslängen-Messung (`bond_length_check_posebusters_full.py`,
+lokal ausgeführt) lokal unter
+`SigmaFlow_Variants/posebusters_full_comparison_24h/`.
+
+**Ergebnis (5576 Bindungen über alle 209 Komplexe, 0 Parse-Fehler, 0
+Bindungszahl-Mismatches — direkt vergleichbar mit der 12h-Tabelle oben):**
+
+| Lauf | n Übergangsbindungen | % aller Bindungen | mean | median | max |
+|---|---|---|---|---|---|
+| SigmaFlow, 12h | 728 | 13.1% | 2.68 Å | 2.23 Å | 15.73 Å |
+| **SigmaFlow, 24h** | 733 | 13.1% | 2.41 Å | 1.93 Å | 14.22 Å |
+| SigmaDock, 12h | 830 | 14.9% | 1.25 Å | 1.22 Å | 18.08 Å |
+| **SigmaDock, 24h** | 813 | 14.6% | 1.40 Å | 1.40 Å | 5.33 Å |
+
+**Einordnung — der 12h-Trade-off bleibt bei 24h qualitativ unverändert
+bestehen:** SigmaFlow weiterhin weniger betroffene Bindungen (13.1% vs.
+14.6%), SigmaDock weiterhin die kleinere typische Abweichung, wenn eine
+Bindung betroffen ist (mean/median ≈1.4 Å vs. ≈2.1–2.4 Å). Kein
+Seitenwechsel zwischen 12h und 24h — die ursprüngliche Frage des Users
+("bleibt der Trade-off bei 24h bestehen?") ist damit mit Ja beantwortet.
+
+Zwei bemerkenswerte Verschiebungen mit mehr Training:
+- SigmaDocks schlimmster Ausreißer schrumpft deutlich (18.08 → 5.33 Å) —
+  grobe Einzelfehler werden mit mehr Training seltener/kleiner.
+- **`7T1D_E7K` (26/39 Bindungen) und `6TW5_9M2` (12/34 Bindungen) sind bei
+  SigmaDock bei 24h exakt identisch zu den 12h-Full-Set-Zahlen** — diese
+  zwei Komplexe sind jetzt über mindestens zwei unabhängige
+  Trainingsstände (12h und 24h, jeweils frisch bzw. fortgesetzt trainiert)
+  identisch schlecht, was eher für ein strukturelles/architekturelles
+  Problem bei genau diesen Komplexen spricht als für Untertraining.
+
+### ✅✅✅ Erweiterung (2026-08-08): volle PoseBusters-Chemie-Checks (209 Komplexe, 12h+24h) — SigmaDock zieht mit mehr Training klar vorne weg
+
+Die Bindungslängen-Metrik oben misst nur, WIE SCHLIMM eine bereits als
+"Übergangsbindung" markierte Bindung abweicht — nicht, welcher ANTEIL der
+Komplexe insgesamt als chemisch plausibel durchgeht. Auf User-Nachfrage
+("ist SigmaFlow insgesamt schlechter, sind die Moleküle realistisch?") den
+vollen PoseBusters-Check-Satz nachgezogen (lokal, `posebusters==0.6.5`
+bereits installiert, `mol_pred`/`mol_true` bereits heruntergeladen für
+12h+24h — kein neuer ARC-Trip nötig). **Einschränkung:** nur die 20
+liganden-intrinsischen Checks (alles außer den 8 Protein-/Kofaktor-/
+Wasser-Kontext-Checks) — dafür fehlen die 209 Rezeptor-PDBs lokal. Custom
+Config `redock_noprotein.yml` (Scratchpad: `redock.yml` minus die 8
+`mol_cond`-abhängigen Module), `mol_cond=None`. 6h hat kein volles Set
+(nie gesampelt), daher hier nicht vertreten.
+
+**Pass-Raten (209 Komplexe; nur Checks gezeigt, die sich zwischen
+Methode/Stufe unterscheiden — restliche ~9 Checks liegen bei allen vier
+Läufen bei 100%):**
+
+| Check | SigmaFlow 12h | SigmaFlow 24h | SigmaDock 12h | SigmaDock 24h |
+|---|---|---|---|---|
+| `double_bond_stereochemistry` | 0.962 | 0.981 | 0.976 | 0.990 |
+| `tetrahedral_chirality` | 0.756 | 0.785 | 0.856 | **0.914** |
+| `bond_lengths` (strenges DG-Kriterium) | 0.120 | 0.124 | 0.148 | **0.258** |
+| `bond_angles` | 0.062 | 0.081 | 0.043 | **0.187** |
+| `internal_steric_clash` | **0.129** | 0.144 | 0.062 | **0.268** |
+| `internal_energy` | 0.176 | 0.197 | 0.081 | **0.372** |
+| `rmsd_≤_2å` | 0.000 | 0.014 | 0.000 | 0.043 |
+
+**Einordnung — deutliche Revision der bisherigen "Trade-off, keine Methode
+dominiert"-Lesart:** bei 12h war's noch gemischt (SigmaFlow sogar leicht
+vorne bei `internal_steric_clash`/`bond_angles`). Bei 24h dreht sich das
+fast vollständig: SigmaDock verbessert sich auf JEDEM dieser Checks
+deutlich stärker als SigmaFlow zwischen 12h und 24h (z.B. `internal_energy`
+0.081→0.372 vs. SigmaFlows 0.176→0.197) und liegt bei 24h überall vorne.
+SigmaFlow stagniert zwischen 12h und 24h auf fast jedem Check nahezu.
+**Absolute Werte bleiben niedrig bei beiden** (RMSD≤2Å <5%) — schwerer
+Blind-Generalisierungstest nach nur 12-24h Training, keine
+Produktionspipeline.
+
+**Mögliche Erklärung, EXPLIZIT UNGETESTETE Hypothese (kein Ablationstest
+gefahren, nur Code-Analyse):** SigmaDocks Loss hat vier Terme
+(`T_score,R_score,T0,R0`, s. `tab:sigmadock-vs-sigmaflow-precise` in
+`Texte/theory.tex`) — `T0`/`R0` sind DIREKTE Daten-Raum-Terme (vergleichen
+die aus dem Score implizierte saubere Struktur direkt gegen die wahre
+Struktur), zusätzlich zu den Score-Matching-Termen. SigmaFlow hat nur zwei
+Terme (`loss_trans,loss_R`), beide im Geschwindigkeits-Raum, kein
+Daten-Raum-Term. Fast jeder Check, bei dem SigmaDock stärker zulegt, ist
+eine Eigenschaft der finalen 3D-Koordinaten — genau das, was `T0`/`R0`
+direkt bestrafen und SigmaFlow nur indirekt (über ODE-Integrations-
+Korrektheit) erreicht. **Wichtig:** dies ist eine ANDERE Hypothese als die
+in Test 3 bereits GETESTETE UND VERWORFENE Zeitgewichtungs-Hypothese
+(`λ(s)`-Analogon) — die schließt die Lücke nachweislich nicht; diese
+Loss-STRUKTUR-Hypothese (fehlender Daten-Raum-Term) wurde noch nicht
+getestet.
+
+### ✅ Präzisierung (2026-08-08): was `T0`/`R0` genau vergleichen, und warum die Hypothese sich auf ROTATION verengt
+
+Auf Nachfrage direkt im Code nachgesehen (nicht aus dem Gedächtnis
+beantwortet), beide Punkte bestätigt:
+
+**Was `T0`/`R0` vergleichen:** die WAHRE saubere Struktur (`T_0`/`R_0`,
+Ground Truth aus dem Trainingskomplex) gegen die vom Netzwerk IMPLIZIERTE
+Schätzung dieser Struktur (`T0_hat`/`R0_hat`), abgeleitet aus der
+aktuellen Score-Vorhersage bei Rauschstärke `t`. **Kein Mehrschritt-
+Integrieren** wie beim echten Sampling (25 Schritte in `sampling.py`):
+- Translation: `T0_hat = calc_trans_0(pred_T_score, T_t, t)` — eine
+  geschlossene algebraische Formel (Tweedie: `(x_t + σ_t²·score)/α_t`,
+  `r3_diffuser - UMBAUEN.py:44-50`), kein Integrationsschritt.
+- Rotation: `R0_hat = so3_diffuser.reverse(R_t, pred_R_score, t, dt=t,
+  noise_scale=0)` — EIN einziger deterministischer Sprung direkt von `t`
+  auf `0` (`dt=t` deckt das ganze Restintervall ab), dieselbe Schrittformel
+  wie beim echten Sampling, aber nur einmal statt 25× angewendet
+  (`r3_diffuser - UMBAUEN.py:97-119`).
+
+**Verifizierte Algebra — Translation ist exakt redundant:** `calc_trans_0`
+ist affin-linear im Score, also `T0_hat − T0 = (σ_t²/α_t)·(pred_score −
+true_score)` EXAKT. Setzt man das mit den tatsächlichen Code-λ-Gewichten
+(`T_score_scaling=1/σ_t`, `input_scaling=α_t`, `denoiser - UMBAUEN.py:
+1231-1252`) ein, kürzt sich `λ^{p,0}_t·‖T0_hat−T0‖²` EXAKT zu
+`λ^p_t·‖pred_score−true_score‖²` — Punkt für Punkt identisch zum
+`T_score`-Loss, keine neue Information, nur verdoppelter Gradient.
+
+**Das bestätigt (unabhängig neu hergeleitet) einen bereits früher in
+diesem Projekt getroffenen Befund:** PAUSE-PUNKT-Bereich "Variante (b)
+(x̂1-Reparametrisierung) verworfen" (Zeile ~202 oben) zeigt für SigmaFlows
+Translation exakt dieselbe Beziehung, `‖x̂1_pred−x1_true‖² = (1−t)²·
+‖v_pred−v_true‖²` — algebraisch redundant zum bestehenden `loss_trans`,
+deshalb damals NICHT implementiert. Zwei unabhängige Herleitungen
+(SigmaDock-Score-Raum jetzt, SigmaFlow-Geschwindigkeits-Raum damals)
+kommen auf dieselbe Struktur — stützt die Rechnung zusätzlich.
+
+**Rotation ist NICHT exakt redundant:** `R0_hat`/`R1_hat` entstehen durch
+eine Exponentialabbildung + nichtkommutative Gruppenverknüpfung auf
+SO(3), keine lineare Umrechnung. Für SigmaFlows Analogon (`R1_hat = R_t @
+exp(pred_u_t_R·(1−t))` vs. wahres `R_1 = R_t @ exp(u_t_R·(1−t))`) liefert
+die Baker-Campbell-Hausdorff-Formel `log(R1_hat^T R_1) = (u_t_R −
+pred_u_t_R)(1−t) − (1−t)²/2·[pred_u_t_R, u_t_R] + O(\text{höhere
+Ordnung})` — ein echter, nichtlinearer Korrekturterm (der Kommutator),
+der nur verschwindet, wenn Vorhersage und wahres Feld um dieselbe Achse
+rotieren. **Anders als bei der Translation wurde das für Rotation noch
+nie geprüft** (weder in dieser noch in einer früheren Session) — eine
+echte Lücke, kein bereits verworfener Pfad.
+
+**Konsequenz für den geplanten Test:** nur ein rotations-seitiger
+Daten-Raum-Term wird implementiert (nicht auch translations-seitig, das
+wäre nachweislich nutzlos und würde nur Variante (b) über einen Umweg
+reproduzieren).
+
+### ⏳ Neues Experiment läuft (2026-08-08): `SigmaFlow_Variants/b_rotation_data_space_loss/`, Job 8490675
+
+Neuer `R_1`-Daten-Raum-Term für die Rotation implementiert, mirror von
+SigmaDocks `R0`-Konstruktion, aber mit SigmaFlows eigenen Bausteinen
+(kein SDE-Reverse-Schritt, sondern ein einzelner Euler-Sprung mit
+`so3_utils.exp`/`log`, exakt wie `so3_flow_matcher.py::euler_step`, nur
+mit `dt=1−t` statt kleiner Schrittweite, da SigmaFlows Daten-Ende bei
+`t=1` liegt, nicht `t=0` wie bei SigmaDock):
+
+```python
+R_1_hat = R_t @ so3_utils.exp(pred_u_t_R * (1 - t_batch)[:, None, None])
+log_rel = so3_utils.log(R_1_hat.transpose(-1, -2) @ R_1)
+batch_rot_data_space_loss = (log_rel * log_rel).sum(dim=(-1, -2))
+```
+
+Direkt in `loss_R` aufaddiert (nicht als eigener Dict-Key) — dadurch
+braucht `trainer.py` KEINE Änderung, `rot_score_weight` wirkt automatisch
+auf die Summe aus Geschwindigkeits- und Daten-Raum-Term, genau wie bei
+SigmaDocks `T_score+T0`/`R_score+R0`-Gruppierung unter einem gemeinsamen
+Gewicht. Kleinste nötige Änderung: zusätzlich `R_t` (bereits intern
+berechnet, bisher nicht nach außen gereicht) in den `out`-Dict von
+`sigma_flow_generator.py`s Forward-Pass aufgenommen.
+
+**Von Claude implementiert, nicht vom User** (Abweichung vom sonst
+gültigen Standard für dieses Projekt — siehe eigene Feedback-Memory
+"SigmaFlow code ownership": User schreibt SigmaFlow-Code standardmäßig
+selbst, hier auf explizite Nachfrage hin diesmal beibehalten, aber mit
+vollständigem Code-Walkthrough).
+
+**Verifiziert vor dem ARC-Lauf:** lokaler CPU-Smoke-Test auf den 10
+Dummy-Komplexen (`--max_steps 5 --accelerator cpu`), Exit-Code 0, endliche
+Losses (`loss_train/loss_R=12.01`, `loss_trans=4.31`), kein NaN/Crash.
+`sample_posebusters_full.sh` im selben Ordner ebenfalls mit
+`PYTHONPATH`-Override versehen (sonst würde die spätere Auswertung
+stillschweigend den unveränderten Code laden, wie beim
+`a_time_weighting`-Präzedenzfall).
+
+**Zwei Nachfragen präzisiert, nachdem der Job schon lief:**
+1. Die `T0`-Redundanz gilt für SigmaDock SELBST, nicht nur in unserem
+   Vergleich — die Algebra benutzt ausschließlich SigmaDocks eigene
+   Formeln. Warum die Original-Autoren den Term trotzdem eingebaut haben,
+   ist unklar (kein erklärender Kommentar gefunden, `papers/` noch nicht
+   gezielt durchsucht) — Hypothese: leicht zu übersehende Kürzung, ODER
+   bewusst als impliziter ~2×-Gewichtsfaktor auf die Translation
+   einkalkuliert.
+2. Unser `R_1_hat` ist NICHT dieselbe Formel wie SigmaDocks `R0_hat`,
+   trotz gleicher Grundidee (ein-Schritt-Sprung via Exponentialabbildung
+   zum Datenende). Direkt in `so3_diffuser - UMBAUEN.py:325-355` +
+   `so3_utils.py::expmap` nachgeprüft: SigmaDock benutzt `R_t @
+   exp(R_t^T @ perturb)` (Score als Welt-Rahmen-Tangentialvektor,
+   transportiert via `R_t^T`), unsere Ergänzung benutzt `R_t @
+   exp(pred_u_t_R·dt)` direkt (SigmaFlows eigene, bereits etablierte
+   rechts-trivialisierte/Körper-Rahmen-Konvention, exakt wie
+   `so3_flow_matcher.py::euler_step`). Bereits vorher in `Texte/
+   theory.tex` als echte architektonische Differenz zwischen den beiden
+   Codebasen dokumentiert — kein neuer Befund, aber jetzt konkret an
+   dieser Stelle bestätigt.
+
+Hochgeladen nach `/data/stat-cadd/shug8458/SigmaFlow_Variants_JulianMueller/
+b_rotation_data_space_loss/` (per `scp -r`), submittet 2026-08-08 als
+**Job 8490675** (`medium`, `--time=12:00:00`, identische Hyperparameter
+`trans_score_weight=2.0 rot_score_weight=0.5` wie die bisherigen Läufe).
+`sigmadock loaded from`-Pfad-Check noch zu bestätigen (User prüft, sobald
+der Job angelaufen ist).
+
+**Plan nach Abschluss:** dieselbe Prozedur wie bei den anderen Stufen —
+Fairness-Check, volles PoseBusters-Set sampeln
+(`sample_posebusters_full.sh`, neuer `CKPT_DIR`), Bindungslängen +
+die 20 liganden-intrinsischen Checks auswerten, verglichen gegen die
+bereits vorhandenen SigmaFlow-12h-Zahlen oben (kein neuer Kontroll-Lauf
+nötig, Baseline existiert bereits) und gegen SigmaDock-12h. Besonders
+interessant: ob sich speziell die rotations-lastigen Checks
+(`tetrahedral_chirality`, `bond_angles`, `internal_steric_clash`) bewegen
+— das wäre das erwartete Signal, falls die Hypothese stimmt. Kein
+Ablationstest im strengen Sinn (nur ein Lauf, kein Wiederholungs-Seed) —
+ein erstes Signal, kein endgültiger Beweis.
+
+### Nächste Schritte
+
+1. **Freigabe für die Stufe danach einholen:** laut gestuftem Plan (6h→
+   12h→24h, dann erst 3-/7-Tage) war 24h die letzte Stufe vor den
+   Mehrtages-Läufen — vor einem 3-Tage-Lauf beim User nachfragen,
+   ob das gewünscht ist, statt automatisch weiterzumachen. Noch nicht
+   eingeholt (Stand 2026-08-08).
+2. ✅ **ERLEDIGT (2026-08-09):** Job `8490675` ausgewertet — siehe
+   "Job 8490675 ... ausgewertet" oben. Ergebnis: kein Effekt, Hypothese
+   widerlegt (zweiter negativer Befund nach Test 3).
+2b. **Neu offen:** wie geht es nach zwei negativen Ergebnissen
+   (Zeitgewichtung UND Rotations-Daten-Raum-Term) weiter? Die
+   zurückgestellte Idee "gezielter Anker-Atom-Distanz-Loss" (s.o., PAUSE-
+   PUNKT #14 weiter oben, "💡 Idee (zurückgestellt)") wurde explizit auf
+   Eis gelegt, bis die 6h/12h/24h-Läufe ausgewertet sind — das ist jetzt der
+   Fall. Mit dem User klären, ob das als nächstes verfolgt werden soll,
+   oder ob zunächst die 3-Tage-Freigabe (Punkt 1) Priorität hat.
+3. Protein-Kontext-Checks (Volume-Overlap/Mindestabstand zu Protein,
+   Kofaktoren, Wasser — 8 der 28 Checks) noch nicht ausgewertet, dafür
+   fehlen die 209 Rezeptor-PDBs lokal. Bei Bedarf von ARC nachladen
+   (`/data/stat-cadd/shug8458/data/posebusters/` bzw.
+   `posebusters_paper/posebusters_benchmark_set/`, s.o.).
+4. Die Sampling-Geschwindigkeits-Frage (SigmaFlow ~4x langsamer beim
+   reinen Vorhersageschritt) bleibt ungeklärt — algorithmisch keine
+   Erklärung gefunden, könnte an GPU-Konkurrenz oder Implementierungs-
+   details liegen. Nicht dringend, betrifft nur Sampling-Laufzeit.
+5. Die neue `Failed to parse pocket`-Asymmetrie (SigmaFlow ~30 vs.
+   SigmaDock 0, s.o.) ist nicht weiter untersucht — falls das bei einer
+   künftigen Stufe wieder auftaucht, lohnt sich ein Blick in die
+   Datenlade-/Filter-Codepfade beider Bäume, ob das ein echter
+   Unterschied oder nur Sampling-Zufall ist.
+5. Auffällige Einzelkomplexe für eine mögliche visuelle Inspektion
+   (z.B. via PyMOL), jetzt mit noch mehr Gewicht als vorher (identisch
+   über 12h UND 24h): SigmaDocks `7T1D_E7K` (26/39) und `6TW5_9M2`
+   (12/34).
+6. Kosmetischer `val_loss=0.0000`-Dateinamen-Bug (s.o.) könnte bei
+   Gelegenheit gefixt werden (`filename="checkpoint-{step:02d}-{val_loss:.4f}"`
+   → passenden Metriknamen verwenden), nicht dringend.
+7. Lokale Python-Umgebung (dieser Windows-Rechner) hat jetzt den vollen
+   Sampling-/Trainings-Software-Stack installiert (s.o.) — nicht committet,
+   aber für künftige lokale Tests wiederverwendbar.
+8. Offen, nicht dringend: `set -euo pipefail` auch in den ÄLTEREN
+   `slurm/*.sh`-Skripten nachrüsten (bisher nur in den drei neuen dieser
+   Session).
+
+### ✅✅✅ Job 8490675 (`b_rotation_data_space_loss`, 12h) ausgewertet (2026-08-09): Hypothese widerlegt — zweites negatives Ergebnis
+
+**Fairness-Check bestanden** (gleiches Verfahren wie bei allen bisherigen
+Stufen): `sacct` zeigt `TIMEOUT`, `ExitCode=0:0`, volle `12:00:18` gelaufen.
+Log frei von NaN/Traceback (einzige Erwähnung war der Callback-Name selbst,
+"Full NaN Check Callback enabled"). `sigmadock loaded from` zeigt korrekt
+auf `b_rotation_data_space_loss/src/...`. Checkpoint
+`experiments/sigmadock/0-08-08_13-06-22/checkpoints/last.ckpt` (00:45 Uhr
+gespeichert) verifiziert als der tatsächlich von diesem Job erzeugte
+Checkpoint — direkt per `sacct --format=Start,End` bestätigt: Job startete
+13:02:50, Checkpoint-Ordner-Zeitstempel `13:06:22` (plausibler
+Start-Overhead), Checkpoint-Datei 00:45 liegt sauber innerhalb des
+Job-Zeitfensters (endet 01:03:08), ~18 Min vor Kill — passt. Der zweite,
+ähnlich benannte Ordner (`0-08-08_12-44-48`, Checkpoint nur 15 Min nach
+Ordner-Erstellung gespeichert) ist ein Überbleibsel eines früheren
+Smoke-Tests, nicht dieses Laufs.
+
+**Zusätzlich verifiziert, auf User-Nachfrage vor dem Festhalten des
+Ergebnisses** (drei Fragen: richtiges Modell trainiert? Loss-Änderung
+tatsächlich aktiv? richtiges Modell gesampelt?): der ARC-Code-Stand von
+`sigma_flow_generator.py` enthält den `R_1`-Daten-Raum-Term Zeile für Zeile
+identisch zur lokalen Kopie (per `grep -n "ROTATION DATA-SPACE LOSS" -A3`
+bestätigt). Zusätzliches indirektes Argument: `compute_losses()` liest
+`out["R_t"]`/`out["R_1"]` UNBEDINGT (kein Feature-Flag) — wäre der
+Daten-Raum-Term nicht aktiv gewesen, hätte bereits der allererste
+Trainingsschritt mit `KeyError` abgebrochen (exakt der Fehler, der beim
+Sampling auftrat, s.u.), nicht 12h sauber durchlaufen.
+
+**Sampling-Zwischenfall, gefunden + gefixt:** erster Sampling-Versuch (Job
+8504542) brach nach 5:50 Min mit `KeyError: 'R_t'` in `compute_losses()` ab.
+**Root Cause:** `compute_losses()` hat zwei Aufrufer — den Forward-Pass
+(Training, liefert `R_t`/`R_1` seit der Implementierung dieser Variante) und
+die Verlust-LOGGING-Stelle in `sampling.py::sampler()`/`sample_notebook()`
+(baut ihr eigenes, von Hand zusammengestelltes `out`-Dict für die
+Trainings-Ziel-vs-Vorhersage-Diagnose pro ODE-Schritt) — letztere wurde bei
+der Implementierung der neuen Loss-Komponente übersehen. Betraf NUR die
+Diagnose-Loss-Anzeige während des Samplings, NICHT die tatsächliche
+ODE-Trajektorie/generierte Struktur (die nutzt `grad_T_p`/`grad_R_p` direkt,
+unverändert). **Fix:** `R_t`/`R_1` (bereits als lokale Variablen im
+Sampling-Loop vorhanden) in beide betroffenen Dict-Literale ergänzt
+(`sampling.py`, zwei Stellen: `sample_notebook()` Zeile ~187,
+`sampler()` Zeile ~425) — von Claude implementiert (gleiche
+Ownership-Ausnahme wie beim ursprünglichen `R_1`-Term, s.o.). Datei erneut
+per `scp` hochgeladen, Job 8504658 (neuer Sampling-Versuch, gleicher
+Checkpoint) lief sauber durch (`COMPLETED`, `ExitCode=0:0`, 6:28 Min, 209
+`.sdf`s erzeugt, `sigmadock loaded from` + `ckpt:`-Pfad + "Successfully
+loaded EMA model." im Log bestätigt).
+
+**Auswertung** (lokal, RDKit-Bindungslängen-Check + volle 20
+liganden-intrinsische PoseBusters-Checks — beide Auswertungsskripte
+diesmal NICHT im ephemeren Scratchpad, sondern dauerhaft gespeichert unter
+`SigmaFlow_Variants/posebusters_full_comparison/` (`bond_length_check.py`,
+`run_posebusters_ligandonly.py`, `redock_noprotein.yml`) — die
+Vorgänger-Skripte aus früheren Sessions ("Scratchpad") überlebten die
+Session nicht und mussten diesmal rekonstruiert werden; **Methodik anhand
+der bekannten 12h-Baseline-Zahlen verifiziert** (beide Skripte reproduzieren
+die bereits dokumentierten SigmaFlow-12h/SigmaDock-12h-Werte exakt, u.a. ein
+Definitions-Detail korrigiert: "mean/median/max Übergangsbindung" bezieht
+sich auf die tatsächliche PRÄDIZIERTE Bindungslänge der auffälligen
+Bindungen, nicht auf ihre Abweichung von der wahren Länge — nach Korrektur
+exakte Übereinstimmung mit den STATUS.md-Werten)):
+
+Bindungslängen (5576 Bindungen, `TOL=0.02 Å`):
+
+| Lauf | n Übergangsbindungen | % | mean | median | max |
+|---|---|---|---|---|---|
+| SigmaFlow, 12h (Baseline) | 728 | 13.1% | 2.68 Å | 2.23 Å | 15.73 Å |
+| **SigmaFlow, rotdata, 12h (NEU)** | 733 | 13.1% | 2.71 Å | 2.24 Å | 15.25 Å |
+| SigmaDock, 12h | 830 | 14.9% | 1.25 Å | 1.22 Å | 18.08 Å |
+
+20 liganden-intrinsische PoseBusters-Checks (209 Komplexe, nur abweichende
+Checks gezeigt):
+
+| Check | SigmaFlow 12h | **rotdata 12h (NEU)** | SigmaFlow 24h | SigmaDock 12h | SigmaDock 24h |
+|---|---|---|---|---|---|
+| double_bond_stereochemistry | 0.962 | 0.957 | 0.981 | 0.976 | 0.990 |
+| tetrahedral_chirality | 0.756 | 0.751 | 0.785 | 0.856 | 0.914 |
+| bond_lengths (DG) | 0.120 | 0.124 | 0.124 | 0.148 | 0.258 |
+| bond_angles | 0.062 | 0.057 | 0.081 | 0.043 | 0.187 |
+| internal_steric_clash | 0.129 | 0.129 | 0.144 | 0.062 | 0.268 |
+| internal_energy | 0.176 | 0.167 | 0.197 | 0.081 | 0.372 |
+| rmsd_≤_2å | 0.000 | 0.000 | 0.014 | 0.000 | 0.043 |
+
+**Ergebnis: kein Effekt, Hypothese widerlegt.** Alle Werte der neuen
+Variante liegen innerhalb der Rauschbreite der unveränderten
+SigmaFlow-12h-Baseline — auch die drei rotations-lastigen Checks
+(`tetrahedral_chirality`, `bond_angles`, `internal_steric_clash`), die laut
+der Hypothese (fehlender Daten-Raum-Term erklärt SigmaDocks Vorsprung bei
+der chemischen Plausibilität) am ehesten hätten reagieren sollen. Keine
+Bewegung in Richtung SigmaDock. Das ist der **zweite unabhängige negative
+Befund** zur "SigmaFlow fehlt ein Daten-Raum-Term"-Familie von Hypothesen
+(nach Test 3, Zeitgewichtung Variante a) — beide plausiblen, aus der
+SigmaDock-Loss-Struktur abgeleiteten Korrekturen schließen die
+24h-PoseBusters-Lücke nicht. Die eigentliche Ursache für SigmaDocks
+stärkere Verbesserung zwischen 12h und 24h bleibt ungeklärt.
+
+### ⏳ Neues Experiment implementiert + lokal verifiziert (2026-08-09): `SigmaFlow_Variants/c_anchor_atom_distance_loss/`
+
+Auf Nachfrage ("wie schaff ich es SigmaFlow auf SigmaDock-Niveau zu bringen?")
+gemeinsam die verbleibenden Optionen durchgesprochen. Anders als die beiden
+vorherigen Varianten (a: Zeitgewichtung, b: Rotations-Daten-Raum-Term — beide
+laut BCH-Herleitung im Kern nur verschiedene Umgewichtungen des BESTEHENDEN
+Geschwindigkeitsfehlers, beide wirkungslos) wurde diesmal die
+zurückgestellte **Anker-Atom-Distanz-Idee** umgesetzt: ein Loss-Term, der
+direkt den Abstand zwischen den beiden Anker-Atomen einer geschnittenen
+Torsionsbindung bestraft — genau die Größe, die die externe
+RDKit-"Übergangsbindung"-Diagnostik misst. Kombiniert zwei UNABHÄNGIGE
+Fragment-Vorhersagen zu einer neuen Größe, ist damit nicht auf dieselbe Art
+redundant zum bestehenden Loss wie die ersten beiden Varianten.
+
+**Offene Frage aus PAUSE-PUNKT #14 (oben, "💡 Idee") geklärt:** die
+Anker-Atompaare pro geschnittener Bindung ÜBERLEBEN bis zum Trainingszeitpunkt
+— nicht als rohe Indexliste, sondern als reguläre Graph-Kante. `chem/
+processing.py::get_global_ligand_graph` fügt bereits eine Kante zwischen den
+beiden Anker-Atomen jeder geschnittenen Bindung hinzu, Edge-Typ
+`"ligand_torsional_bond"` (`oracle.py`, Kommentar: "Literally the torsional
+bond separated by distance we know"). Kein zusätzliches Durchreichen nötig —
+`batch.edge_index[:, batch.edge_entity == HPARAMS.get_edge_idx("ligand_torsional_bond")]`
+liefert direkt die richtigen, bereits batch-korrekten Atom-Indexpaare.
+
+**Implementierung** (`src/sigmadock/diff/sigma_flow_generator.py`, von Claude
+umgesetzt, gleiche Ausnahme wie bei Variante b):
+- neue Methode `_compute_anchor_distance_loss()`: pro Anker-Bindung
+  `(pred_dist − true_dist)²`, wobei `true_dist = ‖pos_0[u]−pos_0[v]‖` (`pos_0`
+  ist trotz des Namens die wahre Struktur) und `pred_dist =
+  ‖pos_1_hat[u]−pos_1_hat[v]‖`. Ergebnis `[B x F]`-geshaped (Bindungsfehler
+  wird in den Slot EINES der beiden beteiligten Fragmente addiert — da
+  `scaled_fragmented_loss()` ohnehin über alle Fragmente eines Komplexes
+  summiert, ist es egal welches der beiden).
+- `forward()`: rekonstruiert `pos_1_hat` (Einzelschritt-Vorhersage der
+  finalen Struktur) durch Wiederverwendung der BESTEHENDEN
+  `_apply_transformations()`-Methode — kein neuer Geometrie-Code, nur mit
+  `R_1_hat`/`trans_1_hat` (CondOT/Exp-Map-Einzelschritt aus der
+  Netzwerk-Vorhersage) statt `R_t`/`trans_t` aufgerufen.
+- `compute_losses()`: `anchor_dist_loss` wird via `out.get("anchor_dist_loss",
+  0.0)` zu `loss_trans` addiert — bewusst OPTIONAL, damit `sampling.py`s von
+  Hand gebaute Logging-Dicts (die dieses Feld nicht haben) nicht denselben
+  `KeyError`-Fehler wiederholen, der Variante b beim ersten Sampling-Versuch
+  getroffen hat.
+
+**Lokal verifiziert (CPU, 10 Dummy-Komplexe, vor jedem ARC-Upload):**
+1. `--max_steps 5 --accelerator cpu`: Exit-Code 0, endliche Losses
+   (`loss_train/loss_trans=9.71` [inkl. neuem Term], `loss_R=11.89`,
+   `total=15.65`), kein NaN/Crash, 2 Epochen sauber durchlaufen.
+2. **Zusätzlich, auf eigene Initiative vor dem Vertrauen in Punkt 1:** ein
+   temporärer Debug-Print direkt in `forward()` bestätigt, dass
+   `anchor_dist_loss` über Trainings- UND Validierungsschritte hinweg
+   tatsächlich überwiegend NICHT null ist (typisch 4-9 von 8-13
+   Fragment-Slots pro Batch), endliche Werte in plausibler Größenordnung
+   (meist < 10, vereinzelt bis ~35 im schlecht trainierten Smoke-Test-Netz —
+   passt zur Größenordnung der RDKit-gemessenen Übergangsbindungsfehler aus
+   Test 1). Ausgeschlossen: der Edge-Filter matcht nichts und der Term ist
+   still immer 0 (hätte den KeyError-Vorfall von Variante b wiederholt, aber
+   in einer Weise, die NICHT durch einen Crash aufgefallen wäre). Print
+   danach wieder entfernt.
+
+**Vorbereitet:** `slurm/train_pdbbind_general_12h.sh` (identische
+Hyperparameter wie a/b, für direkte Vergleichbarkeit) und
+`slurm/sample_posebusters_full.sh` (mit `PYTHONPATH`-Override diesmal von
+Anfang an ergänzt, statt wie bei Variante b erst nach einem Fehlschlag
+nachgerüstet).
+
+### ✅✅✅ Variante C ausgewertet (2026-08-09): DRITTES negatives Ergebnis — und das aussagekräftigste
+
+**Trainingslauf Job 8505487** (`medium`, 12h): Fairness-Check vollständig
+bestanden — `TIMEOUT`/`ExitCode=0:0`/`12:00:27` (kein stiller Frühabbruch),
+`sigmadock loaded from` korrekt auf `c_anchor_atom_distance_loss/src/...`,
+kein NaN/Traceback. Checkpoint `experiments/sigmadock/0-08-09_02-38-01/
+checkpoints/last.ckpt` (14:25 gespeichert, passt exakt ans Ende des
+12h-Fensters). Zwei weitere, ähnlich benannte Ordner (`0-08-09_02-11-06`,
+`0-08-09_02-24-08`) sind Überbleibsel der lokalen Smoke-Tests (Checkpoints
+nur 7-19 Min nach Ordner-Erstellung) — nicht dieses Laufs.
+
+**Sampling Job 8512134**: `COMPLETED`/`0:0`/11:43, `ckpt:`-Zeile zeigt den
+richtigen Checkpoint, `sigmadock loaded from` den richtigen Code-Pfad,
+"Successfully loaded EMA model.", 209 `.sdf`s erzeugt.
+
+**Zusätzliche Absicherung, dass wir nicht versehentlich die Baseline
+nochmal ausgewertet haben** (eigene Initiative, nachdem die Zahlen
+auffällig nah an der Baseline lagen): direkter Koordinatenvergleich der
+vorhergesagten Posen gegen die SigmaFlow-Baseline-Posen — max.
+Atom-Abweichung 0.14-0.72 Å über 8 Stichprobenkomplexe. Es sind also
+nachweislich VERSCHIEDENE Modelle, das Null-Ergebnis ist kein
+Verwechslungs-Artefakt.
+
+**Ergebnis Bindungslängen (5576 Bindungen):**
+
+| Lauf | n Übergangsbindungen | % | mean | median | max |
+|---|---|---|---|---|---|
+| SigmaFlow, 12h (Baseline) | 728 | 13.1% | 2.68 Å | 2.23 Å | 15.73 Å |
+| SigmaFlow, rotdata (Var. b) | 733 | 13.1% | 2.71 Å | 2.24 Å | 15.25 Å |
+| **SigmaFlow, anchordist (Var. c)** | **730** | **13.1%** | **2.69 Å** | **2.26 Å** | **15.68 Å** |
+| SigmaDock, 12h | 830 | 14.9% | 1.25 Å | 1.22 Å | 18.08 Å |
+
+**Ergebnis PoseBusters (nur abweichende Checks):**
+
+| Check | SF 12h | SF rotdata | **SF anchordist** | SF 24h | SD 12h | SD 24h |
+|---|---|---|---|---|---|---|
+| double_bond_stereochemistry | 0.962 | 0.957 | **0.957** | 0.981 | 0.976 | 0.990 |
+| tetrahedral_chirality | 0.756 | 0.751 | **0.751** | 0.785 | 0.856 | 0.914 |
+| bond_lengths (DG) | 0.120 | 0.124 | **0.124** | 0.124 | 0.148 | 0.258 |
+| bond_angles | 0.062 | 0.057 | **0.067** | 0.081 | 0.043 | 0.187 |
+| internal_steric_clash | 0.129 | 0.129 | **0.134** | 0.144 | 0.062 | 0.268 |
+| internal_energy | 0.176 | 0.167 | **0.163** | 0.197 | 0.081 | 0.372 |
+| rmsd_≤_2å | 0.000 | 0.000 | **0.000** | 0.014 | 0.000 | 0.043 |
+
+**Kein Effekt — obwohl dieser Loss-Term GENAU die gemessene Größe direkt
+bestraft.** Das ist qualitativ ein stärkerer Befund als die beiden
+vorherigen Nullergebnisse: Varianten a und b konnte man mit "war im Kern
+nur eine Umgewichtung des bestehenden Fehlers" wegerklären (BCH-Herleitung
+oben). Variante c dagegen fügt eine echte, neue, kreuz-fragmentäre Größe
+hinzu — und die vom Modell erzeugten Übergangsbindungen werden trotzdem
+nicht kürzer.
+
+### 📊 Nebenbefund mit echtem methodischem Wert: Lauf-zu-Lauf-Varianz jetzt quantifiziert
+
+Wir haben jetzt DREI unabhängig trainierte SigmaFlow-12h-Läufe mit
+identischen Hyperparametern (Baseline, Var. b, Var. c — die
+Loss-Änderungen wirkten offensichtlich nicht). Ihre Bindungslängen-Zahlen:
+**728 / 733 / 730** Übergangsbindungen, mean **2.68 / 2.71 / 2.69 Å**.
+
+Die Lauf-zu-Lauf-Streuung dieser Metrik liegt also bei etwa **±3
+Bindungen und ±0.03 Å**. Das ist wichtig, weil es die bisherigen
+Nullergebnisse nachträglich absichert: die gemessenen "Nicht-Effekte"
+(+5, +2 Bindungen) liegen genau in dieser Streuung, und SigmaDocks
+Vorsprung (830 Bindungen, mean 1.25 Å) liegt um GRÖSSENORDNUNGEN
+außerhalb davon. Die Metrik ist also empfindlich genug, um einen echten
+Effekt zu sehen — sie sieht nur keinen.
+
+### 💡 Neue Arbeitshypothese nach drei Nullergebnissen (ungetestet)
+
+Die drei gescheiterten Loss-Eingriffe legen eine Umdeutung nahe, die
+bisher nicht formuliert war: **die lange Übergangsbindung ist womöglich
+gar kein eigenständiger Defekt, sondern nur ein Ablesewert der allgemeinen
+Platzierungsgenauigkeit.** Jedes Fragment wird starr und unabhängig
+platziert; die Bindungslänge an der Schnittstelle ergibt sich aus ZWEI
+unabhängigen SE(3)-Vorhersagen. Wenn das Modell Fragmente generell mit
+~2-3 Å Fehler platziert, MUSS die Übergangsbindung um diese
+Größenordnung falsch sein — unabhängig davon, was der Loss verlangt. Ein
+Loss-Term kann nichts erzwingen, was die Gesamtgenauigkeit des Modells
+nicht hergibt.
+
+Das würde erklären, warum alle drei Eingriffe folgenlos blieben, und es
+verschiebt die Frage von "welcher Loss-Term fehlt SigmaFlow?" zu "warum
+platziert SigmaFlows Netzwerk Fragmente generell ungenauer als
+SigmaDocks?". **Konkret prüfbar** (noch nicht getan): die
+Pro-Fragment-Platzierungsgenauigkeit (RMSD/Translations-/Rotationsfehler
+pro Fragment) beider Methoden direkt messen und gegen den
+Übergangsbindungs-Fehler auftragen. Falls die Korrelation stark ist, ist
+die Hypothese gestützt und weitere Loss-Varianten sind Zeitverschwendung.
+
+### 🚨🚨🚨 Hypothese GEPRÜFT (2026-08-09) — widerlegt, aber dabei ein weit wichtigerer Befund: BEIDE Modelle sind bei 12h faktisch untrainiert
+
+Skript `SigmaFlow_Variants/posebusters_full_comparison/
+placement_vs_bond_error.py` (dauerhaft gespeichert). Methode, ohne neuen
+ARC-Lauf: da Fragmente STARR platziert werden, behält jede
+Intra-Fragment-Bindung ihre wahre Länge exakt — daraus lässt sich die
+Fragmentierung aus den Vorhersagen selbst rekonstruieren
+(Zusammenhangskomponenten über längenerhaltende Bindungen). Pro Fragment
+dann Kabsch-Ausrichtung Vorhersage↔Wahrheit → Schwerpunktfehler +
+Rotationsfehler. **Methodik selbst-validiert:** Residual-RMSD nach starrer
+Ausrichtung = 0.019-0.066 Å, bestätigt, dass die Fragment-Rekonstruktion
+korrekt ist und die Platzierung wirklich starr erfolgt.
+
+**Die Hypothese selbst ist WIDERLEGT:** die Korrelation zwischen
+kombiniertem Fragment-Platzierungsfehler und Übergangsbindungs-Fehler ist
+schwach (SigmaFlow r=0.18, SigmaDock r=0.05, anchordist r=0.16). Die lange
+Übergangsbindung ist also NICHT einfach ein Ablesewert der
+Platzierungsgenauigkeit.
+
+**Der eigentliche Befund (unerwartet, viel gravierender):**
+
+| Metrik (12h-Checkpoints, 209 Komplexe) | SigmaFlow | SigmaDock | Zufalls-Baseline |
+|---|---|---|---|
+| Pro-Fragment-Schwerpunktfehler (mean/median) | 5.19 / 4.57 Å | 12.92 / 6.39 Å | — |
+| **Pro-Fragment-Rotationsfehler (mean)** | **122.2°** | **118.7°** | **126.5°** |
+| Gesamt-Molekül-RMSD (mean/median) | 5.58 / 5.14 Å | 13.57 / 6.55 Å | — |
+| Anteil RMSD < 2 Å | 0.000 | 0.000 | — |
+
+**Die Fragment-Orientierungen beider Modelle sind praktisch zufällig.**
+Für Haar-gleichverteilte Zufallsrotationen in SO(3) beträgt der mittlere
+Rotationswinkel 126.5° (analytisch `(π²/2+2)/π`, empirisch über 20.000
+Stichproben bestätigt: 126.6°). Gemessen: SigmaFlow 122.2°, SigmaDock
+118.7° — beide nur marginal besser als reiner Zufall. Kein Modell hat bei
+12h gelernt, Fragmente sinnvoll zu ORIENTIEREN.
+
+**Frames verifiziert, bevor das geglaubt wurde:** Gesamt-Molekül-
+Schwerpunktfehler SigmaFlow nur 2.13 Å (kein systematischer
+Koordinatensystem-Versatz), und die berechneten RMSDs reproduzieren
+unabhängig PoseBusters' eigenes `rmsd_≤_2å = 0.000` für beide Methoden.
+
+**Was das für die gesamte bisherige Untersuchung bedeutet:** die
+wochenlang verfolgten Übergangsbindungs-Unterschiede (2.68 Å vs. 1.25 Å
+etc.) sind Unterschiede zwischen ZWEI FAKTISCH UNTRAINIERTEN Modellen.
+Das erklärt auf einen Schlag, warum alle drei Loss-Varianten wirkungslos
+blieben: ein Loss-Term kann die Feinjustierung einer Größe nicht
+verbessern, solange das Modell die zugrundeliegende Aufgabe (Fragmente
+überhaupt richtig orientieren) noch gar nicht gelöst hat. Die
+Übergangsbindungs-Metrik ist zudem als Zielgröße irreführend — sie kann
+für ein gleichmäßig schlechtes Modell "besser" aussehen.
+
+**Compute-Einordnung (aus dem Paper, Appendix E.3, direkt nachgelesen):**
+die publizierten SigmaDock-Ergebnisse (79.9% Top-1 RMSD<2Å) stammen aus
+**4 Tagen auf 4 NVIDIA-A100 (DDP), Batch-Size 32, bis zu 256 Epochen, bis
+zur Konvergenz** ≈ 384 GPU-Stunden. Unsere Läufe: **12h auf einer
+einzelnen L40S, Batch-Size 8** ≈ 12 GPU-Stunden — etwa **1/32 der
+Rechenzeit bei 1/4 der Batch-Size**. Dass beide Modelle bei 0% RMSD<2Å
+liegen, ist damit vollständig erwartbar und kein Hinweis auf einen Defekt
+in SigmaFlow.
+
+### 🚨🚨🚨 KONFIGURATIONSFEHLER GEFUNDEN (2026-08-09): alle pdbbind-Läufe blieben im LR-WARMUP stecken
+
+Beim Vorbereiten der Dummy-Langläufe entdeckt (nicht gesucht): `max_epochs`
+steuert nicht nur die Laufzeit, sondern über `max_steps`
+(`scripts/train.py:218-222`) auch den **Learning-Rate-Schedule**
+(`trainer.py:137-157`: `LinearLR`-Warmup über `lr_warmup_frac=1/16` der
+`max_steps`, danach Cosine-Annealing).
+
+Ausgerechnet für unsere Läufe (`--max_epochs 1000`, 19.443 Komplexe,
+Batch 8 → `max_steps` = 2.430.375, Warmup allein = 151.898 Steps):
+
+| Lauf | erreichter Step | % des Schedules | LR am Ende | Phase |
+|---|---|---|---|---|
+| pdbbind 12h | 15.500 | 0.6% | **1.02e-5** (10% des Peaks) | **noch Warmup** |
+| pdbbind 24h | 31.700 | 1.3% | **2.09e-5** (21% des Peaks) | **noch Warmup** |
+| Dummy 3h (`max_epochs=700`) | 3.070 | 88% | annealing | Schedule fast komplett |
+
+**Sämtliche pdbbind-Läufe (6h/12h/24h, SigmaFlow UND SigmaDock) haben die
+Warmup-Phase nie verlassen** und trainierten durchgehend bei 1-2
+Größenordnungen unter der vorgesehenen Peak-LR (`max_lr_start=1e-4`,
+`config.py:140`); die Annealing-Phase wurde nie erreicht.
+
+**Das ist ein Fehler in UNSERER Konfiguration, nicht in SigmaDock.** Das
+Paper (Appendix E.3) nutzt 256 Epochen bei Batch 32 auf 4×A100 über 4 Tage
+— damit ist der Warmup erreichbar. Unsere Kombination `max_epochs=1000`
+(4× mehr als das Paper) MIT 1/32 der Rechenzeit und 1/4 der Batch-Size
+macht den Schedule unerreichbar.
+
+**Erklärungskraft:** passt zu allen bisherigen Beobachtungen — beide
+Methoden gleichermaßen betroffen (gemeinsame `train.py`), Rotationen nahe
+Zufall, drei Loss-Varianten wirkungslos (bei effektiv 1e-5 LR kann keine
+Loss-Änderung etwas ausrichten), und die Dummy-Läufe (Schedule läuft
+durch) schnitten mit 102° besser ab als die pdbbind-Läufe mit 122°,
+obwohl sie weit weniger Daten sahen. **Noch nicht bewiesen** — ein
+Korrekturlauf steht aus (s. Nächste Schritte).
+
+**Konsequenz für alle künftigen Skripte:** `max_epochs` muss auf die
+Epochenzahl gesetzt werden, die im gegebenen Zeitbudget TATSÄCHLICH
+erreichbar ist, nicht "großzügig" hoch. Ein zu großer Wert verstümmelt den
+LR-Schedule still. Für 12h auf pdbbind-general bei Batch 8 wären das ca.
+`max_epochs=6-7` (statt 1000).
+
+### ✅ Fünf 9h-Dummy-Overfit-Skripte vorbereitet (2026-08-09)
+
+Auf User-Vorschlag ("die 10 Dummies sollte er ja mit mehr Zeit auswendig
+lernen können") — Zweck ist die saubere Trennung von "zu wenig Zeit" vs.
+"strukturell kaputt", die auf PoseBusters nicht möglich ist.
+
+- `SigmaFlow_Development/slurm/train_dummy_overfit_9h.sh` (Baseline)
+- `SigmaFlow_Variants/{a_time_weighting,b_rotation_data_space_loss,
+  c_anchor_atom_distance_loss}/slurm/train_dummy_overfit_9h.sh`
+- `SigmaFlow_Variants/sigmadock_control_scripts/
+  train_dummy_overfit_9h_sigmadock.sh` (**SigmaDock-Kontrolle**, muss in den
+  separaten ARC-SigmaDock-Klon hochgeladen werden, kein lokaler Klon
+  vorhanden)
+
+Alle mit `set -euo pipefail`, ohne das tote `--rot_vector_field_scaling`,
+`bash -n`-syntaxgeprüft. **`max_epochs=1800`** bewusst auf die in 9h
+erreichbare Epochenzahl kalibriert (3h → 614 Epochen ≈ 3.7 Epochen/Min),
+damit der LR-Schedule diesmal durchläuft — im Skriptkommentar ausdrücklich
+als "load-bearing, nicht "sicherheitshalber" erhöhen" markiert.
+
+**Primäre Auswertungsmetrik: Rotationsfehler gegen die 126.5°-Zufallsgrenze**
+(`placement_dummy.py`), NICHT Übergangsbindungslängen.
+
+### ⚠️ Methodik-Falle gefunden und behoben: Singular/Plural der Referenz-Ligandendatei
+
+Beim ersten Dummy-Auswertungsversuch ergaben sich RMSD-Werte, die
+`RESULTS.md` widersprachen (12.53 Å statt der dokumentierten 4.31 Å).
+Ursache: im Dummy-Ordner existieren BEIDE Dateien `<cid>_ligand.sdf` und
+`<cid>_ligands.sdf`, und sie unterscheiden sich für manche Komplexe (z.B.
+`1HWI_115`). `conf/experiments/dummy_train.yaml` nutzt
+`sdf_regex: ".*_ligand\.sdf$"` — **Singular, verankert**, matcht die
+Plural-Datei also NICHT. PoseBusters ist der umgekehrte Fall
+(`.*ligands.*\.sdf$`, Plural). Nach Korrektur reproduziert die Messung
+`RESULTS.md` **exakt** (SigmaFlow 4.31/3.67, SigmaDock 5.08/4.76) — das
+validiert zugleich die gesamte Platzierungs-Analyse-Methodik unabhängig.
+
+### ⏳ LR-Fix-Läufe gestartet (2026-08-09): Jobs 8512798 (SigmaFlow) + 8512922 (SigmaDock)
+
+Skripte: `SigmaFlow_Development/slurm/train_pdbbind_general_6h_lrfix.sh` und
+`SigmaFlow_Variants/sigmadock_control_scripts/
+train_pdbbind_general_6h_lrfix_sigmadock.sh` (Letzteres muss in den
+separaten ARC-SigmaDock-Klon hochgeladen werden). Beide `--max_epochs 3`
+statt 1000, `short`, 6h.
+
+**Warum 6h statt 12h** (User-Vorschlag, nach Datenprüfung bestätigt): die
+bestehenden 6h/12h-Läufe zeigen bei SigmaFlow praktisch keine Verbesserung
+(133.3° → 131.1° Rotationsfehler, beide SCHLECHTER als die 126.5°-
+Zufallsgrenze; SigmaDock 126.3° → 113.4°). Gesucht wird also kein
+2°-Effekt, sondern ein großer — der korrigierte Schedule läuft mit 20-100×
+höherer LR (Peak 1e-4 statt ~5e-6 am Laufende). **Der Vergleich ist damit
+sogar schärfer:** schlägt der 6h-korrigierte Lauf den bestehenden
+12h-kaputten (122.2° auf allen 209 Komplexen), ist der Befund bei halber
+Rechenzeit eindeutig. Auswertung auf dem vollen 209er-Set (die
+6h-Zahlen oben stammen nur von 10 Komplexen, die 6h-Checkpoints existieren
+nicht mehr).
+
+**Zwei Fehlschläge unterwegs, beide behoben:**
+1. Job 8512799 (erster SigmaDock-Versuch) `FAILED` nach 5:44 mit
+   `ModuleNotFoundError: No module named 'sigmadock.diff.denoiser'`.
+   **Ursache: Claude hatte das Kontrollskript aus dem SigmaFlow-Skript
+   abgeleitet und dabei die Umgebung mitgeschleppt.** SigmaDock läuft in
+   `myenv` (aktiviert per `source activate`, schlichtes `python`), NICHT in
+   `sigmaflow_env` — dort ist SigmaFlow_Development in die site-packages
+   installiert, sodass `import sigmadock` auf das SigmaFlow-Paket auflöst
+   (das hat `sigma_flow_generator.py`, kein `denoiser.py`). Behoben durch
+   wörtliche Übernahme des Umgebungs-Blocks aus dem nachweislich
+   funktionierenden `train_pdbbind_general_24h.sh` desselben Klons; im
+   Skript ausführlich kommentiert, damit es niemand "harmonisiert".
+   Die Flags `--rot_score_method space --rot_score_scaling rms` waren
+   dagegen KORREKT (im funktionierenden Skript genauso vorhanden).
+2. Kurzzeitig doppelte SigmaFlow-Jobs (8512798 + 8512885), 8512885
+   gecancelt.
+
+**Lehre:** ein Skript für die jeweils ANDERE Codebasis nie aus dem
+SigmaFlow-Skript ableiten, sondern immer aus einem dort nachweislich
+funktionierenden Skript — Umgebung, Aktivierungsart und Interpreter
+unterscheiden sich zwischen den beiden ARC-Bäumen.
+
+**Frühe Verifikation statt Post-mortem** (Konsequenz aus den bisherigen
+Vorfällen): unmittelbar nach Jobstart `grep "sigmadock loaded from"` prüfen
+— muss auf den jeweils EIGENEN Baum zeigen. Danach: LR-Verlauf gegen die
+Erwartung prüfen (Peak 1e-4 innerhalb der ersten ~455 Steps, danach
+Annealing; beim kaputten Schedule wären es ~5e-6 am Laufende — Faktor 20,
+unverwechselbar).
+
+### ✅✅✅ LR-Fix ausgewertet (2026-08-09): Effekt real, aber klein — der eigentliche Blocker ist die Zahl der GRADIENTENSCHRITTE
+
+Beide Läufe `COMPLETED` mit `ExitCode 0:0` **unterhalb** der 6h-Walltime
+(SigmaFlow 5:52:02, SigmaDock 5:29:23) — d.h. die 3 Epochen wurden
+abgeschlossen und der LR-Schedule lief **erstmals vollständig durch**,
+inklusive Annealing. Anders als bei allen früheren Läufen ist `COMPLETED`
+hier das ERWÜNSCHTE Ergebnis, kein Warnsignal. Beide Code-Pfade,
+Checkpoints (`0-08-09_16-08-32` bzw. `0-08-09_16-24-54`), EMA-Ladung und
+209 Sampling-Ergebnisse verifiziert (Jobs 8523816/8523817).
+
+| Lauf | Rotationsfehler | RMSD | Schwerpunktfehler |
+|---|---|---|---|
+| SigmaFlow 12h, kaputter LR (Baseline) | 122.2° | 5.58 Å | 5.19 Å |
+| SigmaFlow 12h, kaputter LR (Var. b) | 122.2° | 5.61 Å | — |
+| SigmaFlow 12h, kaputter LR (Var. c) | 122.1° | 5.58 Å | — |
+| **SigmaFlow 6h, LR KORRIGIERT** | **120.1°** | **5.09 Å** | **4.75 Å** |
+| SigmaDock 12h, kaputter LR | 118.7° | 13.57 Å | 12.92 Å |
+| **SigmaDock 6h, LR KORRIGIERT** | **117.3°** | **12.19 Å** | **11.21 Å** |
+| *Zufall* | *126.5°* | — | — |
+
+**Rauschgrenze quantifiziert** (drei unabhängige 12h-Läufe mit effektiv
+identischer Konfiguration — Baseline, Var. b, Var. c): Rotationsfehler
+streut über **0.1°** (σ=0.04°). Die LR-Fix-Verbesserung von −2.1° ist damit
+das ~50-fache der Streuung, also eindeutig real; sie tritt bei BEIDEN
+Methoden und in BEIDEN Metriken auf, bei HALBER Rechenzeit (6h schlägt
+12h).
+
+**Aber der Effekt ist klein:** 120.1° gegenüber 126.5° Zufall bleibt
+praktisch Zufall. Der LR-Fehler war real und messbar schädlich, ist aber
+NICHT der Hauptblocker.
+
+### 🎯 Eigentliche Ursache identifiziert: ~5% der Gradientenschritte des Papers
+
+Die Denkweise in EPOCHEN war irreführend — entscheidend ist die absolute
+Zahl der Optimierungsschritte:
+
+| | Schritte | Batch | gesehene Samples |
+|---|---|---|---|
+| Paper (4×A100, 4 Tage, Appendix E.3) | 155.544 | 32 | 4,98 Mio |
+| unser 6h-pdbbind-Lauf | ~7.290 | 8 | 0,06 Mio |
+| unser 3h-Dummy-Lauf | ~3.070 | 2 | 0,006 Mio |
+
+**Entscheidendes Gegenargument gegen die Epochen-Sicht:** der
+Dummy-3h-Lauf absolvierte **614 Epochen** — mehr als die 256 des Papers —
+und blieb trotzdem bei 102° Rotationsfehler. Nicht die Epochenzahl ist zu
+klein, sondern die absolute Schrittzahl (Faktor ~20-50).
+
+Das erklärt rückwirkend widerspruchsfrei: drei wirkungslose Loss-Varianten,
+Zufalls-Rotationen bei beiden Methoden, 0% RMSD<2Å durchgängig. Kein
+Loss-Term und kein Schedule-Fix kompensiert einen Faktor 20 bei den
+Gradientenschritten.
+
+**Hochrechnung aus dem verifizierten 6h-Durchsatz (3 Epochen in 5:52):**
+
+| Laufzeit | Epochen | Schritte | vs. Paper |
+|---|---|---|---|
+| 3 Tage | ~37 | ~89.000 | 57% der Schritte |
+| 7 Tage | ~86 | ~209.000 | 134% der Schritte, aber nur 33% der Samples (Batch 8 statt 32) |
+
+**Für künftige Skripte:** `max_epochs` muss jeweils neu auf das Zeitbudget
+kalibriert werden (3 Epochen ≈ 6h ⇒ 3-Tage-Lauf: `max_epochs=36`,
+7-Tage-Lauf: `max_epochs=85`). Ein zu großer Wert verstümmelt still den
+LR-Schedule.
+
+### 🔴🔴🔴 ROOT CAUSE GEFUNDEN (2026-08-09): Rahmen-Mismatch in der Rotationsvorhersage (WELT vs. KÖRPER)
+
+**Der Fehler:** SigmaFlow vergleicht im Rotations-Loss eine Netzwerkausgabe
+im **Welt-Rahmen** (links-trivialisiert) mit einem Ziel im
+**Körper-Rahmen** (rechts-trivialisiert). Der nötige Adjoint-Transport
+`u_body = R_tᵀ · ω_world · R_t` **fehlt vollständig**.
+
+**Belege, jede Zeile im Code verifiziert:**
+
+| Seite | Code | Rahmen |
+|---|---|---|
+| Netzwerk-Ausgabe | `newton_maruyama`: `omega = so3_utils.hat(dW_world)`, Kommentar: *"Transport into GLOBAL (left-invariant - WORLD) frame"* | **WELT** |
+| Weitergabe | `_compute_vector_field`: `pred_u_t_R = updates["omega"]` — ohne jede Umrechnung | **WELT** |
+| Trainings-Ziel | `calc_rot_vector_field`: `log(R_tᵀ @ R_1)/(1-t)`, Docstring: *"right trivialised vector field"* | **KÖRPER** |
+| ODE-Schritt | `euler_step`: `R_next = R_t @ exp(v_t·dt)` — RECHTS-Multiplikation | **KÖRPER** |
+| SigmaDock-Original | `dR = exp(scaled_omega); R0_hat = dR @ R_t` — LINKS-Multiplikation | **WELT, konsistent** |
+
+`grep` über den gesamten SigmaFlow-Rotationspfad findet **keinen**
+Adjoint-Transport (die vorhandenen `.transpose(-1,-2)` betreffen `delta_R`
+und die Trägheits-Regularisierung).
+
+**Schweregrad:** `get_fragment_com_and_rot` setzt `rots.append(I3)` — die
+Referenz-Orientierung `R_1` ist die IDENTITÄT. Damit ist `R_t = I` nur
+exakt bei `t=1`; bei gleichverteilt gezogenem `t` ist `R_t` fast immer eine
+allgemeine Rotation, der Fehler also bei praktisch jedem Trainingsbeispiel
+wirksam.
+
+**Warum genau das die innere Kohärenz zerstört:** eine Links-Multiplikation
+dreht ein Fragment um eine WELT-Achse — benachbarte Fragmente mit ähnlicher
+Netzausgabe drehen gemeinsam, die relative Orientierung bleibt erhalten,
+die Anker bleiben zusammen. Eine Rechts-Multiplikation dreht um die
+KÖRPER-Achsen des jeweiligen Fragments — dieselbe Netzausgabe erzeugt je
+nach aktueller Orientierung `R_t` verschiedene Weltrotationen, die relative
+Orientierung wird zerstört. Das Netzwerk müsste diese
+orientierungsabhängige Verzerrung selbst kompensieren, kann das über den
+mechanischen Kopf (Drehmoment aus Weltkoordinaten → I⁻¹ → hat) aber
+strukturell nicht ausdrücken.
+
+**Warum nur die Rotation betroffen ist:** `pred_u_t_trans =
+updates["total_force"]` ist ein R³-Vektor im Weltrahmen, das Ziel
+`u_t_trans` ebenfalls — Translation ist korrekt. **Exakt das zeigen die
+Messungen:** relative Schwerpunkt-Verschiebung SigmaFlow 4.44 Å vs.
+SigmaDock 4.47 Å (identisch, Translation intakt), relative
+Anker-Verschiebung 2.91 Å vs. 1.82 Å (Rotation defekt).
+
+**Warum Test 1 (Oracle) den Fehler NICHT gefunden hat:** dort wurde das
+wahre Vektorfeld eingesetzt, das bereits im Körper-Rahmen vorliegt — ODE
+und Rekonstruktion sind in sich konsistent und rekonstruieren exakt. Der
+Fehler betrifft ausschließlich das, was das NETZWERK ausgeben soll.
+
+**Erklärt rückwirkend:** die drei wirkungslosen Loss-Varianten (alle
+operierten auf einer falsch gerahmten Größe), die nahezu zufälligen
+Rotationen, und dass das Anker-Defizit über 6h/12h/24h konstant bleibt
+(struktureller Fehler, kein Trainingsdefizit).
+
+**Minimaler Fix (eine Zeile, `R_t` liegt bereits vor):** in
+`_compute_vector_field` statt `pred_u_t_R = updates["omega"]`:
+```python
+R_t = sampled["R_t"]
+pred_u_t_R = R_t.transpose(-1, -2) @ updates["omega"] @ R_t
+```
+Herleitung: `R_t exp(u_body·dt) = exp(ω_world·dt) R_t` ⟺ `u_body = R_tᵀ ω_world R_t`.
+
+### ⚠️ Messfehler in der vorherigen Sitzung, hiermit korrigiert
+
+Die am selben Tag berichtete Kohärenz-Zerlegung (SigmaFlow „reißt das
+Molekül auseinander") war **falsch**: sie maß Fragment-SCHWERPUNKTE, und
+die sind bei beiden Methoden identisch weit auseinander (4.44 vs. 4.47 Å).
+Der Bindungsfehler hängt an den ANKERATOMEN, deren Lage von der Rotation
+bestimmt wird. Korrigierte Zahlen auf identischer Fragmentierung (111
+Komplexe, 397 Bindungen): Anker-Paare 2.91 Å (SF) vs. 1.82 Å (SD).
+
+**Zusätzlich entdeckte Kontamination aller historischen
+Bindungslängen-Zahlen:** die aus den Vorhersagen rekonstruierte
+Fragmentierung unterscheidet sich bei **39% der Komplexe** zwischen den
+Läufen — es wurden teilweise VERSCHIEDENE Bindungsmengen verglichen. Auf
+gematchter Teilmenge bleibt die Richtung des Befunds bestehen, die
+absoluten Zahlen in den Tabellen sind aber nur eingeschränkt gültig.
+
+### Systematische Ausschlussliste (alle einzeln gemessen, nicht angenommen)
+
+| Hypothese | Status | Beleg |
+|---|---|---|
+| Atomreihenfolge/-identität vertauscht | ausgeschlossen | 0/209 Abweichungen, beide |
+| SigmaDock erzwingt Bindungen nachträglich hart | ausgeschlossen | σ=0.51, nur 51% im Fenster 1.2-1.7 Å |
+| `pos_0`/`pos_t`-Mismatch Training vs. Sampling | ausgeschlossen | in beiden Pfaden konsistent |
+| `node_entity`-Filter verwirft Anker | ausgeschlossen | `atom=0, anchor=1`, Filter `<=1` korrekt |
+| Referenz-Bindungslängen asymmetrisch genutzt | ausgeschlossen | in BEIDEN via `**kwargs` verworfen |
+| Stochastisches Alignment beim Sampling | ausgeschlossen | `alignment_tries: 0` |
+| Uniformer Skalierungsfehler | ausgeschlossen | Verhältnisse nicht konstant |
+| `sample_conformer=true` bei SigmaDock | ausgeschlossen | 72.7% der Bindungen <0.001 Å |
+| `postprocessor.py`-Unterschiede | ausgeschlossen | byte-identisch, nur Gnina, deaktiviert |
+| Triangulations-Konditionierung deaktiviert | ausgeschlossen | `rel_distance=True` in beiden, explizit übergeben |
+| Δd-Signal zeitlich invertiert | ausgeschlossen | Δd→0 am jeweiligen Datenende in beiden Konventionen |
+| ODE-/Rekonstruktionsmechanik | ausgeschlossen | Test 1 (Oracle) rekonstruiert exakt (≤0.0002 Å) |
+| Untertraining | ausgeschlossen als ALLEINIGE Ursache | Anker-Defizit konstant über 6h/12h/24h |
+| **Rahmen-Mismatch Welt/Körper** | **BESTÄTIGT** | **Code-Belege oben** |
+
+### ✅ Fix implementiert + verifiziert (2026-08-09): `SigmaFlow_Variants/d_frame_fix/`
+
+Neue Variante (9 MB, ohne Alt-Checkpoints), Änderung ausschließlich in
+`_compute_vector_field`:
+
+```python
+R_t = sampled["R_t"]
+pred_u_t_R = R_t.transpose(-1, -2) @ updates["omega"] @ R_t
+```
+mit vollständiger Herleitung im Docstring. `R_t` war bereits im
+`sampled`-Dict vorhanden — auch im Sampling-Pfad
+(`sampling.py::_predict_vector_field_step` übergibt `{"R_t": ..., "trans_t": ...}`),
+der Fix greift also in Training UND Inferenz.
+
+**Mathematische Verifikation (float64, 64 Zufallsrotationen):**
+- Schiefsymmetrie erhalten: 2.2e-16 → weiterhin gültiges so(3)-Element
+- Transport-Identität `R_t·exp(u_body·dt) = exp(ω_world·dt)·R_t`: 7.8e-16 über dt ∈ {1, 0.1, 0.01}
+- Norm erhalten (Isometrie): 4.4e-16
+- **Grenzfall `R_t = I`: Abweichung exakt 0.0** → Fix degeneriert zur alten Version;
+  unabhängige Bestätigung der Fehleranalyse (Fehler nur bei t=1 unsichtbar)
+- **Alte Variante im selben Test: Abweichung 1.377 bei dt=1** → Fehler in der
+  Größenordnung des Signals selbst, nicht numerisches Rauschen
+
+**Schweregrad im realen Training (20.000 Stichproben, exakt via
+`conditional_probability_path` mit `R_1 = I`):**
+
+| Größe | Wert |
+|---|---|
+| Abstand `R_t` zur Identität | 63.3° mean / 57.7° median |
+| Anteil <5° (Fix folgenlos) | **nur 4.43%** |
+| Relative Änderung der Vorhersage | 0.765 mean / 0.697 median |
+| Winkel altes vs. neues Vektorfeld | **47.7°** |
+
+→ Das Netz wurde bei ~95% aller Beispiele auf ein im Mittel um 48°
+verdrehtes Ziel trainiert (völlig unkorreliert wäre √2≈1.41; wir liegen bei
+0.77, also etwa auf halbem Weg zwischen korrekt und zufällig).
+
+**Smoke-Test** (`--max_steps 5 --accelerator cpu`, 10 Dummy-Komplexe):
+Exit-Code 0, endliche Losses (`loss_R=11.89`, `loss_trans=7.08`), kein NaN.
+**Auffälligkeit geprüft statt hingenommen:** `loss_R` ist auf fünf
+Nachkommastellen identisch zur Baseline. Ursache ist `zero_init_last=True`
+(`config.py:109`) — der Ausgabeblock ist nullinitialisiert, also `ω≈0`, und
+`R_tᵀ·0·R_t = 0`; der Loss ist dann `‖0−Ziel‖²` unabhängig vom Rahmen. Nach
+5 Schritten ist die Vorhersage noch praktisch null. Zusätzlich per
+`inspect.getsource` bestätigt, dass der Adjoint-Transport in der
+tatsächlich geladenen Datei steht.
+
+**SLURM-Skripte:** `slurm/train_pdbbind_general_6h_framefix.sh`
+(`--max_epochs 3`, LR-Schedule kalibriert) und `slurm/sample_posebusters_full.sh`
+(`PYTHONPATH`-Override von Anfang an, Pfad auf `d_frame_fix` korrigiert).
+Das Erfolgskriterium steht als Kommentar im Trainingsskript, damit die
+Auswertung nicht wieder auf Bindungslängen abrutscht.
+
+### ⏳ Job 8525523 gestartet (2026-08-09 23:54, Ende ~05:54): Frame-Fix, 6h
+
+**Vor dem Lauf beide Ebenen verifiziert** (nicht nur der Pfad, weil ein
+unvollständiger `scp -r` denselben Pfad hätte zeigen können):
+1. Fix physisch im hochgeladenen Code: `grep` findet Zeile 913
+   `pred_u_t_R = R_t.transpose(-1, -2) @ updates["omega"] @ R_t`
+2. Richtige Kopie geladen: `sigmadock loaded from:
+   .../d_frame_fix/src/sigmadock/__init__.py`
+
+**Nebenbeobachtung für künftige Uploads:** dieser Lauf brauchte ~11 Min bis
+zur `sigmadock loaded from`-Zeile (frühere Läufe deutlich schneller). Grund:
+beim Anlegen des Ordners wurden alle `__pycache__`-Verzeichnisse gelöscht,
+also muss Python beim ersten Import sämtliche Module neu kompilieren — auf
+ARCs geteiltem Dateisystem spürbar. Harmlos, aber gut zu wissen, damit das
+nicht künftig als hängender Job fehlgedeutet wird. Diagnose lief über
+`sstat -j <id>.batch` (die Form OHNE `.batch` liefert auf ARC keine Zeilen)
+und über das Wachsen der `.out`-Datei.
+
+**Kontrollgruppe steht bereits:** Job 8512798 (6h, `max_epochs=3`,
+unveränderter Code) — die Differenz zu 8525523 ist damit exakt der
+Frame-Fix, kein weiterer Lauf nötig.
+
+### Nächste Schritte
+
+0. **HÖCHSTE PRIORITÄT: den Rahmen-Fix implementieren und testen.**
+   Einzeiler in `_compute_vector_field` (s.o.). Danach: 6h-Lauf mit
+   korrigiertem LR-Schedule (`--max_epochs 3`) und Vergleich der
+   **relativen Rotationsfehler benachbarter Fragmente** gegen die jetzigen
+   Werte (SigmaFlow 121.8° benachbart / 124.9° nicht benachbart;
+   SigmaDock 102.9° / 126.6°). Greift der Fix, muss SigmaFlows
+   Nachbar-Wert deutlich unter den Nicht-Nachbar-Wert fallen.
+   **Vor dem Lauf lokal verifizieren:** Oracle-Test bleibt exakt, und ein
+   Smoke-Test zeigt endliche Losses.
+1. **Freigabe für die 3-Tage-Stufe beim User einholen** — jetzt erstmals
+   INHALTLICH begründet statt nur "nächster Punkt im Plan": es ist die
+   kleinste Stufe, die in die Größenordnung der Paper-Schrittzahl kommt
+   (57%) und einen aussagekräftigen SigmaFlow-vs-SigmaDock-Vergleich
+   überhaupt ermöglicht. Mit `--max_epochs 36` und `--partition=long`.
+   Alternative/ergänzend zu prüfen: größere Batch-Size (Paper nutzt 32,
+   wir 8) und/oder DDP über mehrere GPUs — beides erhöht den Durchsatz
+   stärker als reine Laufzeitverlängerung.
+1. Erledigt: LR-Schedule-Fehler verifiziert und korrigiert (s.o.).
+1. ✅ ERLEDIGT: Platzierungsgenauigkeits-Hypothese geprüft (s.o.) —
+   widerlegt, aber mit dem obigen, wichtigeren Befund.
+2. **Keine weiteren Loss-Varianten**, bis mindestens ein Lauf existiert,
+   bei dem der Rotationsfehler DEUTLICH unter der 126.5°-Zufallsgrenze
+   liegt. Vorher ist jeder Feinjustierungs-Test sinnlos (drei
+   Nullergebnisse belegen das bereits empirisch).
+3. **Priorität ist jetzt Trainingsdauer/-durchsatz, nicht Loss-Design.**
+   Beim User die 3-Tage-Freigabe einholen (laut gestuftem Plan ohnehin die
+   nächste Stufe). Realistisch einordnen: selbst ein 7-Tage-Einzel-GPU-Lauf
+   bleibt bei ~1/5 der Paper-Rechenzeit — DDP über mehrere GPUs und/oder
+   größere Batch-Size wäre der wirksamere Hebel, falls verfügbar.
+4. Der Rotationsfehler (mittlerer Winkel vs. 126.5°-Zufallsgrenze) sollte
+   ab jetzt die **primäre Fortschritts-Metrik** für jede weitere Stufe
+   sein — er zeigt unmittelbar, ob das Modell die Kernaufgabe überhaupt
+   lernt, anders als die Übergangsbindungs-Metrik.
+
+---
+
+## 🔖 PAUSE-PUNKT #13 (2026-07-26) — älter, siehe #14 oben für aktuellen Stand
 
 **Kontext:** Direkte Fortsetzung von PAUSE-PUNKT #12. Zwei Dinge diese
 Session: (1) der L40S-GPU-Engpass auf ARC (`short`-Partition, 5h+ Wartezeit

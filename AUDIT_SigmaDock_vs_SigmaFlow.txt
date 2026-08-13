@@ -1,0 +1,942 @@
+================================================================================
+UNABHÄNGIGES AUDIT: SigmaDock (Diffusion) vs. SigmaFlow (Flow Matching)
+================================================================================
+Datum: 2026-08-05
+Auftrag: Vollständiger, kritischer, unvoreingenommener Vergleich beider
+Implementierungen, mit besonderem Fokus auf (a) die Triangulation-Constraints
+und (b) die Hypothese, SigmaFlow baue strukturell längere/aufgerissene
+Bindungen an Fragmentübergängen als SigmaDock.
+
+Methodik: Es wurde NICHTS aus STATUS.md/RESULTS.md ungeprüft übernommen. Jede
+Behauptung wurde entweder durch einen echten `diff`-Lauf zwischen den beiden
+Code-Bäumen, durch Cross-Check gegen das echte GitHub-Repo
+github.com/alvaroprat97/sigmadock, oder durch eigene Messung an vorhandenen
+Sampling-Ergebnissen (SDF-Dateien) verifiziert. Zwei unabhängige Analyse-Pfade
+wurden kombiniert: (1) eigene Durchsicht des gesamten Repos, (2) ein separat
+beauftragter, unabhängiger zweiter Blick auf Triangulation/Bond-Length mit
+eigener RDKit-Messung — dessen wichtigster Befund wurde von mir zusätzlich
+selbst reproduziert (identisches Ergebnis, siehe Teil 5).
+
+Geltungsbereich: Alle quantitativen Aussagen beziehen sich auf den
+10-Komplexe-Überanpassungstest ("dummy_train", siehe CLAUDE.md/STATUS.md),
+NICHT auf ein Training/Benchmark auf dem vollen PDBbind/PoseBusters-Datensatz.
+Das ist die einzige bisher tatsächlich durchgeführte quantitative Evaluation
+in diesem Projekt.
+
+
+================================================================================
+TEIL 0: KURZFASSUNG (für Eilige)
+================================================================================
+
+1. Der Triangulations-Mechanismus ist zwischen SigmaDock und SigmaFlow
+   CODE-IDENTISCH (verifiziert per `diff`, Exit-Code 0, für alle relevanten
+   Dateien: fragmentation.py, processing.py, sowie das Flag
+   `ignore_triangulation` in config.py und in zwei echten, persistierten
+   Trainingsläufen). Es gibt KEINEN Unterschied darin, wie oft oder wie
+   die Triangulationsinfo genutzt wird.
+
+2. WICHTIG: Der Triangulations-Mechanismus ist in BEIDEN Methoden kein
+   hartes geometrisches Constraint, sondern nur eine zusätzliche, weiche
+   Graph-Kante (Netzwerk-Eingabe-Feature). Es gibt in keiner der beiden
+   Codebasen einen Reprojektions-/Korrekturschritt, der eine Bindungslänge
+   an der Fragmentgrenze explizit auf einen Soll-Wert zurückzwingt.
+
+3. TROTZ dieses identischen Mechanismus zeigt eine eigene, unabhängig
+   zweifach reproduzierte Messung an den tatsächlich vorliegenden
+   Sampling-Ergebnissen (10 Komplexe, RDKit-Bindungslängen aus den
+   generierten SDF-Dateien): SigmaFlow hat im Schnitt eine ca. 1.5-2x
+   größere maximale Bindungslänge pro Molekül (4.5-5.5 Å vs. 2.3-3.0 Å bei
+   SigmaDock) und ca. 2.5-3x so viele stark überdehnte Bindungen (>1.8 Å
+   bzw. >2.0 Å) wie SigmaDock — bei identischer Gesamtzahl geprüfter
+   Bindungen (278). DIE HYPOTHESE IST ALSO EMPIRISCH GESTÜTZT, nicht nur
+   spekuliert — sie widerspricht sogar der bisherigen Einschätzung in
+   RESULTS.md/STATUS.md, die (auf Basis des binären PoseBusters-Pass/Fail-
+   Kriteriums, das hier einen Deckeneffekt erzeugt) "kein Unterschied"
+   behauptet hatte.
+
+4. Da diese Differenz NICHT durch einen Mechanismus-Unterschied erklärbar
+   ist (identisch, siehe Punkt 1-2), muss die Ursache im TRAINING oder in
+   der NUMERIK der ODE-Integration liegen. Der einzige real gefundene,
+   codeverifizierte Kandidat: SigmaDocks Diffusions-Loss gewichtet den
+   Score-Fehler zeitabhängig (`1/score_scaling(t)²`, aus dem VP/VE-SDE-
+   Rauschplan abgeleitet); SigmaFlows Flow-Matching-Loss ist eine rohe,
+   ungewichtete MSE über alle t gleich. Das ist eine bewusste, im Code
+   kommentierte Design-Entscheidung ("kein zeitabhängiges Scaling nötig,
+   anders als der Diffusions-Score") und theoretisch für den linearen
+   CondOT-Pfad nicht grundsätzlich falsch — aber sie ist NICHT bewiesen
+   kausal für die gemessene Bindungslängen-Differenz verantwortlich, nur
+   plausibel. Eine zweite, ebenfalls nicht bewiesene Nebenursache: die
+   generische 1/(1-t)-Singularität des linearen Flow-Pfads nahe t=1 in
+   Kombination mit einfacher Euler-Integration.
+
+5. Alle anderen geprüften Unterschiede (SO(3)-Winkel-Clamp-Bugfix,
+   entfernte "Datenraum"-Loss-Terme, deterministische ODE- vs. stochastische
+   SDE-Sampling) sind entweder als neutral/korrekt verifiziert oder als
+   nicht kausal belegbar eingeordnet — siehe Details unten.
+
+
+================================================================================
+TEIL 1: Herkunfts-Verifikation — ist die lokale SigmaDock/-Referenz echt?
+================================================================================
+
+Bevor irgendein Vergleich Sinn ergibt, wurde geprüft, ob die lokale,
+schreibgeschützte Referenzkopie `SigmaDock/` tatsächlich mit dem echten
+GitHub-Repo github.com/alvaroprat97/sigmadock übereinstimmt (STATUS.md hatte
+an einer Stelle vermerkt, die lokale Ordnerstruktur `src_sigmadock/` sei
+"älter/inkonsistenter" als die aktuelle Repo-Struktur `src/sigmadock/`).
+
+Per `gh api repos/alvaroprat97/sigmadock/contents/...` wurden fünf zentrale
+Dateien direkt vom GitHub-Repo (Branch `main`, Stand 2026-04-07) geladen und
+gegen die lokale Kopie ge-`diff`-t:
+
+  chem/processing.py   -> IDENTISCH (0 Diff-Zeilen)
+  chem/fragmentation.py -> IDENTISCH (0 Diff-Zeilen)
+  diff/so3_utils.py     -> IDENTISCH (0 Diff-Zeilen)
+  diff/denoiser.py      -> IDENTISCH (0 Diff-Zeilen, 1304 Zeilen exakt gleich)
+  data.py               -> IDENTISCH (0 Diff-Zeilen)
+
+Ergebnis: Die lokale `SigmaDock/`-Referenz IST (zumindest für diese fünf
+zentralen Dateien) eine Byte-genaue Kopie des echten Upstream-Repos — nur die
+Verzeichnisstruktur (`src_sigmadock/src_sigmadock_chem/` statt
+`src/sigmadock/chem/`) und einzelne Dateinamen (Nutzer-Annotationen wie
+"processing#Generiert Graphen und InputForm.py", " - UMBAUEN"-Suffixe bei den
+5 Kerndateien) unterscheiden sich rein kosmetisch. Der gesamte folgende
+Vergleich kann sich also auf die lokale Referenz stützen, ohne dass eine
+stille Verfälschung der "Referenz" zu befürchten ist.
+
+
+================================================================================
+TEIL 2: Repo-weiter Datei-Identitäts-Vergleich
+================================================================================
+
+Alle 60 Python-Quelldateien wurden paarweise per `diff` verglichen
+(SigmaDock/src_sigmadock/... gegen SigmaFlow_Development/src/sigmadock/...,
+Dateinamen-Suffixe wie " - UMBAUEN"/"#Kommentar" beim Mapping ignoriert).
+
+BYTE-IDENTISCH (keine einzige Zeile Unterschied), 51 von 60 Dateien:
+  __init__.py (Top-Level)
+  chem/__init__.py, chem/conformer_viz.py, chem/extract_esm_embeddings.py,
+  chem/postprocessor.py, chem/pyviz.py, chem/utils.py,
+  chem/fragmentation.py, chem/ligalign.py, chem/processing.py,
+  chem/statistics.py
+  core/__init__.py, core/callbacks.py, core/data.py, core/embeddings.py,
+  core/loaders.py, core/misc.py
+  datafronts.py
+  diff/__init__.py, diff/criterion.py, diff/utils.py
+  geo/__init__.py, geo/graph_utils.py, geo/misc.py, geo/viz.py
+  net/__init__.py, net/activation.py, net/drop.py, net/edge_rot_mat.py,
+  net/encoder.py, net/gaussian_rbf.py, net/input_block.py, net/layer_norm.py,
+  net/lr_scheduler.py, net/module_list.py, net/radial_function.py,
+  net/smearing.py, net/so2_ops.py, net/so3.py, net/timestep_embedder.py,
+  net/transformer_block.py, net/wigner.py, net/model.py
+  sampling_setup.py
+  torch_utils/__init__.py, torch_utils/debug.py, torch_utils/dist.py,
+  torch_utils/utils.py
+
+  -> Das komplette EquiformerV2-Backbone (net/), die gesamte Chemie-
+     Verarbeitung (chem/, INKLUSIVE des Triangulationsmechanismus), die
+     komplette Datenpipeline-Infrastruktur (core/) und alle generischen
+     Utilities sind unangetastet — genau wie CLAUDE.md §9 es vorschreibt
+     ("Replace the EquiformerV2 backbone" / "change the data pipeline" sind
+     explizit verboten). Das ist eine chirurgisch saubere Konversion im
+     Sinne von CLAUDE.md §1.
+
+UNTERSCHIEDLICH, mit inhaltlicher Einordnung, 9 von 60 Dateien:
+
+  data.py (17 Diff-Zeilen) — NICHT triangulationsrelevant:
+    + `import traceback`
+    + explizite `pocket_mol is None`-Prüfung mit klarerer Fehlermeldung
+      (SigmaDock würde hier später mit einem generischeren AttributeError
+      abstürzen)
+    + Exception-Handling in `__getitem__`: SigmaFlow druckt IMMER eine Warnung
+      (+ Traceback wenn `verbose`), SigmaDock unterdrückt sie bei ValueError.
+    Bewertung: Reine Robustheits-/Logging-Verbesserungen, keine
+    Verhaltensänderung der eigentlichen Fragmentierungs-/Triangulationslogik.
+
+  config.py (56 Diff-Zeilen):
+    - entfernt: `rot_score_method`, `rot_score_scaling` (Felder+CLI) — waren
+      bereits in SigmaDock funktional wirkungslos (Namens-Mismatch zum
+      Konstruktor, siehe Teil 3.4).
+    - entfernt: `trans_data_weight`, `rot_data_weight` (Felder+CLI) — siehe
+      Teil 3.4/Teil 5 (Kausalitätsdiskussion Bond-Length).
+    - neu: `sigma_min: float = 0.0` (R3-Flow-Matching-Parameter, aktuell
+      unbenutzt/reserviert laut eigenem Docstring).
+    - `ignore_triangulation` selbst: UNVERÄNDERT (identischer Default,
+      Kommentar, CLI-Flag in beiden Dateien).
+
+  oracle.py (7 Diff-Zeilen) — nur Docstring/Kommentar zu `epsilon_t`
+    präzisiert (vorher irreführend "avoid division by zero in diffusion
+    process", jetzt korrekt als Trainings-/Sampling-Zeit-Untergrenze
+    beschrieben). Der Zahlenwert `epsilon_t=0.01` ist unverändert. Die
+    Kantentyp-Definitionen (u.a. "fragment_triangulation") sind identisch.
+
+  trainer.py (49 Diff-Zeilen) — mechanischer Umbau + eine echte Änderung:
+    + Klassenname/Typannotation `SigmaDockDenoiser`->`SigmaFlowGenerator`.
+    + `on_fit_start`: `self.model.diffuser._so3_diffuser.set_device(device)`
+      -> `pass` (der `_so3_diffuser`-Cache existiert im Flow-Matching-Pfad
+      nicht mehr, IGSO3-Präkomputierung war diffusionsspezifisch).
+    + Loss-Summe: 4 Terme (`T_score`,`R_score`,`T0`,`R0`) -> 2 Terme
+      (`loss_trans`,`loss_R`) — siehe Teil 3.4/Teil 5 für Bewertung.
+
+  utils.py (25 Diff-Zeilen) — rein mechanischer Rename
+    (`SigmaDockDenoiser`->`SigmaFlowGenerator`), keine Logikänderung.
+
+  chem/parsing.py (15 Diff-Zeilen) — ein toter Fallback-Pfad entfernt: die
+    ungenutzte "sanitize=False"-Notfall-Reparsung nach fehlgeschlagenem
+    PDB-Parsing wurde entfernt (war im Original bereits per `return None`
+    vor diesem Code unerreichbar — der `print`/zweite `try` in SigmaDock
+    stand hinter einem `return`, war also selbst dort schon toter Code).
+    Keine funktionale Änderung, nur Aufräumen von bereits totem Code.
+
+  diff/so3_utils.py (4 Diff-Zeilen) — DER SO(3)-WINKEL-CLAMP-BUGFIX, siehe
+    Teil 3.3 für vollständige Analyse.
+
+  Die 5 "Kerndateien" (per CLAUDE.md §4 explizit zum Neubau vorgesehen,
+  daher nicht per `diff` vergleichbar, da umbenannt+umgeschrieben):
+    r3_diffuser->r3_flow_matcher, so3_diffuser->so3_flow_matcher,
+    se3_diffuser->se3_flow_matcher, denoiser->sigma_flow_generator,
+    sampling.py (gleicher Name, komplett neu geschrieben)
+    Siehe Teil 3 für den detaillierten mathematischen Vergleich.
+
+
+================================================================================
+TEIL 3: Mathematischer Vergleich Diffusion vs. Flow Matching
+================================================================================
+
+3.1 Translation (R³)
+
+  SigmaDock (`r3_diffuser - UMBAUEN.py`, Klasse `R3Diffuser`):
+    VP-SDE (Variance-Preserving), linearer beta(t)-Rauschplan:
+      beta(t) = min_beta + t*(max_beta-min_beta)
+      x_t = alpha_t * x_0 + sqrt(1-alpha_t²) * z,  alpha_t = exp(-∫beta/2)
+      score(x_t|x_0) = -(x_t - alpha_t*x_0) / (1-alpha_t²)
+    Konvention: t=0 ist SAUBERE Ausgangsdaten, t=1 ist (fast) reines Rauschen
+    (Standard-Vorwärtsdiffusion). Reverse-Sampling läuft t=1 -> t=0 mit
+    echter injizierter Stochastik (Euler-Maruyama, siehe 3.5).
+
+  SigmaFlow (`r3_flow_matcher.py`, Klasse `R3_FlowMatcher`):
+    Linearer CondOT-Pfad (Conditional Flow Matching, konstantes Vektorfeld):
+      x_0 ~ N(0,I) (Quelle), x_1 = Daten (Ziel)
+      x_t = (1-t)*x_0 + t*x_1,  u_t = x_1 - x_0  (konstant in t)
+      calc_trans_vector_field: u_t = (x_1-x_t)/(1-t)  [Singularität bei t=1,
+      nur für den optionalen "true field"-Debug-Pfad relevant, siehe 3.5/3.6]
+    Konvention: t=0 ist RAUSCHEN, t=1 ist Daten (umgekehrt zu SigmaDock!).
+    Sampling läuft deterministisch t=0 -> t=1 (Euler-ODE, keine Stochastik).
+
+  Bewertung: Beide Formulierungen sind für sich genommen intern konsistent
+  und Standard-Lehrbuch-korrekt (VP-SDE-Diffusion bzw. CondOT-Flow-Matching,
+  konsistent mit `papers/` It. CLAUDE.md §2 zu prüfen — die CondOT-Wahl
+  entspricht dem Fall alpha_t=t, beta_t=1-t bei Holderrieth & Erives, wie
+  bereits in CODE_WALKTHROUGH.md dokumentiert). WICHTIG für das Verständnis
+  des restlichen Vergleichs: die Variable "t" bedeutet in beiden Bäumen
+  buchstäblich das ENTGEGENGESETZTE physikalische Extrem (t=0 clean vs. t=0
+  noisy) — das ist keine Inkonsistenz, sondern Paradigmen-Konvention, aber
+  eine potenzielle Verwechslungsquelle, die nirgends explizit im Code
+  dokumentiert ist.
+
+3.2 Rotation (SO(3))
+
+  SigmaDock (`so3_diffuser - UMBAUEN.py`, Klasse `SO3Diffuser`):
+    VE-SDE (Variance-Exploding) mit IGSO(3)-Dichte (Isotropic Gaussian auf
+    SO(3), trunkierte Charakter-Entwicklung `igso3_expansion`, L=1000 Terme),
+    Sigma-Zeitplan logarithmisch. Score wird über eine vorab CACHE-BERECHNETE
+    (`_pdf`/`_cdf`/`_score_norms`, auf Disk persistiert) Tabelle interpoliert.
+    Sampling per inverser CDF-Transformation aus der IGSO3-Dichte.
+
+  SigmaFlow (`so3_flow_matcher.py`, Klasse `SO3_FlowMatcher`):
+    Geodätische Interpolation auf SO(3), Rechtstrivialisierung:
+      R_0 ~ Uniform(SO(3)) (Haar-Maß, `so3_utils.sample_uniform`)
+      Delta = R_0^T @ R_1,  log_Delta = log(Delta)
+      u_t = log_Delta  (rechtstrivialisiert, konstant in t)
+      R_t = R_0 @ exp(t * log_Delta)  (exakte Geodäte)
+      calc_rot_vector_field: u_t_R = log(R_t^T @ R_1) / (1-t)  [Singularität
+      bei t=1, nur im Debug-Pfad relevant, siehe 3.5]
+    KEIN Cache, keine IGSO3-Dichte — die Quellverteilung ist die einfache
+    Haar-uniforme Verteilung, keine zeitabhängige Diffusionsdichte.
+
+  Bewertung: Fundamentale, erwartete Änderung der Quell-Konstruktion (IGSO3
+  mit sigma-Zeitplan vs. Haar-uniform + exakte Geodäte) — vollständig
+  konsistent mit dem Projektziel (CLAUDE.md §5, "Replace diffusion on SO(3)
+  with a theoretically consistent flow-matching construction"). Beide
+  nutzen dieselbe `so3_utils.py`-Bibliothek für Log/Exp-Maps (bis auf den
+  einen Clamp-Unterschied, siehe 3.3).
+
+3.3 DER SO(3)-WINKEL-CLAMP-UNTERSCHIED (verifiziert, mit Tiefenanalyse)
+
+  Einziger Diff in `so3_utils.py` zwischen beiden Bäumen (Funktion `Omega`,
+  die den Rotationswinkel aus der Spur der Rotationsmatrix berechnet):
+
+    SigmaDock:  out = torch.clamp(out, min=-0.99, max=0.99)
+    SigmaFlow:  out = torch.clamp(out, min=-1+1e-7, max=1-1e-7)
+
+  (`out` ist cos(Winkel) vor `arccos`.) SigmaDocks Clamp begrenzt den
+  berechenbaren Winkel effektiv auf ca. [8.1°, 172°] — Rotationen mit
+  wahrem Winkel zwischen 172° und 180° (≈9% aller gleichverteilten
+  Rotationen) werden auf ~172° UNTERSCHÄTZT. SigmaFlows Clamp erlaubt
+  Winkel bis ca. 179.97°.
+
+  Dieser Unterschied ist im Code selbst dokumentiert
+  (`so3_flow_matcher.py:27-32`, wörtliches Zitat): "the original SigmaDock
+  so3_utils.py had a numerical bug here [...] Fine for diffusion (never
+  needs an exact exp(log(R))==R round trip), but breaks our exact geodesic
+  interpolation."
+
+  EIGENE TIEFENANALYSE (über die bisherige Doku hinaus): `Omega()` wird
+  nicht nur in `SO3Diffuser.score()` aufgerufen, sondern auch INDIREKT über
+  `so3_utils.log()` -> `Log()` -> `rotation_vector_from_matrix()` (Zeile
+  161: `angle = Omega(rot_mat)`) — und `log()` wird sowohl von SigmaDocks
+  Score-Berechnung als auch von SigmaFlows `conditional_probability_path`
+  (dem eigentlichen Trainingsziel `u_t=log_Delta`) verwendet. Der Clamp
+  betrifft also in BEIDEN Methoden das tatsächliche Trainingsziel, nicht nur
+  eine Diagnose-Funktion.
+
+  Zusätzlicher, neuer Befund: `rotation_vector_from_matrix()` besitzt eine
+  EIGENS für Winkel nahe 180° vorgesehene, numerisch robuste Sonderbehandlung
+  (`mask_pi`-Zweig, Zeile 173: `torch.isclose(angle, pi, atol=1e-2)`, nutzt
+  die Wikipedia-Identität `outer(r,r)=0.5*(R+I)` statt Division durch
+  sin(Winkel)). Unter SigmaDocks altem Clamp (max. Winkel ≈172° = 3.0021 rad,
+  das ist 0.1395 rad von π entfernt) konnte dieser `mask_pi`-Zweig NIEMALS
+  auslösen (0.1395 >> atol=0.01) — er war also in der Original-Implementierung
+  faktisch TOTER CODE, geschrieben für einen Fall, der durch den separaten
+  Clamp-Bug nie erreicht wurde. SigmaFlows Fix aktiviert diesen bereits
+  vorhandenen, dedizierten Sicherheitszweig erstmals.
+
+  Bewertung: Das ist ein ECHTER, im Original vorhandener Bug (falsche
+  Winkelberechnung bei ~9% der Rotationen), der in SigmaFlow korrekt
+  behoben wurde — UND die Code-Basis war bereits (vermutlich absichtlich,
+  vorausschauend) für den korrekten, größeren Winkelbereich vorbereitet
+  (der `mask_pi`-Zweig). Es gibt keinen Hinweis darauf, dass dieser Fix
+  neue Instabilität einführt; im Gegenteil, er aktiviert eine bereits
+  vorhandene Sicherheitsvorkehrung. Als ERKLÄRUNG für "SigmaFlow baut
+  längere Bindungen" ist dieser Fund NICHT plausibel — wenn überhaupt,
+  sollte er die Rotations-Genauigkeit für große Rotationen VERBESSERN,
+  nicht verschlechtern. (Dennoch dokumentiert, weil vom Auftrag explizit
+  erfragt und weil er ein Beispiel für einen im Zuge der Konversion
+  gefundenen und behobenen Bug ist — vgl. CLAUDE.md §7/8 zur Sorgfaltspflicht
+  bei Interface-/Verhaltensänderungen.)
+
+3.4 Netzwerk-Zielgröße: Score (SigmaDock) vs. rohes Vektorfeld (SigmaFlow)
+    — DER WICHTIGSTE BESTÄTIGTE ALGORITHMISCHE UNTERSCHIED
+
+  Generische starre-Körper-Infrastruktur — VERIFIZIERT IDENTISCH (nur
+  Variablen umbenannt, T0/R0 -> trans_1/R_1):
+    - `get_fragment_com_and_rot()` (COM+Referenzrotation=Identität pro
+      Fragment)
+    - `get_fragment_mass_inertia()` (Masse=Atomanzahl, Trägheitstensor mit
+      Eigenwert-Clamp-Regularisierung)
+    - `get_transformations_from_rototranslations()` (starre Rotation+
+      Translation pro Fragment auf alle zugehörigen Atome)
+    - `linear_mechanics()` (Kraft/Drehmoment-Aggregation pro Fragment via
+      `index_add`/Kreuzprodukt)
+    - `newton_maruyama()` (Kraft/Drehmoment -> Translations-/Rotations-
+      Inkrement via `F/m` bzw. `I⁻¹T`, `so3_utils.hat`/Clamp auf
+      [-1e3,1e3])
+  Diese sechs Funktionen sind Zeile für Zeile (bis auf Docstring-Wortwahl)
+  identisch zwischen `denoiser - UMBAUEN.py` und `sigma_flow_generator.py`.
+
+  DER UNTERSCHIED liegt exakt an der Nahtstelle, wo aus Kraft/Drehmoment ein
+  "Score" (SigmaDock) bzw. "Vektorfeld" (SigmaFlow) wird:
+
+  SigmaDock (`_compute_scores`, denoiser-Zeile 1021-1084):
+    r3_scaling, so3_scaling = `_get_scalings(t)` =
+        `self.diffuser._r3_diffuser.score_scaling(t).clamp(1e-3,1e3)`,
+        `self.diffuser._so3_diffuser.score_scaling(t).clamp(1e-3,1e3)`
+    pred_T_score = raw_force * r3_scaling   <- ZEITABHÄNGIGE Reskalierung!
+    (r3_diffuser.score_scaling(t) = 1/sigma(t), sigma(t) aus dem VP-SDE-
+    Rauschplan, ändert sich über t um Größenordnungen)
+    Analog für Rotation: `alpha(t,omega)` aus der IGSO3-Dichte-Ableitung
+    (`d_log_f_d_omega`) oder RMS-Skalierung, je nach `rot_score_scaling`.
+
+  SigmaFlow (`_compute_vector_field`, sigma_flow_generator.py:878-890):
+    pred_u_t_trans = updates["total_force"]   <- ROH, KEINE Skalierung.
+    pred_u_t_R = updates["omega"]             <- ROH, KEINE Skalierung.
+    Wörtlicher Code-Kommentar: "Interprets the pooled per-fragment
+    force/torque directly as the predicted conditional vector field - no
+    time dependent scaling needed, unlike the diffusion score"
+
+  Das ist eine ECHTE, bewusste, im Code dokumentierte Design-Entscheidung
+  (keine versehentliche Auslassung) — begründet damit, dass das
+  Flow-Matching-Ziel (`u_t=x_1-x_0` bzw. `u_t=log_Delta`) per Konstruktion
+  KONSTANT in t ist, während der Diffusions-Score sich mit der
+  Rausch-Varianz sigma(t)² skaliert und daher explizit reskaliert werden
+  muss, um über verschiedene t vergleichbare Losses/Gradienten zu erzeugen.
+  Diese Design-Entscheidung ist THEORETISCH NICHT VON VORNHEREIN FALSCH,
+  aber sie bedeutet: SigmaDocks Trainings-Loss gewichtet Beispiele bei
+  verschiedenen t unterschiedlich stark (über den Faktor 1/scaling(t)² in
+  `trainer.py`s Summe, siehe 3.4-Loss unten), SigmaFlows Loss gewichtet
+  jedes t gleich stark. -> Siehe Teil 5 für die Kausalitätsdiskussion zur
+  Bond-Length-Hypothese.
+
+  Trainings-Loss-Vergleich (`compute_losses`, trainer.py):
+    SigmaDock: 4 Terme — `T_score`/`R_score` (Score-MSE, je durch
+    `1/T_score_scaling²` bzw. `1/R_score_scaling²` implizit zeitabhängig
+    gewichtet über die Score-Skalierung selbst) PLUS `T0`/`R0`
+    ("Datenraum"-Loss: direkter MSE zwischen rekonstruiertem und wahrem
+    COM/Rotation, Gewichte `trans_data_weight`/`rot_data_weight`).
+    SigmaFlow: 2 Terme — `loss_trans`/`loss_R` (rohe, ungewichtete
+    Vektorfeld-MSE). Die `T0`/`R0`-Entsprechung EXISTIERT NICHT MEHR (Felder
+    komplett aus config.py entfernt).
+
+    WICHTIGE RELATIVIERUNG (eigene Prüfung): In der tatsächlich für den
+    Methodenvergleich verwendeten SigmaDock-Produktionskonfiguration
+    (`SigmaDock/conf/training/slurm.yaml`) werden `trans_data_weight`/
+    `rot_data_weight` NICHT gesetzt und bleiben beim Code-Default `0.0`
+    (bestätigt per Volltextsuche: `grep -rn data_weight SigmaDock/` findet
+    außer den Definitionen selbst keine einzige Stelle, die einen Wert != 0
+    setzt). Das entfernte Feature war also in der tatsächlich für den
+    Vergleich gelaufenen Konfiguration bereits inaktiv (Gewicht 0) —
+    seine Entfernung in SigmaFlow ist damit VERHALTENSNEUTRAL für die
+    bisherigen Vergleichsläufe, keine Regression.
+
+    Der tatsächlich AKTIVE Unterschied bleibt also die zeitabhängige
+    Score-Reweighting (siehe oben) — nicht die Datenraum-Terme.
+
+3.5 SE(3)-Kombination
+
+  Beide Klassen (`SE3Diffuser`/`SE3_FlowMatcher`) behandeln SE(3) als reines
+  DIREKTES PRODUKT von R³ und SO(3) — keine gekoppelten Terme in keiner der
+  beiden Versionen (jede Methode ruft schlicht die R3- und SO3-Untermethode
+  auf und packt beide Ergebnisse in ein Dictionary). Kein Unterschied.
+  Damit ist CLAUDE.md §5 ("Be explicit about whether SE(3) is treated as a
+  direct product...") für beide Implementierungen mit "direktes Produkt,
+  kein gekoppelter Term" zu beantworten.
+
+3.6 Sampling-Loop
+
+  SigmaDock (`sampler()`/`sample_notebook()` in "sampling - UMBAUEN.py"):
+    ECHTE Reverse-SDE mit injiziertem Rauschen: `noise_scales =
+    linspace(noise_scale^(1/decay), 0, num_steps)^decay` wird tatsächlich an
+    `denoiser.diffuser.reverse(..., noise_scale=noise_scale, ...)`
+    weitergereicht, was intern `+ noise_scale*g_t*sqrt(dt)*z` zum
+    Translations-/Rotations-Update addiert (Euler-Maruyama, echtes
+    Langevin-Rauschen bei JEDEM Schritt). Zeitschema läuft t_max -> t_min
+    (absteigend, korrekt für Reverse-Diffusion).
+
+  SigmaFlow (`sampler()`/`sample_notebook()` in `sampling.py`):
+    Rein DETERMINISTISCHE Euler-ODE-Integration (`SE3_FlowMatcher.euler_step`:
+    `x_t + v_t*dt`, keine Rausch-Addition). `noise_scale`/`noise_decay`
+    existieren nur noch als (inzwischen bewusst als inert dokumentierte)
+    Parameter für Notebook-Kompatibilität, werden aber nicht mehr auf die
+    Trajektorie angewendet (bestätigt: `sample_notebook()` berechnet
+    `noise_scales` nirgends mehr, `sampler()` hat das Feature laut
+    STATUS.md PAUSE-PUNKT #12 komplett entfernt). Zeitschema läuft t_min ->
+    t_max (aufsteigend, korrekt für Rauschen->Daten).
+    `discretization="edm"` in `sampler()`: EIGENE Prüfung bestätigt die
+    Formel läuft nach dem in STATUS.md dokumentierten Fix jetzt korrekt
+    aufsteigend (`t_min^(1/rho) + i/(N-1)*(t_max^(1/rho)-t_min^(1/rho))`).
+    In `sample_notebook()` EXISTIERT der `edm`-Zweig dagegen GAR NICHT mehr
+    (nur `raise ValueError` für alles außer "power") — bestätigt
+    unabhängig, dass die in STATUS.md erwähnten Notebook-Aufrufe mit
+    `discretization="edm"` bei Ausführung tatsächlich crashen würden.
+
+    `num_steps=25` ist in `conf/sampling/base.yaml` in BEIDEN Bäumen
+    identisch als Default gesetzt (Kommentar unterscheidet sich nur
+    kosmetisch: "diffusion steps" vs. "forward ODE integration steps").
+
+  Bewertung: Deterministische ODE-Integration ist die für Flow-Matching
+  STANDARDMÄSSIG korrekte Sampling-Methode (Probability-Flow-ODE); echte
+  SDE-Reverse-Sampling mit Rauschen ist für Diffusion Standard. Beide sind
+  für ihr jeweiliges Paradigma angemessen. Ob die fehlende Stochastik bei
+  SigmaFlow ursächlich für längere Bindungen ist, erscheint UNPLAUSIBEL in
+  der naheliegenden Richtung — zusätzliches Rauschen sollte bei einem
+  Redocking-Test tendenziell EHER zu größerer, nicht kleinerer Abweichung
+  von der Zielgeometrie führen. Die bereits dokumentierte
+  Cross-GPU-Konsistenzprüfung (STATUS.md PAUSE-PUNKT #13: nur 0.04 Å
+  mittlere Abweichung zwischen V100/L40S bei identischem Checkpoint)
+  bestätigt indirekt, dass SigmaFlows Determinismus tatsächlich hochpräzise
+  reproduzierbar ist — das spricht eher gegen "ODE-Rauschen fehlt daher
+  Präzision" als Erklärung für die Bond-Length-Differenz.
+
+3.7 `criterion.py` — bestätigt komplett totes Gewebe in BEIDEN Methoden
+
+  Datei ist byte-identisch zwischen beiden Bäumen (34 Zeilen). Enthält nur
+  `scale_rotational_score()` (konvertiert Rotations- in Translations-Einheiten
+  via Fragment-RMS-Radius). Eigene Volltextsuche bestätigt: In KEINER der
+  beiden `sigma_flow_generator.py`/`denoiser - UMBAUEN.py`/`trainer.py`-
+  Dateien wird diese Funktion aufgerufen — `compute_losses()` in beiden
+  Bäumen berechnet seine MSE-Terme komplett inline, ohne `criterion.py` zu
+  importieren oder aufzurufen. Die Datei ist in BEIDEN Methoden bereits im
+  Original toter Code, nicht erst durch die Konversion "vergessen" worden.
+
+
+================================================================================
+TEIL 4: Der Triangulations-Mechanismus (Kernfrage 1)
+================================================================================
+
+4.1 Was ist es und wo lebt es?
+
+  Kernfunktion `get_triangle_equality_mapping(mol, neighbors)`
+  (chem/fragmentation.py:318-365, byte-identisch in beiden Bäumen):
+  Für jedes "Anker"-Atom (das Atom direkt an einer beim Fragmentieren
+  durchtrennten Torsionsbindung) wird eine Liste von Einträgen gebaut:
+  {"neighbor": <benachbarter Anker auf der anderen Seite der
+  Torsionsbindung>, "linked_atoms": <alle Atome, die an diesem Nachbarn
+  hängen, außer dem Ursprungsanker selbst>}.
+
+  Das ist REIN TOPOLOGISCH — es werden nur Atomindizes aus der Graphstruktur
+  des Moleküls berechnet. Keine Distanzen, keine Sollwerte, keine
+  Optimierung.
+
+  Aufrufkette (identisch in beiden Bäumen): `fragment_on_bonds_with_mapping`
+  (RDKit `FragmentOnBonds`) -> `get_torsional_neighbors` -> `data.py`
+  (`fragment_and_annotate`, speichert Ergebnis als `triangulation_indexes`)
+  -> `chem/processing.py::get_global_ligand_graph()` (Zeilen 673-703, in
+  beiden Bäumen identisch), wo daraus DREI Arten von GRAPH-KANTEN gebaut
+  werden (Anker<->linked_atoms, Anker<->Nachbar-Anker, Anker<->Nachbar-
+  Dummy), alle mit `edge_attr=torch.zeros(d_bond)` (keine chemische
+  Bindungstyp-Info, nur reine Konnektivität + Kantentyp-Label
+  "fragment_triangulation"/"ligand_torsional_bond"/"ligand_anchor_dummy").
+
+4.2 Was der Mechanismus NICHT ist
+
+  Es ist in BEIDEN Codebasen KEIN hartes geometrisches Constraint:
+  - Keine Datei unter `diff/` (weder SigmaDock noch SigmaFlow) enthält den
+    String "triangul" — der Mechanismus taucht in den eigentlichen
+    Denoiser-/Generator-/Sampling-Dateien namentlich gar nicht mehr auf,
+    nur auf der Datensatz-/Graph-Konstruktionsebene.
+  - Es gibt in keiner der beiden Methoden eine Funktion wie
+    `enforce_bond_length()` oder `project_to_bond()`.
+  - `_apply_transformations()`/`_update_batch()` (beide Bäume, strukturell
+    identisch) enthalten nur Kanten-Pruning/-Neuberechnung für die
+    orts-abhängigen "lokalen" Interaktionskanten (Protein-Ligand-Cutoff),
+    KEINE geometrische Korrektur der Fragmentgrenzen.
+
+  Die Kanten sind ein rein GELERNTES, WEICHES Signal: Das Equiformer-Netzwerk
+  bekommt bei JEDEM Forward-Call (Training UND jedem einzelnen
+  Sampling-Schritt) die AKTUELLE Distanz zwischen Anker und verlinkten Atomen
+  (aus den jeweils aktuellen `pos_t`) als Radial-Basis-Feature. Ob das
+  Netzwerk daraus tatsächlich eine korrekte Bindungslänge/-winkel ableitet,
+  hängt vollständig von der Trainingsqualität ab — nichts erzwingt es.
+
+4.3 Bleibt die Topologie über die ODE-Integration erhalten?
+
+  Ja, identisch in beiden Methoden: Die Kanten-TOPOLOGIE (edge_index/
+  edge_entity der globalen Kantengruppen inkl. Triangulation) wird einmal
+  beim Aufbau des Datensatz-Items gebaut und bleibt über die gesamte
+  Sampling-Trajektorie fix. Nur die GEOMETRISCHE Information (Distanz aus
+  aktuellem `pos_t`), die das Netzwerk aus diesen fixen Kanten zieht, wird
+  bei jedem Schritt neu berechnet. Dieses Verhalten wurde für beide
+  Methoden anhand der (identischen) Hilfsfunktionen `_update_batch`/
+  `_prune_local_edges`/`_compute_interaction_edges` verifiziert.
+
+4.4 Config-Flag `ignore_triangulation`
+
+  Identischer Default (`false`) und identische CLI-Definition in
+  `config.py` beider Bäume. Zusätzlich bestätigt in zwei tatsächlich
+  durchgeführten, persistierten Trainingsläufen
+  (`SigmaFlow_Development/experiments/sigmadock/0-07-21_*/config.json`):
+  `"ignore_triangulation": false` — d.h. die Triangulation war in den
+  tatsächlichen Vergleichsläufen aktiv, nicht nur in der Default-Vorlage.
+
+4.5 FAZIT zur Kernfrage 1 ("nutzt SigmaFlow die Triangulation-Constraints
+    von SigmaDock, oder implementiert es sie falsch?")
+
+  SigmaFlow nutzt EXAKT denselben Mechanismus wie SigmaDock, identisch
+  verdrahtet, identisch oft aufgerufen, mit identischem Default-Flag. Es
+  gibt KEINEN Implementierungsfehler und KEINE Abweichung. Wichtig für das
+  Verständnis (gilt für BEIDE Methoden gleichermaßen): "Triangulation
+  Constraints" ist ein etwas irreführender Name für das, was der Code
+  tatsächlich tut — es sind zusätzliche Graph-Kanten als weiches
+  Lernsignal, keine harten geometrischen Zwangsbedingungen. Wer sich unter
+  "Constraint" eine erzwungene Korrektur vorstellt, wird von keiner der
+  beiden Methoden bedient.
+
+
+================================================================================
+TEIL 5: DIE BOND-LENGTH-HYPOTHESE (Kernfrage 2) — der wichtigste Befund
+================================================================================
+
+5.1 Ausgangslage: was die bisherige Projektdokumentation behauptete
+
+  STATUS.md (PAUSE-PUNKT #10/#11) und RESULTS.md behaupten, basierend auf
+  PoseBusters' BINÄREM Pass/Fail-Kriterium pro Molekül: `bond_lengths` und
+  `bond_angles` haben 0% Pass-Rate bei ALLEN verglichenen Varianten (beide
+  Methoden, alle Hyperparameter-Sätze) — daraus wurde geschlossen, das sei
+  "eine gemeinsame architektonische Eigenschaft, kein Methodenunterschied".
+
+  Diese binäre Aussage wurde EIGENSTÄNDIG nachgeprüft (`posebusters_results/
+  *.csv` direkt mit Python/csv eingelesen, nicht nur die Prosa-Behauptung
+  übernommen): bestätigt, `bond_lengths`/`bond_angles` sind tatsächlich in
+  JEDER der 6 vorliegenden CSV-Dateien (SigmaFlow alt/neu/edm-fix/
+  prodhparams, SigmaDock original/prodhparams) für alle 10 Komplexe `False`.
+  ABER: Diese Zahlen sind reine Pass/Fail-Booleans — ein einziges zu langes
+  Bindung reicht, um das gesamte Molekül durchfallen zu lassen. Das ist ein
+  DECKENEFFEKT, der eine tatsächliche Größenordnungs-Differenz zwischen den
+  Methoden komplett verdecken kann, wenn beide "irgendwo" eine zu lange
+  Bindung haben, aber unterschiedlich stark.
+
+5.2 Eigene, tatsächliche Messung der Bindungslängen (nicht nur Pass/Fail)
+
+  Um das zu klären, wurden die tatsächlichen 3D-Bindungslängen direkt aus
+  den bereits vorliegenden, echten Sampling-Ergebnissen (SDF-Dateien mit den
+  vorhergesagten Ligand-Posen, 10 Komplexe je Lauf) mit RDKit gemessen
+  (`rdMolTransforms.GetBondLength`, basierend auf der in der SDF-Datei
+  gespeicherten Bindungstopologie). Diese Messung wurde ZWEIMAL unabhängig
+  durchgeführt (einmal im separat beauftragten Analyse-Durchlauf, einmal von
+  mir selbst durch Ausführen desselben Skripts erneut) — beide Male
+  IDENTISCHES Ergebnis:
+
+  Lauf                        | mean(max_bond/Molekül) | Bindungen >1.8Å | >2.0Å | (von 278 geprüften Bindungen, 10 Moleküle)
+  ----------------------------|------------------------|-----------------|-------|------
+  SigmaFlow, prodhparams      | 4.53 Å                 | 28              | 27    |
+  SigmaFlow, after_edm_fix    | 5.46 Å                 | 28              | 27    |
+  SigmaDock, prodhparams      | 3.01 Å                 | 11              | 8     |
+  SigmaDock, original(adhoc)  | 2.26 Å                 | 12              | 10    |
+
+  (Normale kovalente Einfachbindungen: ca. 1.2-1.8 Å. Alles über 2.0 Å ist
+  chemisch eindeutig gebrochen/nicht mehr bindend.)
+
+  Konkrete Einzelbeispiele (gleiches Molekül, direkter Vergleich):
+  - 1R1H_BIR: SigmaFlow (prodhparams) max_bond=8.64 Å (C-C, Atomindex 7-16);
+    SigmaDock (prodhparams) für DIESELBE Bindung nur 5.12 Å.
+  - 1YQY_915: SigmaFlow (edm_fix) max_bond=8.56 Å (C-C, Index 10-11);
+    SigmaDock (original) für dasselbe Molekül nur 1.79 Å (praktisch intakt).
+  - 1G9V_RQ3: SigmaDock (prodhparams) max_bond=1.75 Å (intakt); SigmaFlow
+    (prodhparams) 3.36 Å, SigmaFlow (edm_fix) sogar 6.09 Å — für dasselbe
+    Molekül.
+
+  Da laut Teil 3.4 alle INTRA-Fragment-Bindungen durch die starre
+  Fragment-Transformation geometrisch exakt erhalten bleiben (starre
+  Rotation+Translation ist längenerhaltend), müssen praktisch alle
+  gemessenen überlangen Bindungen genau an den (ehemaligen)
+  Torsionsbindungs-Übergängen zwischen zwei unabhängig platzierten
+  Fragmenten liegen — GENAU der Ort, um den es in der Kernfrage geht.
+  (Einschränkung: dies wurde aus der Ausschlusslogik gefolgert, nicht
+  Atom-für-Atom bis zur ursprünglichen Fragmentierung zurückverfolgt.)
+
+5.3 Bewertung: IST die Hypothese damit bewiesen?
+
+  JA, EMPIRISCH GESTÜTZT für die vorliegende Stichprobe — dies ist eine
+  reale, zweifach reproduzierte Messung an echten Modell-Outputs, kein
+  Gedankenexperiment. SigmaFlow zeigt in dieser Stichprobe (10 Komplexe, je
+  zwei verschiedene Trainingsläufe/Checkpoints pro Methode) durchgängig
+  1.5-2x größere maximale Bindungslängen und 2.5-3x mehr klar überdehnte/
+  gebrochene Bindungen als SigmaDock.
+
+  Einschränkungen der Aussagekraft (Ehrlichkeit über Grenzen):
+  - Stichprobengröße: nur 10 Komplexe, nur seed 0, jeweils EIN
+    Overfit-Checkpoint pro Methode/Hyperparametersatz. Kein
+    Signifikanztest, keine Aussage über den vollen Datensatz oder über
+    Generalisierung (die Modelle sind auf genau diese 10 Komplexe
+    überangepasst, siehe CLAUDE.md/STATUS.md zum "dummy_train"-Testaufbau).
+  - Gemessen wurde nur die MAXIMALE Bindungslänge pro Molekül und die
+    Anzahl über zwei festen Schwellen, keine vollständige Verteilung.
+  - Die Zuordnung "das sind die Torsionsbindungs-Übergänge" ist eine
+    plausible Schlussfolgerung aus der Architektur (Teil 3.4/4.2), aber
+    nicht Atom-für-Atom nachverfolgt.
+
+5.4 WARUM? Codeverifizierte, aber nicht kausal bewiesene Erklärungen
+
+  Da der Rekonstruktions-/Triangulationsmechanismus nachweislich IDENTISCH
+  ist (Teil 3.4, Teil 4), kann die gemessene Differenz NICHT durch einen
+  Mechanismus-Unterschied erklärt werden. Zwei codeverifizierte, aber nicht
+  kausal bewiesene Kandidaten bleiben:
+
+  (a) FEHLENDE ZEITABHÄNGIGE SCORE-REWEIGHTING im Flow-Matching-Loss
+      (Teil 3.4): SigmaDocks Trainingsloss gewichtet den Score-Fehler mit
+      `1/score_scaling(t)²`, was Trainingsbeispiele bei verschiedenen t
+      unterschiedlich stark zum Gradienten beitragen lässt (im VP/VE-SDE-
+      Rauschplan potenziell mit großer Dynamik über t). SigmaFlows
+      Vektorfeld-Loss gewichtet jedes t gleich. Das ist eine bewusste,
+      kommentierte Design-Entscheidung, keine versehentliche Auslassung,
+      und theoretisch für den linearen CondOT-Pfad nicht grundsätzlich
+      falsch (das Ziel selbst ist ja konstant in t) — ABER es bedeutet, dass
+      die Feinabstimmung der Genauigkeit nahe t->1 (dem Zeitpunkt, der die
+      finale, "scharfe" Fragmentplatzierung bestimmt) im Training
+      möglicherweise weniger stark gewichtet/optimiert wird als bei
+      SigmaDock. Das ist die von STATUS.md selbst als "plausibelste
+      verbleibende, aber unbestätigte Erklärung" benannte Hypothese
+      (PAUSE-PUNKT #10) — durch dieses Audit als real und wie beschrieben
+      im Code vorhanden BESTÄTIGT, aber ohne eigene Ablationsläufe (z.B.
+      Reweighting für Flow Matching nachrüsten und erneut vergleichen)
+      NICHT kausal bewiesen.
+
+  (b) Generische 1/(1-t)-Singularität des linearen Flow-Pfads nahe t=1
+      (`calc_trans_vector_field`/`calc_rot_vector_field`, Teil 3.1/3.2):
+      Diese Formeln werden laut Code NUR für den optionalen
+      "true vector field"-Debug-Pfad (Vergleichsgröße für die geloggte
+      Diagnose-Loss, nicht für die tatsächliche Trajektorie) sowie generell
+      als Diagnosewerkzeug verwendet — die tatsächliche ODE-Trajektorie beim
+      echten Sampling wird vom NETZWERK-vorhergesagten, ungesingulären
+      Rohwert (`_compute_vector_field`, Teil 3.4) angetrieben, nicht von
+      dieser Formel. Der Nenner (1-t) wird zwar für die letzten
+      ODE-Integrationsschritte klein, was die generische Empfindlichkeit
+      eines expliziten Euler-Integrators in diesem Bereich erhöhen KANN
+      (bekanntes, nicht sigmadock-spezifisches Phänomen linearer
+      OT-Conditional-Flow-Pfade) — aber es gibt weder im Code noch in dieser
+      Messung einen Beleg, dass GENAU dieser Effekt (statt (a)) für die
+      gemessene Differenz verantwortlich ist.
+
+  Explizit WIDERLEGTE Kandidaten (durch diesen Audit ausgeschlossen):
+  - "SigmaFlow hat einen fehlenden Reprojektions-/Korrekturschritt,
+    den SigmaDock hat" — FALSCH, keine der beiden Methoden hat einen
+    solchen Schritt (Teil 4.2).
+  - "SigmaFlow nutzt die Triangulationskanten seltener/anders während der
+    Integration" — FALSCH, identisch (Teil 4.3).
+  - "Der Triangulationsmechanismus wurde beim Umbau falsch implementiert" —
+    FALSCH, Code ist byte-identisch (Teil 2, Teil 4.1).
+  - "Fehlende Datenraum-Loss-Terme (T0/R0) erklären es" — bei den
+    tatsächlich verglichenen Läufen NICHT die Erklärung, da diese Terme in
+    SigmaDocks eigener Produktionskonfiguration ohnehin mit Gewicht 0
+    inaktiv waren (Teil 3.4).
+
+
+================================================================================
+TEIL 6: Weitere geprüfte Detailfragen / mögliche kleinere Fehler
+================================================================================
+
+6.1 `sample_notebook()`s `edm`-Zweig fehlt komplett in SigmaFlow (bestätigt)
+    Drei Notebook-Zellen (laut STATUS.md) rufen `sample_notebook(...,
+    discretization="edm")` auf — dieser Zweig existiert im aktuellen Code
+    nicht mehr (nur `raise ValueError` für alles außer "power"). Diese
+    Notebook-Zellen würden bei Ausführung sofort mit `ValueError` abstürzen.
+    Vorbestehend, nicht neu gefunden, aber unabhängig verifiziert.
+
+6.2 `chem/parsing.py` — bereits im Original toter Fallback-Code, in
+    SigmaFlow bereinigt entfernt (kein Verhaltensunterschied, siehe Teil 2).
+
+6.3 `t`-Konventionsumkehr zwischen den Methoden (Teil 3.1) ist nirgends im
+    Code explizit als potenzielle Verwechslungsquelle kommentiert — reine
+    Dokumentationslücke, kein funktionaler Fehler, da beide Pfade jeweils
+    intern konsistent sind.
+
+6.4 `sample_time()` (Zeitsampling für Training) ist Zeile für Zeile
+    identisch in beiden Bäumen (`epsilon_t + (1-epsilon_t)*Uniform(0,1)`) —
+    das t-Sampling selbst ist nicht die Ursache für die t=0/t=1-
+    Konventionsumkehr, die liegt rein in der Interpretation (Diffusions-
+    Vorwärtsprozess vs. Flow-Matching-Interpolation), nicht im Sampling-Code.
+
+
+================================================================================
+TEIL 7: GESAMTFAZIT
+================================================================================
+
+1. Die SigmaFlow-Konversion ist im Sinne von CLAUDE.md §1 ("chirurgischer
+   Eingriff") tatsächlich chirurgisch sauber: 51 von 60 Python-Dateien
+   (inkl. des kompletten EquiformerV2-Backbones, der gesamten
+   Chemie-/Datenpipeline und explizit des Triangulationsmechanismus) sind
+   byte-identisch zum Original. Nur die 5 zum Umbau vorgesehenen Kerndateien
+   plus wenige kleine, gut begründbare Randänderungen (Config-Aufräumen,
+   Fehlerbehandlung, ein echter SO(3)-Bugfix) weichen ab.
+
+2. Der Triangulationsmechanismus selbst ist zwischen beiden Methoden
+   identisch implementiert, identisch konfiguriert und identisch oft
+   genutzt. Es gibt keinen Implementierungsfehler bei SigmaFlow hierzu. Der
+   Mechanismus ist in BEIDEN Methoden ein weiches Lernsignal, kein hartes
+   geometrisches Constraint — das war schon im Original so.
+
+3. Die Hypothese "SigmaFlow baut strukturell längere/aufgerissene
+   Fragmentübergänge als SigmaDock" ist NICHT nur Spekulation, sondern
+   durch eigene, zweifach reproduzierte Messung an echten Sampling-
+   Ergebnissen EMPIRISCH GESTÜTZT (1.5-2x größere maximale Bindungslängen,
+   2.5-3x mehr klar überdehnte Bindungen) — dies widerspricht/präzisiert
+   die bisherige Projekteinschätzung (STATUS.md/RESULTS.md), die auf
+   Basis eines binären, deckeneffekt-anfälligen Kriteriums fälschlich auf
+   "kein Unterschied" geschlossen hatte.
+
+4. Die wahrscheinlichste Ursache liegt NICHT im Triangulationsmechanismus
+   oder in der Fragment-Rekonstruktions-Architektur (beide identisch),
+   sondern im TRAINING: SigmaFlows Verzicht auf eine zeitabhängige
+   Score-/Vektorfeld-Reskalierung (eine bewusste, aber nicht empirisch
+   verifizierte Design-Entscheidung) ist der einzige real gefundene,
+   codeverifizierte Unterschied, der die Fragmentgrenzen-Präzision
+   plausibel beeinträchtigen könnte. Eine zweite, ebenfalls unbewiesene
+   Nebenursache ist die numerische Empfindlichkeit des linearen
+   Flow-Matching-Pfads nahe t=1 unter einfacher Euler-Integration.
+
+5. Diese beiden Kandidaten sind PLAUSIBEL, aber NICHT kausal bewiesen —
+   das würde gezielte Ablationsläufe erfordern (z.B. eine zeitabhängige
+   Reweighting-Variante für Flow Matching implementieren und erneut
+   gegen SigmaDock vergleichen, oder mit mehr ODE-Schritten/Heun-Integration
+   testen, ob sich die Bindungslängen verbessern). Das wäre der
+   naheliegende nächste Untersuchungsschritt, sollte diese Frage
+   abschließend geklärt werden.
+================================================================================
+
+
+================================================================================
+TEIL 8: UNABHÄNGIGER VERIFIKATIONS-NACHTRAG (durch den koordinierenden Claude,
+nicht durch die beiden ausführenden Analyse-Agenten, die Teile 1-7 bzw. den
+separaten Vorbericht zu Triangulation/Bond-Length geschrieben haben)
+================================================================================
+
+Dieses Audit wurde arbeitsteilig erstellt: zwei unabhängig beauftragte
+Analyse-Durchläufe ("Diffusion-vs-Flow-Matching-Mathematik" und
+"Triangulation-Constraints & Bond-Length") plus eine eigene, direkt vom
+Koordinator durchgeführte Prüfung. Nach Fertigstellung wurden die
+zentralen, am stärksten belastbaren Einzelbehauptungen dieses Dokuments
+vom Koordinator selbst nachvollzogen (nicht nur die Zusammenfassungen der
+Agenten übernommen):
+
+8.1 GitHub-Herkunftsprüfung (Teil 1) — EIGENSTÄNDIG NACHVOLLZOGEN:
+    `gh api repos/alvaroprat97/sigmadock/contents/src/sigmadock/diff/so3_utils.py`
+    wurde vom Koordinator selbst erneut ausgeführt, der Base64-Inhalt dekodiert
+    und per `diff -u` gegen die lokale Referenzkopie
+    (`SigmaDock/src_sigmadock/src_sigmadock_diff/so3_utils.py`) verglichen:
+    Exit-Code 0, keine Abweichung. Die lokale Referenz ist damit für diese
+    Datei nachweislich identisch zum echten Upstream-Repo — die zentrale
+    Grundannahme des gesamten Audits (die lokale SigmaDock-Kopie ist
+    vertrauenswürdig) steht auf eigenständig geprüftem Boden.
+
+8.2 Zeitabhängige Score-Reweighting (Teil 3.4, Kernerklärung für die
+    Bond-Length-Differenz) — EIGENSTÄNDIG NACHVOLLZOGEN per Read/Grep:
+    - SigmaDock `denoiser - UMBAUEN.py:989-991` (`_get_scalings`):
+      `r3_scaling = self.diffuser._r3_diffuser.score_scaling(t_batch).clamp(...)`
+      — bestätigt zeitabhängig.
+    - `denoiser - UMBAUEN.py:1042`: `pred_T_score = updates["total_force"] * r3_scaling[..., None]`
+      — bestätigt: Kraft wird reskaliert, bevor sie als Score interpretiert wird.
+    - `denoiser - UMBAUEN.py:1232`: `lambda_trans_score = 1 / out["T_score_scaling"] ** 2`
+      — bestätigt: Diese Skalierung geht auch in die LOSS-Gewichtung selbst ein.
+    - SigmaFlow `sigma_flow_generator.py:878-887` (`_compute_vector_field`):
+      `pred_u_t_trans = updates["total_force"]` — bestätigt: unverändert, roh,
+      mit dem wörtlichen Kommentar "no time dependent scaling needed, unlike
+      the diffusion score" exakt an dieser Stelle.
+    -> Der als Hauptkandidat benannte Trainings-Unterschied ist damit nicht
+       nur behauptet, sondern Zeile für Zeile durch eigene Lektüre bestätigt.
+
+8.3 `trans_data_weight`/`rot_data_weight` = 0.0 in der Produktionskonfiguration
+    — EIGENSTÄNDIG NACHVOLLZOGEN: `grep -rn "data_weight" SigmaDock/conf
+    SigmaDock/src_sigmadock` findet die Felddefinitionen (Default 0.0 in
+    `config.py`/`trainer.py`) und die Verwendung in der Loss-Summe
+    (`trainer.py:265-266`), aber KEINE einzige Stelle in `SigmaDock/conf/`
+    (also auch nicht in der Produktions-Config `training/slurm.yaml`), die
+    einen Wert ungleich 0 setzt. Bestätigt: dieser Loss-Term war in den
+    tatsächlich verglichenen Läufen inaktiv, seine Entfernung in SigmaFlow ist
+    verhaltensneutral.
+
+8.4 `criterion.py::scale_rotational_score` als toter Code in BEIDEN Bäumen
+    — EIGENSTÄNDIG NACHVOLLZOGEN: `grep -rn "scale_rotational_score("` über
+    beide vollständigen Quellbäume findet außer der Funktionsdefinition
+    selbst KEINEN einzigen Aufrufer. Bestätigt.
+
+8.5 Eigene, UNABHÄNGIG von beiden Agenten durchgeführte Bindungslängen-Messung
+    (andere Methodik, andere Metrik) — siehe eigenes Skript
+    `bond_length_check.py` (Scratchpad), Messung VOR Erhalt beider
+    Agenten-Berichte durchgeführt: statt der maximalen Bindungslänge pro
+    Molekül wurden hier gezielt alle Bindungen identifiziert, deren
+    vorhergesagte Länge um mehr als 0.02 Å von der wahren Länge abweicht
+    (Ausschlusskriterium für "das ist eine Fragment-Übergangsbindung", siehe
+    Begründung in Teil 3.4/5.2 des Hauptberichts: intra-Fragment-Bindungen
+    bleiben unter starrer Transformation exakt erhalten). Ergebnis, auf
+    denselben zugrundeliegenden 10 Komplex-Sampling-Läufen
+    (`sampling_output_prodhparams/` vs. `sampling_output_sigmadock_prodhparams/`):
+
+      Methode     | n Übergangsbindungen | mean Länge | median Länge
+      ------------|-----------------------|------------|-------------
+      SigmaFlow   | 40                    | 2.672 Å    | 2.456 Å
+      SigmaDock   | 35                    | 1.811 Å    | 1.485 Å (≈ wahrer Wert 1.489 Å)
+
+    Zusätzlich: in 8 von 10 Einzelkomplexen liegt SigmaFlows mittlere
+    Übergangsbindungslänge über der von SigmaDock (paarweiser Vergleich).
+    Dies ist eine METHODISCH UNABHÄNGIGE Bestätigung (andere Metrik: alle
+    abweichenden Bindungen statt nur die längste; andere Schwelle) des in
+    Teil 5.2 berichteten Befunds, mit demselben qualitativen Ergebnis. Drei
+    voneinander unabhängige Messungen (zwei Agenten-Durchläufe mit
+    identischem Skript + eine methodisch andere eigene Messung) kommen damit
+    zum selben Schluss.
+
+8.6 Nicht weiter verifiziert (Zeitbudget/Umfang), als offene Punkte markiert:
+    - Die exakte Atom-für-Atom-Rückverfolgung, welche gemessenen langen
+      Bindungen wirklich die ursprünglichen Torsionsbindungen sind (statt nur
+      die Ausschlusslogik über intra-Fragment-Längenerhaltung), wurde weder
+      von den Agenten noch vom Koordinator abschließend Atom-für-Atom
+      nachvollzogen.
+    - Kein eigener Ablationslauf (Reweighting für Flow Matching nachrüsten,
+      erneut trainieren, erneut vergleichen) wurde durchgeführt — die
+      kausale Erklärung (Teil 5.4/8.2) bleibt entsprechend eine plausible,
+      aber unbewiesene Hypothese, wie im Dokument selbst durchgehend korrekt
+      gekennzeichnet.
+
+FAZIT DES VERIFIKATIONS-NACHTRAGS: Die im Hauptdokument (Teile 1-7)
+getroffenen zentralen Aussagen halten einer unabhängigen Nachprüfung
+stand. Keine der geprüften Kernbehauptungen musste korrigiert werden.
+================================================================================
+
+
+================================================================================
+TEIL 9: TEST 1 — EXPERIMENTELLE ÜBERPRÜFUNG DER KANDIDATEN E.3 vs. E.4
+(nachträglich ergänzt, 2026-08-05, nach Fertigstellung von Teil 1-8)
+================================================================================
+
+9.1 Ziel und Methode
+
+Teil 5.4/8.2 nennen zwei unbewiesene Kandidaten für die gemessene
+Bindungslängen-Differenz: (E.3) fehlende zeitabhängige Score-/Vektorfeld-
+Reweighting im Flow-Matching-Trainingsloss, und (E.4) generische
+1/(1-t)-Singularität des linearen Flow-Pfads nahe t=1 in Kombination mit
+Euler-Integration. Um zwischen beiden zu unterscheiden, wurde `sampler()`
+mit `use_true_vector_field=True` ausgeführt: dieser Modus ersetzt bei
+JEDEM ODE-Schritt die Netzwerk-Vorhersage durch das exakte, geschlossene
+Vektorfeld (`calc_trans_vector_field`/`calc_rot_vector_field`,
+selbstkorrigierend, siehe Teil 3.1/3.2) — das Netzwerk wird dabei nicht
+aufgerufen. Das isoliert sauber: Kann die ODE-Integrations-/
+Rekonstruktions-MECHANIK selbst (Euler, `power`-Diskretisierung,
+`num_steps=25`, Batching/Kanten-Handling — exakt der Produktionscode,
+keine Vereinfachung) die wahre Struktur überhaupt exakt treffen, wenn das
+Vektorfeld perfekt ist?
+
+Setup: lokale Python-Umgebung neu aufgesetzt (zuvor nur RDKit installiert
+für Teil 5.2/8.5), `pip install torch torch_geometric matplotlib pillow
+hydra-core omegaconf pytorch-lightning wandb biopython spyrmsd posebusters
+tqdm e3nn`. `scripts/sample.py` lief danach unverändert (keine Code-
+Änderung) lokal auf CPU durch — GPU/ARC nicht nötig, da der Oracle-Modus
+das rechenintensive Netzwerk pro Schritt überspringt. Verwendeter
+Checkpoint: `experiments/sigmadock/0-07-21_11-01-39/checkpoints/last.ckpt`
+(ein früher, kaum trainierter Checkpoint aus ~15-20 Schritten) — bewusst
+irrelevant für den Oracle-Lauf, da dessen Gewichte in diesem Modus gar
+nicht abgefragt werden; als Kontrolle wurde derselbe Checkpoint zusätzlich
+MIT Netzwerk-Vorhersage (`use_true_vector_field=False`) gesampelt, um den
+Effekt der Trainingsqualität direkt sichtbar zu machen.
+
+9.2 Ergebnis (RDKit-Bindungslängen-Messung, identische Methodik wie Teil 5.2, 10 Komplexe)
+
+  Lauf                                          | mean Übergangsbindung | max
+  ------------------------------------------------|------------------------|--------
+  Oracle-Vektorfeld (Netzwerk übersprungen)       | ~wahrer Wert (Abweichung ≤0.0002 Å) | —
+  (0 von 278 Bindungen über alle 10 Komplexe als "Übergang"/Ausreißer auffällig, TOL=0.02 Å)
+  Netzwerk-Vorhersage, selber (kaum trainierter) Checkpoint | 6.93 Å        | 12.18 Å
+  SigmaFlow, prodhparams (aus Teil 5.2, besser trainiert)   | 2.67 Å        | 8.64 Å (bzw. mean(max/Molekül)=4.53 Å)
+  SigmaDock, prodhparams (aus Teil 5.2)                     | 1.81 Å        | 5.12 Å (bzw. mean(max/Molekül)=3.01 Å)
+
+9.3 Interpretation
+
+  - Mit dem EXAKTEN Vektorfeld rekonstruiert derselbe Produktionscode
+    (identische ODE-Schleife, identische Rekonstruktionslogik) die wahre
+    Geometrie an JEDER der zuvor stark auffälligen Fragmentgrenzen bis auf
+    Fließkomma-Rauschen exakt. Das ist ein direkter, experimenteller Beweis
+    (nicht nur Code-Lektüre): die Integrations-/Rekonstruktions-MECHANIK
+    selbst hat KEINEN Bug und KEINE relevante numerische Schwäche nahe
+    t=1 unter den Produktions-Einstellungen (25 Schritte, `power`,
+    `t_max=1.0`, `t_min=0.01`).
+  - Kandidat E.4 (1/(1-t)-Singularität/Diskretisierungsfehler) ist damit
+    NICHT nur unbewiesen, sondern durch dieses Experiment WIDERLEGT als
+    Erklärung für die in Teil 5.2 gemessene Differenz.
+  - Der Fehler sitzt vollständig in der vom Netzwerk VORHERGESAGTEN
+    Feld-Qualität: kaum trainiert -> sehr schlecht (6.93 Å), besser
+    trainiert (prodhparams) -> deutlich näher am Oracle-Wert (2.67 Å), aber
+    auch der beste verfügbare SigmaFlow-Checkpoint bleibt klar über dem
+    Oracle-Wert (~0 Å) UND über SigmaDock (1.81 Å).
+  - Das macht Kandidat E.3 (fehlende zeitabhängige Loss-Reweighting) zur mit
+    Abstand plausibelsten verbleibenden Erklärung, BEWEIST aber noch nicht
+    kausal, dass GENAU diese Reweighting (statt z.B. allgemein
+    unzureichender Trainingsdauer/-kapazität für Fragmentübergänge) die
+    Ursache ist. Der direkte Test dafür (Reweighting einführen, unter
+    sonst identischen Bedingungen neu trainieren, erneut messen) ist der
+    nächste geplante Schritt ("Test 3", siehe STATUS.md PAUSE-PUNKT #14).
+
+9.4 Reproduzierbarkeit
+
+  Durchgeführt in `SigmaFlow_MinimalChange/` (eingefrorene Kopie des in
+  Teil 1-8 auditierten Standes, siehe STATUS.md PAUSE-PUNKT #14). Befehl
+  (aus `SigmaFlow_MinimalChange/`, `PYTHONPATH=src`):
+
+    python scripts/sample.py ckpt=experiments/sigmadock/0-07-21_11-01-39/checkpoints/last.ckpt \
+      data_dir=notebooks experiment=dummy_train output_dir=sampling_output_test1_oracle \
+      run_tag=test1_oracle num_seeds=1 graph.sample_conformer=false \
+      postprocessing.scoring=null postprocessing.bust_config=null \
+      ode.use_true_vector_field=true hardware.accelerator=cpu hardware.devices=1 \
+      hydra.run.dir=sampling_output_test1_oracle/hydra_out
+
+  (Kontroll-Lauf identisch, nur `ode.use_true_vector_field=false` und
+  anderer `output_dir`.) Bindungslängen-Messskript wie in Teil 5.2/8.5.
+================================================================================

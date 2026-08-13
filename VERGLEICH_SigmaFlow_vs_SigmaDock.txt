@@ -1,0 +1,225 @@
+====================================================================================================
+SIGMAFLOW vs. SIGMADOCK — VOLLSTAENDIGER METRIKVERGLEICH
+====================================================================================================
+Erzeugt: 2026-08-13T15:31:10
+Datengrundlage : 10-Seed-Experiment, Jobs 8554147 (SigmaFlow) / 8554149 (SigmaDock)
+                 209 PoseBusters-Komplexe x 10 Seeds = 2090 Posen je Methode
+Trainingsstand : beide 12h, max_epochs=6, compute-gematcht (SigmaFlow global_step 13.750)
+Referenz       : naechstgelegene kristallographische Kopie (ligand_reference.py)
+VORZEICHEN     : positiv = SigmaFlow SCHLECHTER
+
+WICHTIG: kein Confidence-Ranking. Das Paper erreicht 79.9% als Top-1 aus N Ziehungen,
+gerankt von einem trainierten Modell. Wir ranken nicht - alle Zahlen unten sind die
+rohe Verteilung einer Einzelziehung, fuer beide Methoden identisch behandelt.
+
+====================================================================================================
+1. HAUPTMETRIKEN  (pro Seed berechnet, dann Mittel +- SD ueber die 10 Seeds)
+====================================================================================================
+Metrik                                               SigmaFlow             SigmaDock         Delta
+----------------------------------------------------------------------------------------------------
+RMSD Median (A)                                   4.95 +- 0.31          4.44 +- 0.26          0.52
+RMSD Mittel (A)                                   5.24 +- 0.19          4.77 +- 0.17          0.47
+Erfolg RMSD <= 1 A (%)                              0.2 +- 0.3            0.7 +- 0.6          -0.5
+Erfolg RMSD <= 2 A (%)  <- Standard                 4.4 +- 1.8            9.8 +- 2.2          -5.4
+Erfolg RMSD <= 5 A (%)                             50.9 +- 3.9           57.5 +- 3.7          -6.6
+Ausreisser > 10 A (%)                               3.3 +- 1.0            2.2 +- 0.8           1.1
+Ausreisser > 20 A (%)                               0.0 +- 0.0            0.0 +- 0.0           0.0
+Schwerpunktabstand Median (A)                     1.16 +- 0.06          1.24 +- 0.08         -0.08
+Schwerpunkt <= 2 A (%)                             82.1 +- 2.6           76.3 +- 1.5           5.8
+RMSD n. Ausrichtung Median (A)                    1.96 +- 0.07          1.87 +- 0.07          0.10
+Orientierungsfehler Median (Grad)                 145.9 +- 4.9         124.4 +- 10.6          21.5
+Orientierung < 20 Grad (%)                          3.8 +- 1.2            7.0 +- 1.4          -3.2
+Orientierung > 160 Grad (%)                        36.5 +- 4.9           27.7 +- 3.0           8.8
+
+Zufallsbaseline Orientierung: Haar-Winkelverteilung, Mittel 126.5 Grad, MEDIAN 132.3 Grad.
+(Beide Werte fuehren - der Median ist die richtige Referenz fuer Median-Vergleiche.)
+
+====================================================================================================
+2. VERTEILUNG DES RMSD  (seed-gemittelt pro Komplex, n=209)
+====================================================================================================
+Lauf              mean      sd     q10     q25   median     q75     q90     max
+----------------------------------------------------------------------------------------------------
+SigmaFlow         5.24    1.53    3.37    4.09     5.10    6.21    7.23   10.07
+SigmaDock         4.77    1.53    2.85    3.56     4.71    5.81    6.69   10.13
+
+====================================================================================================
+3. GEPAARTER VERGLEICH  (seed-gemittelt pro Komplex, Bootstrap-CI ueber 20.000 Ziehungen)
+====================================================================================================
+Groesse                               Median    Mittel                95%-CI   SF besser          Urteil
+----------------------------------------------------------------------------------------------------
+RMSD roh (A)                           +0.39     +0.47   [+0.36, +0.59]         29%     signifikant
+RMSD ausgerichtet (A)                  +0.07     +0.07   [+0.03, +0.11]         37%     signifikant
+Orientierungsfehler (Grad)            +16.92    +16.80   [+13.53, +20.07]         23%     signifikant
+Schwerpunktabstand (A)                 -0.06     -0.21   [-0.31, -0.12]         57%     signifikant
+
+====================================================================================================
+4. SEED-STREUUNG  (die wichtigste Warnung fuer jeden Einzelvergleich)
+====================================================================================================
+SigmaFlow
+   Median-RMSD je Seed  : 4.56 bis 5.70 A  (SD 0.307)
+   Erfolg <=2A je Seed  : 1.4% bis 6.7%  (SD 1.75)
+   DERSELBE Komplex     : SD 1.55 A, Spannweite 4.46 A
+SigmaDock
+   Median-RMSD je Seed  : 4.15 bis 4.87 A  (SD 0.262)
+   Erfolg <=2A je Seed  : 5.7% bis 13.4%  (SD 2.17)
+   DERSELBE Komplex     : SD 1.58 A, Spannweite 4.59 A
+
+=> Die Streuung EINER Ziehung ist rund zehnmal so gross wie der Methodenunterschied.
+   Einzelziehungs-Vergleiche in diesem Feld lesen ueberwiegend Rauschen.
+
+====================================================================================================
+5. BEST-OF-10  (Obergrenze, die ein perfektes Confidence-Ranking erreichen koennte)
+====================================================================================================
+Lauf             <=2A ein Seed   <=2A best-of-10   Median ein Seed   Median best-of-10
+----------------------------------------------------------------------------------------------------
+SigmaFlow                 1.9%             29.2%             4.78A               2.62A
+SigmaDock                 9.1%             45.9%             4.48A               2.10A
+
+====================================================================================================
+6. CHEMISCHE PLAUSIBILITAET + SYMMETRIEKORRIGIERTER RMSD  (PoseBusters, Seed 0)
+====================================================================================================
+Check                              SigmaFlow   SigmaDock   nur SF   nur SD         p                Urteil
+----------------------------------------------------------------------------------------------------
+tetrahedral_chirality                  93.8%       92.8%       11        9    0.8238  nicht unterscheidbar
+bond_lengths                           55.5%       46.4%       40       21    0.0204      SigmaFlow besser
+bond_angles                            48.3%       39.7%       39       21    0.0273      SigmaFlow besser
+internal_steric_clash                  47.8%       45.5%       26       21    0.5601  nicht unterscheidbar
+internal_energy                        57.4%       61.2%       33       41    0.4160  nicht unterscheidbar
+ALLE CHECKS (= PB-valid)               37.3%       31.6%       32       20    0.1263  nicht unterscheidbar
+RMSD <= 2 A (symmetriekorr.)            2.9%       10.0%        5       20    0.0041      SigmaDock besser
+
+DIE STANDARD-KOPFZAHL DES FELDES:
+   SigmaFlow    PB-valid UND RMSD<=2A :   2.4%   (PB-valid allein 37.3%, RMSD<=2A allein 2.9%)
+   SigmaDock    PB-valid UND RMSD<=2A :   5.7%   (PB-valid allein 31.6%, RMSD<=2A allein 10.0%)
+   gepaart: nur SF 5, nur SD 12, p=0.1435  -> nicht unterscheidbar
+
+VORBEHALT MULTIPLES TESTEN — bitte nicht ueberlesen:
+  In dieser Tabelle werden 7 Hypothesen gegen dieselben Daten getestet. Bei
+  Bonferroni-Korrektur liegt die Schwelle bei 0.05/7 = 0.0071.
+    - RMSD <= 2 A (p=0.0041) UEBERLEBT die Korrektur -> gesicherter Befund.
+    - Bindungslaengen (p=0.020) und Bindungswinkel (p=0.027) UEBERLEBEN NICHT.
+      Als Tendenz zugunsten SigmaFlow berichten, NICHT als Nachweis.
+  Zusaetzlich: alle Chemie-Checks stammen aus EINEM Seed. Die Seed-Streuung in
+  Abschnitt 4 gilt sinngemaess auch hier.
+
+Hinweis: 8 protein-abhaengige mol_cond-Checks fehlen (Rezeptor-PDBs nicht lokal).
+PB-valid bezieht sich hier auf die 15 liganden-intrinsischen Checks.
+
+====================================================================================================
+7. PYMOL — REPRAESENTATIVE KOMPLEXE ZUM ANSEHEN
+====================================================================================================
+
+  BESTER SigmaFlow     7WKL_CAQ       RMSD SF= 2.29  SD= 2.13  Orient.SF=121.2 Grad  ausger.SF=0.00   (kleinster RMSD ueberhaupt)
+  SigmaFlow GEWINNT    7SCW_GSP       RMSD SF= 3.72  SD= 5.80  Orient.SF= 67.4 Grad  ausger.SF=2.49   (groesster Vorsprung SF)
+  SigmaDock GEWINNT    7UTW_NAI       RMSD SF=10.07  SD= 6.88  Orient.SF=156.6 Grad  ausger.SF=3.59   (groesster Rueckstand SF)
+  TYPISCHER FALL       7K41_VUA       RMSD SF= 5.10  SD= 4.14  Orient.SF=148.3 Grad  ausger.SF=2.00   (Median-RMSD)
+  KOPF-SCHWANZ-FLIP    7ZHP_IQY       RMSD SF= 6.44  SD= 6.04  Orient.SF=164.7 Grad  ausger.SF=0.98   (Orientierung >160 Grad, innere Geometrie aber gut)
+
+Es wurden 5 Faelle nach pymol_cases/ geschrieben - je genau EIN Molekuel
+pro Datei (die Referenz ist die tatsaechlich verglichene Kristallkopie, nicht
+blind die erste). Damit gibt es in PyMOL keine Mehrdeutigkeit.
+Die Beschriftungen stehen in pymol_cases/cases.json - das PyMOL-Skript liest sie von
+dort, neue Faelle erscheinen also automatisch, ohne dass dieser Bericht neu muss.
+
+====================================================================================================
+PYMOL — ALLES AB HIER EINFACH KOMPLETT KOPIEREN UND IN PYMOL EINFUEGEN
+====================================================================================================
+Nichts anpassen, nichts speichern. Der Block laedt Protein, wahren Liganden,
+SigmaFlow und SigmaDock. Danach mit  zeige('<KOMPLEX>')  zwischen den Faellen
+wechseln. Das Protein wird automatisch von der PDB geladen (Internet noetig).
+
+---8<--- AB HIER KOPIEREN ---8<---
+
+python
+import os, json
+from pymol import cmd, util
+
+BASE = r"C:\Users\julia\Documents\SigmaFlow\SigmaFlow_Variants\posebusters_full_comparison\pymol_cases"
+
+FAELLE = json.load(open(os.path.join(BASE, 'cases.json'), encoding='utf-8'))
+
+def zeige(cid, protein=True, oberflaeche=True):
+    """Zeigt Protein + wahren Liganden + SigmaFlow + SigmaDock fuer einen Komplex."""
+    cmd.delete('all')
+    cmd.load(os.path.join(BASE, cid + '_TRUE.sdf'),      'LIG_WAHR')
+    cmd.load(os.path.join(BASE, cid + '_SIGMAFLOW.sdf'), 'LIG_SIGMAFLOW')
+    cmd.load(os.path.join(BASE, cid + '_SIGMADOCK.sdf'), 'LIG_SIGMADOCK')
+    if protein:
+        try:
+            cmd.fetch(cid.split('_')[0], 'PROT', type='pdb', async_=0)
+            cmd.remove('PROT and not polymer')      # Wasser, Ionen, Kristallliganden weg
+            cmd.remove('PROT and hydro')
+        except Exception as e:
+            print('[WARN] Protein konnte nicht geladen werden:', e)
+    cmd.hide('everything')
+    cmd.show('sticks', 'LIG_*')
+    util.cbag('LIG_WAHR')          # Kohlenstoff gruen   = Kristallpose
+    util.cbac('LIG_SIGMAFLOW')     # Kohlenstoff cyan    = SigmaFlow
+    util.cbam('LIG_SIGMADOCK')     # Kohlenstoff magenta = SigmaDock
+    if protein and cmd.count_atoms('PROT'):
+        cmd.show('cartoon', 'PROT')
+        cmd.color('grey70', 'PROT')
+        cmd.set('cartoon_transparency', 0.5)
+        if oberflaeche:
+            cmd.select('TASCHE', 'byres (PROT within 6 of LIG_WAHR)')
+            cmd.show('surface', 'TASCHE')
+            cmd.set('transparency', 0.55)
+            cmd.color('wheat', 'TASCHE')
+            cmd.deselect()
+    cmd.bg_color('white')
+    cmd.set('ray_opaque_background', 0)
+    cmd.set('stick_radius', 0.14)
+    cmd.set('valence', 1)
+    cmd.orient('LIG_WAHR')
+    cmd.zoom('LIG_WAHR', 6)
+    m = FAELLE.get(cid, {})
+    print('=' * 78)
+    print(f"{cid}  [{m.get('set','?')}]  {m.get('rolle','')}")
+    print(f"  RMSD SigmaFlow {m.get('rmsd_sf','?')} A | SigmaDock {m.get('rmsd_sd','?')} A"
+          f"  | Orientierungsfehler SigmaFlow {m.get('orient_sf','?')} Grad")
+    print('  gruen = Kristallpose | cyan = SigmaFlow | magenta = SigmaDock')
+    if m.get('warnung'):
+        print('  [!] ' + m['warnung'])
+    print('=' * 78)
+
+def liste():
+    for s in sorted({v.get('set','?') for v in FAELLE.values()}):
+        print(f'--- {s} ---')
+        for k, v in FAELLE.items():
+            if v.get('set') != s:
+                continue
+            print(f"  zeige(\"{k}\")   {v.get('rolle','')}: "
+                  f"SF {v.get('rmsd_sf','?')} A / SD {v.get('rmsd_sd','?')} A, "
+                  f"Orient. {v.get('orient_sf','?')} Grad")
+
+cmd.extend('zeige', zeige)
+cmd.extend('liste', liste)
+python end
+
+liste
+zeige("7WKL_CAQ")
+
+---8<--- BIS HIER KOPIEREN ---8<---
+
+BEDIENUNG
+  liste                    zeigt alle verfuegbaren Faelle mit ihren Kennzahlen
+  zeige("7ZHP_IQY")        wechselt zu diesem Komplex
+  zeige("7ZHP_IQY", False) ohne Protein (schneller, kein Internet noetig)
+
+WORAUF DU ACHTEST
+  1. Liegt CYAN in derselben Tasche wie GRUEN? -> Translation stimmt fast immer
+     (Schwerpunkt <= 2 A bei 82% der Posen, besser als SigmaDock).
+  2. Zeigt CYAN bei gleicher Molekuelform in die GEGENRICHTUNG von GRUEN?
+     -> das ist der Kopf-Schwanz-Flip, der dokumentierte Hauptfehlermodus
+     (36.5% der Posen ueber 160 Grad Orientierungsfehler). Am deutlichsten
+     im Fall 'KOPF-SCHWANZ-FLIP' oben.
+  3. Sehen die Bindungslaengen von CYAN plausibel aus? -> ja, dort ist
+     SigmaFlow tendenziell sogar besser als SigmaDock (55.5% vs 46.4%).
+
+FALLS DAS PROTEIN NICHT LAEDT
+  cmd.fetch braucht Internet und schreibt in das aktuelle PyMOL-Arbeits-
+  verzeichnis. Alternativ das Protein von ARC holen:
+    /data/stat-cadd/shug8458/data/posebusters_paper/posebusters_benchmark_set/
+        <KOMPLEX>/<KOMPLEX>_protein.pdb
+  und im Skript cmd.fetch durch cmd.load(<pfad>, 'PROT') ersetzen.
+  Zur Not: zeige("...", False) - die Ligandenvergleiche funktionieren auch ohne.

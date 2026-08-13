@@ -1,0 +1,730 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\@writefile{toc}{\contentsline {chapter}{How to read this document}{6}{chapter*.2}\protected@file@percent }
+\gdef \LT@i {\LT@entry 
+    {1}{114.43008pt}\LT@entry 
+    {1}{310.75394pt}}
+\@writefile{toc}{\contentsline {section}{Global notation}{7}{section*.3}\protected@file@percent }
+\newlabel{rem:time-convention-global}{{0.2}{7}{Time convention, fixed once and for all}{theorem.0.2}{}}
+\newlabel{rem:time-convention-global@cref}{{[theorem][2][0]0.2}{[1][7][]7}{}{}{}}
+\@writefile{toc}{\contentsline {part}{I\hspace  {1em}Preliminaries}{9}{part.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {chapter}{\numberline {1}The Protein--Ligand Docking Problem}{10}{chapter.1}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:docking}{{1}{10}{The Protein--Ligand Docking Problem}{chapter.1}{}}
+\newlabel{chap:docking@cref}{{[chapter][1][]1}{[1][10][]10}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1.1}Proteins and ligands}{10}{section.1.1}\protected@file@percent }
+\newlabel{def:protein}{{1.1}{10}{Protein, for docking purposes}{theorem.1.1}{}}
+\newlabel{def:protein@cref}{{[theorem][1][1]1.1}{[1][10][]10}{}{}{}}
+\newlabel{def:ligand}{{1.2}{10}{Ligand, for docking purposes}{theorem.1.2}{}}
+\newlabel{def:ligand@cref}{{[theorem][2][1]1.2}{[1][10][]10}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1.2}Poses and degrees of freedom}{11}{section.1.2}\protected@file@percent }
+\newlabel{sec:pose-dof}{{1.2}{11}{Poses and degrees of freedom}{section.1.2}{}}
+\newlabel{sec:pose-dof@cref}{{[section][2][1]1.2}{[1][10][]11}{}{}{}}
+\newlabel{def:pose}{{1.3}{11}{Pose}{theorem.1.3}{}}
+\newlabel{def:pose@cref}{{[theorem][3][1]1.3}{[1][10][]11}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1.3}What a docking model predicts, and what it does not}{12}{section.1.3}\protected@file@percent }
+\newlabel{sec:docking-tasks}{{1.3}{12}{What a docking model predicts, and what it does not}{section.1.3}{}}
+\newlabel{sec:docking-tasks@cref}{{[section][3][1]1.3}{[1][12][]12}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {1.4}Evaluation: RMSD and structural validity}{12}{section.1.4}\protected@file@percent }
+\newlabel{sec:evaluation}{{1.4}{12}{Evaluation: RMSD and structural validity}{section.1.4}{}}
+\newlabel{sec:evaluation@cref}{{[section][4][1]1.4}{[1][12][]12}{}{}{}}
+\newlabel{def:rmsd}{{1.5}{12}{Root-mean-square deviation, RMSD}{theorem.1.5}{}}
+\newlabel{def:rmsd@cref}{{[theorem][5][1]1.5}{[1][12][]12}{}{}{}}
+\newlabel{def:posebusters}{{1.6}{13}{PoseBusters-style validity checks, informal}{theorem.1.6}{}}
+\newlabel{def:posebusters@cref}{{[theorem][6][1]1.6}{[1][13][]13}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {2}Probability and Generative Modelling Foundations}{14}{chapter.2}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:prob-foundations}{{2}{14}{Probability and Generative Modelling Foundations}{chapter.2}{}}
+\newlabel{chap:prob-foundations@cref}{{[chapter][2][]2}{[1][14][]14}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.1}Densities, conditional densities, and pushforward}{14}{section.2.1}\protected@file@percent }
+\newlabel{def:density}{{2.1}{14}{Density}{theorem.2.1}{}}
+\newlabel{def:density@cref}{{[theorem][1][2]2.1}{[1][14][]14}{}{}{}}
+\newlabel{def:conditional-density}{{2.2}{14}{Conditional density}{theorem.2.2}{}}
+\newlabel{def:conditional-density@cref}{{[theorem][2][2]2.2}{[1][14][]14}{}{}{}}
+\newlabel{prop:marginalisation}{{2.3}{14}{Marginalisation by conditioning}{theorem.2.3}{}}
+\newlabel{prop:marginalisation@cref}{{[theorem][3][2]2.3}{[1][14][]14}{}{}{}}
+\newlabel{def:pushforward}{{2.4}{15}{Pushforward measure}{theorem.2.4}{}}
+\newlabel{def:pushforward@cref}{{[theorem][4][2]2.4}{[1][15][]15}{}{}{}}
+\newlabel{thm:change-of-variables}{{2.5}{15}{Change of variables}{theorem.2.5}{}}
+\newlabel{thm:change-of-variables@cref}{{[theorem][5][2]2.5}{[1][15][]15}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.2}Score functions}{15}{section.2.2}\protected@file@percent }
+\newlabel{sec:score-intro}{{2.2}{15}{Score functions}{section.2.2}{}}
+\newlabel{sec:score-intro@cref}{{[section][2][2]2.2}{[1][15][]15}{}{}{}}
+\newlabel{def:score}{{2.7}{15}{Score}{theorem.2.7}{}}
+\newlabel{def:score@cref}{{[theorem][7][2]2.7}{[1][15][]15}{}{}{}}
+\newlabel{rem:score-no-const}{{2.8}{15}{The score does not need a normalising constant}{theorem.2.8}{}}
+\newlabel{rem:score-no-const@cref}{{[theorem][8][2]2.8}{[1][15][]15}{}{}{}}
+\newlabel{rem:gaussian-score}{{2.9}{16}{The score of a Gaussian, used repeatedly}{theorem.2.9}{}}
+\newlabel{rem:gaussian-score@cref}{{[theorem][9][2]2.9}{[1][15][]16}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.3}Why the score suffices for sampling: Langevin dynamics}{16}{section.2.3}\protected@file@percent }
+\newlabel{sec:langevin}{{2.3}{16}{Why the score suffices for sampling: Langevin dynamics}{section.2.3}{}}
+\newlabel{sec:langevin@cref}{{[section][3][2]2.3}{[1][16][]16}{}{}{}}
+\newlabel{def:wiener}{{2.10}{16}{Standard Wiener process}{theorem.2.10}{}}
+\newlabel{def:wiener@cref}{{[theorem][10][2]2.10}{[1][16][]16}{}{}{}}
+\newlabel{def:sde}{{2.11}{16}{Stochastic differential equation, informal}{theorem.2.11}{}}
+\newlabel{def:sde@cref}{{[theorem][11][2]2.11}{[1][16][]16}{}{}{}}
+\newlabel{thm:langevin}{{2.12}{16}{Langevin dynamics; invariance of the target density}{theorem.2.12}{}}
+\newlabel{thm:langevin@cref}{{[theorem][12][2]2.12}{[1][16][]16}{}{}{}}
+\newlabel{eq:langevin-target}{{2.1}{16}{Why the score suffices for sampling: Langevin dynamics}{equation.2.1}{}}
+\newlabel{eq:langevin-target@cref}{{[equation][1][2]2.1}{[1][16][]16}{}{}{}}
+\newlabel{eq:ula}{{2.2}{17}{Why the score suffices for sampling: Langevin dynamics}{equation.2.2}{}}
+\newlabel{eq:ula@cref}{{[equation][2][2]2.2}{[1][16][]17}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.4}Kullback--Leibler divergence and maximum likelihood}{17}{section.2.4}\protected@file@percent }
+\newlabel{sec:kl-mle}{{2.4}{17}{Kullback--Leibler divergence and maximum likelihood}{section.2.4}{}}
+\newlabel{sec:kl-mle@cref}{{[section][4][2]2.4}{[1][17][]17}{}{}{}}
+\newlabel{def:kl}{{2.13}{17}{Kullback--Leibler divergence}{theorem.2.13}{}}
+\newlabel{def:kl@cref}{{[theorem][13][2]2.13}{[1][17][]17}{}{}{}}
+\newlabel{prop:kl-properties}{{2.14}{17}{Basic properties of KL}{theorem.2.14}{}}
+\newlabel{prop:kl-properties@cref}{{[theorem][14][2]2.14}{[1][17][]17}{}{}{}}
+\newlabel{def:mle}{{2.15}{17}{Maximum likelihood}{theorem.2.15}{}}
+\newlabel{def:mle@cref}{{[theorem][15][2]2.15}{[1][17][]17}{}{}{}}
+\newlabel{prop:mle-kl}{{2.16}{17}{MLE minimises KL to the data distribution}{theorem.2.16}{}}
+\newlabel{prop:mle-kl@cref}{{[theorem][16][2]2.16}{[1][17][]17}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {2.5}Generative modelling as distribution transport}{18}{section.2.5}\protected@file@percent }
+\newlabel{sec:generative-modelling-intro}{{2.5}{18}{Generative modelling as distribution transport}{section.2.5}{}}
+\newlabel{sec:generative-modelling-intro@cref}{{[section][5][2]2.5}{[1][17][]18}{}{}{}}
+\newlabel{def:prob-path}{{2.17}{18}{Probability path}{theorem.2.17}{}}
+\newlabel{def:prob-path@cref}{{[theorem][17][2]2.17}{[1][18][]18}{}{}{}}
+\@writefile{toc}{\contentsline {part}{II\hspace  {1em}Geometry}{19}{part.2}\protected@file@percent }
+\newlabel{part:geometry}{{II}{20}{Geometry}{part.2}{}}
+\newlabel{part:geometry@cref}{{[part][2][]II}{[1][20][]20}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {3}Manifolds, Groups, and Rigid Motion}{20}{chapter.3}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:groups}{{3}{20}{Manifolds, Groups, and Rigid Motion}{chapter.3}{}}
+\newlabel{chap:groups@cref}{{[chapter][3][]3}{[1][20][]20}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.1}Manifolds and tangent spaces}{20}{section.3.1}\protected@file@percent }
+\newlabel{sec:manifolds-scratch}{{3.1}{20}{Manifolds and tangent spaces}{section.3.1}{}}
+\newlabel{sec:manifolds-scratch@cref}{{[section][1][3]3.1}{[1][20][]20}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{20}{section*.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Intuition.}{20}{section*.5}\protected@file@percent }
+\newlabel{def:manifold-scratch}{{3.1}{20}{Smooth manifold, informal}{theorem.3.1}{}}
+\newlabel{def:manifold-scratch@cref}{{[theorem][1][3]3.1}{[1][20][]20}{}{}{}}
+\newlabel{def:tangent-scratch}{{3.2}{21}{Tangent space, informal}{theorem.3.2}{}}
+\newlabel{def:tangent-scratch@cref}{{[theorem][2][3]3.2}{[1][20][]21}{}{}{}}
+\newlabel{def:metric-scratch}{{3.4}{21}{Riemannian metric, geodesic; restated}{theorem.3.4}{}}
+\newlabel{def:metric-scratch@cref}{{[theorem][4][3]3.4}{[1][21][]21}{}{}{}}
+\newlabel{def:explog-scratch}{{3.5}{21}{Exponential and logarithmic map; restated}{theorem.3.5}{}}
+\newlabel{def:explog-scratch@cref}{{[theorem][5][3]3.5}{[1][21][]21}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.2}Groups and Lie groups}{21}{section.3.2}\protected@file@percent }
+\newlabel{sec:groups-scratch}{{3.2}{21}{Groups and Lie groups}{section.3.2}{}}
+\newlabel{sec:groups-scratch@cref}{{[section][2][3]3.2}{[1][21][]21}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{21}{section*.6}\protected@file@percent }
+\newlabel{def:group}{{3.6}{21}{Group}{theorem.3.6}{}}
+\newlabel{def:group@cref}{{[theorem][6][3]3.6}{[1][21][]21}{}{}{}}
+\newlabel{def:liegroup-scratch}{{3.8}{21}{Lie group; restated}{theorem.3.8}{}}
+\newlabel{def:liegroup-scratch@cref}{{[theorem][8][3]3.8}{[1][21][]21}{}{}{}}
+\newlabel{def:liealgebra-scratch}{{3.9}{22}{Lie algebra; restated}{theorem.3.9}{}}
+\newlabel{def:liealgebra-scratch@cref}{{[theorem][9][3]3.9}{[1][21][]22}{}{}{}}
+\newlabel{def:left-translation}{{3.10}{22}{Left translation and left-invariant vector fields}{theorem.3.10}{}}
+\newlabel{def:left-translation@cref}{{[theorem][10][3]3.10}{[1][22][]22}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.3}The rotation group $SO(3)$}{22}{section.3.3}\protected@file@percent }
+\newlabel{sec:so3-scratch}{{3.3}{22}{The rotation group $SO(3)$}{section.3.3}{}}
+\newlabel{sec:so3-scratch@cref}{{[section][3][3]3.3}{[1][22][]22}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.1}Definition and dimension}{22}{subsection.3.3.1}\protected@file@percent }
+\newlabel{def:so3-def}{{3.11}{22}{Orthogonal and special orthogonal group}{theorem.3.11}{}}
+\newlabel{def:so3-def@cref}{{[theorem][11][3]3.11}{[1][22][]22}{}{}{}}
+\newlabel{prop:so3-isometry}{{3.12}{22}{Rotations preserve length and orientation}{theorem.3.12}{}}
+\newlabel{prop:so3-isometry@cref}{{[theorem][12][3]3.12}{[1][22][]22}{}{}{}}
+\newlabel{prop:so3-dim}{{3.13}{22}{Dimension of $SO(3)$}{theorem.3.13}{}}
+\newlabel{prop:so3-dim@cref}{{[theorem][13][3]3.13}{[1][22][]22}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.2}The Lie algebra $\so  (3)$ and the hat/vee maps}{23}{subsection.3.3.2}\protected@file@percent }
+\newlabel{sec:so3-liealgebra}{{3.3.2}{23}{The Lie algebra $\so (3)$ and the hat/vee maps}{subsection.3.3.2}{}}
+\newlabel{sec:so3-liealgebra@cref}{{[subsection][2][3,3]3.3.2}{[1][23][]23}{}{}{}}
+\newlabel{prop:so3-liealgebra}{{3.14}{23}{$\so (3)$ is the skew-symmetric matrices}{theorem.3.14}{}}
+\newlabel{prop:so3-liealgebra@cref}{{[theorem][14][3]3.14}{[1][23][]23}{}{}{}}
+\newlabel{def:hatvee-scratch}{{3.15}{23}{Hat and vee operators; restated precisely}{theorem.3.15}{}}
+\newlabel{def:hatvee-scratch@cref}{{[theorem][15][3]3.15}{[1][23][]23}{}{}{}}
+\newlabel{prop:hat-cross}{{3.16}{23}{Hat map intertwines cross product and matrix commutator}{theorem.3.16}{}}
+\newlabel{prop:hat-cross@cref}{{[theorem][16][3]3.16}{[1][23][]23}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.3}The exponential map: Rodrigues' formula}{24}{subsection.3.3.3}\protected@file@percent }
+\newlabel{sec:rodrigues-scratch}{{3.3.3}{24}{The exponential map: Rodrigues' formula}{subsection.3.3.3}{}}
+\newlabel{sec:rodrigues-scratch@cref}{{[subsection][3][3,3]3.3.3}{[1][24][]24}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{24}{section*.7}\protected@file@percent }
+\newlabel{prop:geodesic-oneparam}{{3.17}{24}{Geodesics through the identity of a bi-invariant Lie group are one-parameter subgroups}{theorem.3.17}{}}
+\newlabel{prop:geodesic-oneparam@cref}{{[theorem][17][3]3.17}{[1][24][]24}{}{}{}}
+\newlabel{thm:rodrigues-scratch}{{3.18}{24}{Rodrigues' rotation formula}{theorem.3.18}{}}
+\newlabel{thm:rodrigues-scratch@cref}{{[theorem][18][3]3.18}{[1][24][]24}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.4}The logarithmic map, and its numerically dangerous points}{25}{subsection.3.3.4}\protected@file@percent }
+\newlabel{sec:so3-log-scratch}{{3.3.4}{25}{The logarithmic map, and its numerically dangerous points}{subsection.3.3.4}{}}
+\newlabel{sec:so3-log-scratch@cref}{{[subsection][4][3,3]3.3.4}{[1][25][]25}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{25}{section*.8}\protected@file@percent }
+\newlabel{thm:so3-log-scratch}{{3.19}{25}{Logarithm of a rotation matrix}{theorem.3.19}{}}
+\newlabel{thm:so3-log-scratch@cref}{{[theorem][19][3]3.19}{[1][25][]25}{}{}{}}
+\newlabel{prop:log-smallangle}{{3.20}{26}{Small-angle behaviour of $\log $}{theorem.3.20}{}}
+\newlabel{prop:log-smallangle@cref}{{[theorem][20][3]3.20}{[1][25][]26}{}{}{}}
+\newlabel{prop:log-nearpi}{{3.21}{26}{Behaviour of $\log $ near $\theta =\pi $}{theorem.3.21}{}}
+\newlabel{prop:log-nearpi@cref}{{[theorem][21][3]3.21}{[1][26][]26}{}{}{}}
+\newlabel{caution:omega-clamp}{{3.22}{26}{The angle-clamp bug, and why it mattered only for flow matching}{theorem.3.22}{}}
+\newlabel{caution:omega-clamp@cref}{{[theorem][22][3]3.22}{[1][26][]26}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.3.5}$SO(3)$ as a metric space, and Brownian motion's invariant measure}{27}{subsection.3.3.5}\protected@file@percent }
+\newlabel{sec:so3-uniform}{{3.3.5}{27}{$SO(3)$ as a metric space, and Brownian motion's invariant measure}{subsection.3.3.5}{}}
+\newlabel{sec:so3-uniform@cref}{{[subsection][5][3,3]3.3.5}{[1][27][]27}{}{}{}}
+\newlabel{prop:so3-distance}{{3.23}{27}{Bi-invariant Riemannian distance on $SO(3)$}{theorem.3.23}{}}
+\newlabel{prop:so3-distance@cref}{{[theorem][23][3]3.23}{[1][27][]27}{}{}{}}
+\newlabel{prop:haar-so3}{{3.24}{27}{The Haar measure on $SO(3)$, in axis--angle coordinates}{theorem.3.24}{}}
+\newlabel{prop:haar-so3@cref}{{[theorem][24][3]3.24}{[1][27][]27}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.4}Left and right trivialisation, resolved for this document}{28}{section.3.4}\protected@file@percent }
+\newlabel{sec:so3-trivialisation}{{3.4}{28}{Left and right trivialisation, resolved for this document}{section.3.4}{}}
+\newlabel{sec:so3-trivialisation@cref}{{[section][4][3]3.4}{[1][28][]28}{}{}{}}
+\newlabel{def:trivialisation-scratch}{{3.25}{28}{Left- and right-trivialised angular velocity}{theorem.3.25}{}}
+\newlabel{def:trivialisation-scratch@cref}{{[theorem][25][3]3.25}{[1][28][]28}{}{}{}}
+\newlabel{rem:trivialisation-terminology}{{3.26}{28}{Terminology warning}{theorem.3.26}{}}
+\newlabel{rem:trivialisation-terminology@cref}{{[theorem][26][3]3.26}{[1][28][]28}{}{}{}}
+\newlabel{prop:geodesic-right-triv}{{3.27}{28}{The geodesic interpolant is naturally right-trivialised}{theorem.3.27}{}}
+\newlabel{prop:geodesic-right-triv@cref}{{[theorem][27][3]3.27}{[1][28][]28}{}{}{}}
+\newlabel{prop:euler-right-triv}{{3.28}{28}{The corresponding one-step update is a right multiplication}{theorem.3.28}{}}
+\newlabel{prop:euler-right-triv@cref}{{[theorem][28][3]3.28}{[1][28][]28}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.5}The pose group $SE(3)$ and the product manifold $SE(3)^N$}{29}{section.3.5}\protected@file@percent }
+\newlabel{sec:se3-scratch}{{3.5}{29}{The pose group $SE(3)$ and the product manifold $SE(3)^N$}{section.3.5}{}}
+\newlabel{sec:se3-scratch@cref}{{[section][5][3]3.5}{[1][29][]29}{}{}{}}
+\newlabel{def:se3-scratch}{{3.30}{29}{Special Euclidean group}{theorem.3.30}{}}
+\newlabel{def:se3-scratch@cref}{{[theorem][30][3]3.30}{[1][29][]29}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Metric choice.}{29}{section*.9}\protected@file@percent }
+\newlabel{eq:se3-product-metric-scratch}{{3.1}{29}{Metric choice}{equation.3.1}{}}
+\newlabel{eq:se3-product-metric-scratch@cref}{{[equation][1][3]3.1}{[1][29][]29}{}{}{}}
+\newlabel{prop:se3-product}{{3.32}{29}{$SE(3)$ with the product metric is a Riemannian product}{theorem.3.32}{}}
+\newlabel{prop:se3-product@cref}{{[theorem][32][3]3.32}{[1][29][]29}{}{}{}}
+\newlabel{def:pose-manifold-scratch}{{3.33}{30}{The pose manifold of $N$ rigid fragments}{theorem.3.33}{}}
+\newlabel{def:pose-manifold-scratch@cref}{{[theorem][33][3]3.33}{[1][30][]30}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {3.6}The torsion space $\mathbb  T^k$}{30}{section.3.6}\protected@file@percent }
+\newlabel{sec:torus}{{3.6}{30}{The torsion space $\mathbb T^k$}{section.3.6}{}}
+\newlabel{sec:torus@cref}{{[section][6][3]3.6}{[1][30][]30}{}{}{}}
+\newlabel{def:torus}{{3.34}{30}{Circle group and torus}{theorem.3.34}{}}
+\newlabel{def:torus@cref}{{[theorem][34][3]3.34}{[1][30][]30}{}{}{}}
+\newlabel{def:angular-diff}{{3.35}{31}{Periodic (shortest-path) angular difference}{theorem.3.35}{}}
+\newlabel{def:angular-diff@cref}{{[theorem][35][3]3.35}{[1][30][]31}{}{}{}}
+\newlabel{rem:torus-not-used}{{3.36}{31}{}{theorem.3.36}{}}
+\newlabel{rem:torus-not-used@cref}{{[theorem][36][3]3.36}{[1][31][]31}{}{}{}}
+\newlabel{rem:parity-scratch}{{3.37}{31}{Parity and chirality}{theorem.3.37}{}}
+\newlabel{rem:parity-scratch@cref}{{[theorem][37][3]3.37}{[1][31][]31}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {4}Steerable Representations: Spherical Harmonics, Wigner Matrices, and Clebsch--Gordan Coefficients}{32}{chapter.4}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:steerable}{{4}{32}{Steerable Representations: Spherical Harmonics, Wigner Matrices, and Clebsch--Gordan Coefficients}{chapter.4}{}}
+\newlabel{chap:steerable@cref}{{[chapter][4][]4}{[1][32][]32}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.1}Representations of $SO(3)$}{32}{section.4.1}\protected@file@percent }
+\newlabel{sec:representations}{{4.1}{32}{Representations of $SO(3)$}{section.4.1}{}}
+\newlabel{sec:representations@cref}{{[section][1][4]4.1}{[1][32][]32}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{32}{section*.10}\protected@file@percent }
+\newlabel{def:representation-scratch}{{4.1}{32}{Representation}{theorem.4.1}{}}
+\newlabel{def:representation-scratch@cref}{{[theorem][1][4]4.1}{[1][32][]32}{}{}{}}
+\newlabel{def:irrep-scratch}{{4.3}{33}{Irreducible representation}{theorem.4.3}{}}
+\newlabel{def:irrep-scratch@cref}{{[theorem][3][4]4.3}{[1][33][]33}{}{}{}}
+\newlabel{thm:so3-irrep-classification}{{4.4}{33}{Classification of the irreps of $SO(3)$}{theorem.4.4}{}}
+\newlabel{thm:so3-irrep-classification@cref}{{[theorem][4][4]4.4}{[1][33][]33}{}{}{}}
+\newlabel{ex:ell01}{{4.5}{33}{$\ell =0$ and $\ell =1$}{theorem.4.5}{}}
+\newlabel{ex:ell01@cref}{{[theorem][5][4]4.5}{[1][33][]33}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.2}Spherical harmonics}{33}{section.4.2}\protected@file@percent }
+\newlabel{sec:spherical-harmonics-derivation}{{4.2}{33}{Spherical harmonics}{section.4.2}{}}
+\newlabel{sec:spherical-harmonics-derivation@cref}{{[section][2][4]4.2}{[1][33][]33}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{33}{section*.11}\protected@file@percent }
+\@writefile{toc}{\contentsline {paragraph}{Intuition: from the circle to the sphere.}{33}{section*.12}\protected@file@percent }
+\newlabel{def:sph-harm-def}{{4.6}{34}{Spherical harmonics via harmonic homogeneous polynomials}{theorem.4.6}{}}
+\newlabel{def:sph-harm-def@cref}{{[theorem][6][4]4.6}{[1][34][]34}{}{}{}}
+\newlabel{prop:sph-dim}{{4.7}{34}{Dimension count}{theorem.4.7}{}}
+\newlabel{prop:sph-dim@cref}{{[theorem][7][4]4.7}{[1][34][]34}{}{}{}}
+\newlabel{ex:sph-low-degree}{{4.8}{34}{$\ell =0,1$}{theorem.4.8}{}}
+\newlabel{ex:sph-low-degree@cref}{{[theorem][8][4]4.8}{[1][34][]34}{}{}{}}
+\newlabel{prop:sph-transform}{{4.9}{34}{Transformation rule of spherical harmonics}{theorem.4.9}{}}
+\newlabel{prop:sph-transform@cref}{{[theorem][9][4]4.9}{[1][34][]34}{}{}{}}
+\newlabel{eq:sph-equivariance-scratch}{{4.1}{34}{Transformation rule of spherical harmonics}{equation.4.1}{}}
+\newlabel{eq:sph-equivariance-scratch@cref}{{[equation][1][4]4.1}{[1][34][]34}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2.1}Explicit low-degree formulas, and the connection to familiar operations}{35}{subsection.4.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {4.3}Wigner-$D$ matrices}{35}{section.4.3}\protected@file@percent }
+\newlabel{sec:wigner-d-derivation}{{4.3}{35}{Wigner-$D$ matrices}{section.4.3}{}}
+\newlabel{sec:wigner-d-derivation@cref}{{[section][3][4]4.3}{[1][35][]35}{}{}{}}
+\newlabel{prop:wigner-properties}{{4.10}{35}{Basic properties of Wigner-$D$ matrices}{theorem.4.10}{}}
+\newlabel{prop:wigner-properties@cref}{{[theorem][10][4]4.10}{[1][35][]35}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.4}Tensor products and Clebsch--Gordan coefficients}{36}{section.4.4}\protected@file@percent }
+\newlabel{sec:cg-derivation}{{4.4}{36}{Tensor products and Clebsch--Gordan coefficients}{section.4.4}{}}
+\newlabel{sec:cg-derivation@cref}{{[section][4][4]4.4}{[1][36][]36}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{36}{section*.13}\protected@file@percent }
+\newlabel{def:tensor-product-rep}{{4.11}{36}{Tensor product representation}{theorem.4.11}{}}
+\newlabel{def:tensor-product-rep@cref}{{[theorem][11][4]4.11}{[1][36][]36}{}{}{}}
+\newlabel{thm:cg-decomposition}{{4.12}{37}{Clebsch--Gordan decomposition}{theorem.4.12}{}}
+\newlabel{thm:cg-decomposition@cref}{{[theorem][12][4]4.12}{[1][37][]37}{}{}{}}
+\newlabel{def:cg-scratch}{{4.13}{37}{Clebsch--Gordan coefficients and tensor product}{theorem.4.13}{}}
+\newlabel{def:cg-scratch@cref}{{[theorem][13][4]4.13}{[1][37][]37}{}{}{}}
+\newlabel{eq:cg-scratch}{{4.2}{37}{Clebsch--Gordan coefficients and tensor product}{equation.4.2}{}}
+\newlabel{eq:cg-scratch@cref}{{[equation][2][4]4.2}{[1][37][]37}{}{}{}}
+\newlabel{prop:cg-equivariant}{{4.14}{37}{The Clebsch--Gordan product is equivariant}{theorem.4.14}{}}
+\newlabel{prop:cg-equivariant@cref}{{[theorem][14][4]4.14}{[1][37][]37}{}{}{}}
+\newlabel{ex:cg-special-cases}{{4.15}{38}{Familiar special cases}{theorem.4.15}{}}
+\newlabel{ex:cg-special-cases@cref}{{[theorem][15][4]4.15}{[1][38][]38}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4.5}Consequences for equivariant linear maps and nonlinearities}{38}{section.4.5}\protected@file@percent }
+\newlabel{sec:schur-consequences}{{4.5}{38}{Consequences for equivariant linear maps and nonlinearities}{section.4.5}{}}
+\newlabel{sec:schur-consequences@cref}{{[section][5][4]4.5}{[1][38][]38}{}{}{}}
+\newlabel{prop:schur-scratch}{{4.16}{38}{Schur's lemma, and the form of equivariant linear maps}{theorem.4.16}{}}
+\newlabel{prop:schur-scratch@cref}{{[theorem][16][4]4.16}{[1][38][]38}{}{}{}}
+\newlabel{prop:multichannel-linear}{{4.17}{38}{Consequence for multi-channel equivariant linear layers}{theorem.4.17}{}}
+\newlabel{prop:multichannel-linear@cref}{{[theorem][17][4]4.17}{[1][38][]38}{}{}{}}
+\newlabel{def:steerable-scratch}{{4.18}{39}{Steerable feature; restated}{theorem.4.18}{}}
+\newlabel{def:steerable-scratch@cref}{{[theorem][18][4]4.18}{[1][38][]39}{}{}{}}
+\@writefile{toc}{\contentsline {part}{III\hspace  {1em}Diffusion Models}{40}{part.3}\protected@file@percent }
+\newlabel{part:diffusion}{{III}{41}{Diffusion Models}{part.3}{}}
+\newlabel{part:diffusion@cref}{{[part][3][]III}{[1][41][]41}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {5}Diffusion Models in $\mathbb  R^d$}{41}{chapter.5}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:diffusion}{{5}{41}{Diffusion Models in $\RR ^d$}{chapter.5}{}}
+\newlabel{chap:diffusion@cref}{{[chapter][5][]5}{[1][41][]41}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.1}Denoising score matching}{41}{section.5.1}\protected@file@percent }
+\newlabel{sec:score-matching-intro}{{5.1}{41}{Denoising score matching}{section.5.1}{}}
+\newlabel{sec:score-matching-intro@cref}{{[section][1][5]5.1}{[1][41][]41}{}{}{}}
+\newlabel{def:gaussian-kernel}{{5.1}{41}{Gaussian perturbation kernel}{theorem.5.1}{}}
+\newlabel{def:gaussian-kernel@cref}{{[theorem][1][5]5.1}{[1][41][]41}{}{}{}}
+\newlabel{eq:gaussian-conditional-score}{{5.1}{41}{Denoising score matching}{equation.5.1}{}}
+\newlabel{eq:gaussian-conditional-score@cref}{{[equation][1][5]5.1}{[1][41][]41}{}{}{}}
+\newlabel{thm:dsm-equivalence}{{5.2}{41}{Denoising score matching}{theorem.5.2}{}}
+\newlabel{thm:dsm-equivalence@cref}{{[theorem][2][5]5.2}{[1][41][]41}{}{}{}}
+\newlabel{eq:dsm}{{5.2}{41}{Denoising score matching}{equation.5.2}{}}
+\newlabel{eq:dsm@cref}{{[equation][2][5]5.2}{[1][41][]41}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.2}The SDE perspective, and why a single noise level is not enough}{42}{section.5.2}\protected@file@percent }
+\newlabel{sec:sde-perspective}{{5.2}{42}{The SDE perspective, and why a single noise level is not enough}{section.5.2}{}}
+\newlabel{sec:sde-perspective@cref}{{[section][2][5]5.2}{[1][42][]42}{}{}{}}
+\newlabel{eq:forward-sde-scratch}{{5.3}{42}{The SDE perspective, and why a single noise level is not enough}{equation.5.3}{}}
+\newlabel{eq:forward-sde-scratch@cref}{{[equation][3][5]5.3}{[1][42][]42}{}{}{}}
+\newlabel{ex:ve-sde}{{5.3}{43}{Variance-exploding (VE) SDE}{theorem.5.3}{}}
+\newlabel{ex:ve-sde@cref}{{[theorem][3][5]5.3}{[1][42][]43}{}{}{}}
+\newlabel{ex:vp-sde}{{5.4}{43}{Variance-preserving (VP) SDE}{theorem.5.4}{}}
+\newlabel{ex:vp-sde@cref}{{[theorem][4][5]5.4}{[1][43][]43}{}{}{}}
+\newlabel{prop:linear-sde-kernel}{{5.5}{43}{Perturbation kernel of a linear SDE}{theorem.5.5}{}}
+\newlabel{prop:linear-sde-kernel@cref}{{[theorem][5][5]5.5}{[1][43][]43}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.1}Score, weighting, and the training objective in continuous time}{43}{subsection.5.2.1}\protected@file@percent }
+\newlabel{eq:dsm-continuous}{{5.4}{43}{Score, weighting, and the training objective in continuous time}{equation.5.4}{}}
+\newlabel{eq:dsm-continuous@cref}{{[equation][4][5]5.4}{[1][43][]43}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {5.2.2}The reverse-time SDE}{44}{subsection.5.2.2}\protected@file@percent }
+\newlabel{thm:anderson}{{5.6}{44}{Anderson's reverse-time SDE}{theorem.5.6}{}}
+\newlabel{thm:anderson@cref}{{[theorem][6][5]5.6}{[1][44][]44}{}{}{}}
+\newlabel{eq:reverse-sde-scratch}{{5.5}{44}{The reverse-time SDE}{equation.5.5}{}}
+\newlabel{eq:reverse-sde-scratch@cref}{{[equation][5][5]5.5}{[1][44][]44}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {5.3}The probability flow ODE, and the bridge to flow matching}{44}{section.5.3}\protected@file@percent }
+\newlabel{sec:pf-ode-scratch}{{5.3}{44}{The probability flow ODE, and the bridge to flow matching}{section.5.3}{}}
+\newlabel{sec:pf-ode-scratch@cref}{{[section][3][5]5.3}{[1][44][]44}{}{}{}}
+\newlabel{thm:pf-ode-scratch}{{5.7}{44}{Probability flow ODE}{theorem.5.7}{}}
+\newlabel{thm:pf-ode-scratch@cref}{{[theorem][7][5]5.7}{[1][44][]44}{}{}{}}
+\newlabel{eq:pf-ode-scratch}{{5.6}{44}{Probability flow ODE}{equation.5.6}{}}
+\newlabel{eq:pf-ode-scratch@cref}{{[equation][6][5]5.6}{[1][44][]44}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {6}Diffusion Models on $SO(3)$}{46}{chapter.6}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:diffusion-so3}{{6}{46}{Diffusion Models on $SO(3)$}{chapter.6}{}}
+\newlabel{chap:diffusion-so3@cref}{{[chapter][6][]6}{[1][46][]46}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6.1}Brownian motion on a Riemannian manifold}{46}{section.6.1}\protected@file@percent }
+\newlabel{sec:manifold-brownian}{{6.1}{46}{Brownian motion on a Riemannian manifold}{section.6.1}{}}
+\newlabel{sec:manifold-brownian@cref}{{[section][1][6]6.1}{[1][46][]46}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{46}{section*.14}\protected@file@percent }
+\newlabel{def:manifold-brownian}{{6.1}{46}{Manifold Brownian motion, via a random-walk limit}{theorem.6.1}{}}
+\newlabel{def:manifold-brownian@cref}{{[theorem][1][6]6.1}{[1][46][]46}{}{}{}}
+\newlabel{prop:so3-brownian-stationary}{{6.2}{47}{Stationary distribution of $SO(3)$ Brownian motion}{theorem.6.2}{}}
+\newlabel{prop:so3-brownian-stationary@cref}{{[theorem][2][6]6.2}{[1][47][]47}{}{}{}}
+\newlabel{def:laplace-beltrami}{{6.3}{47}{Laplace--Beltrami operator, informal}{theorem.6.3}{}}
+\newlabel{def:laplace-beltrami@cref}{{[theorem][3][6]6.3}{[1][47][]47}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6.2}The heat kernel on $SO(3)$: $\mathrm  {IGSO}(3)$}{47}{section.6.2}\protected@file@percent }
+\newlabel{sec:igso3-derivation}{{6.2}{47}{The heat kernel on $SO(3)$: $\mathrm {IGSO}(3)$}{section.6.2}{}}
+\newlabel{sec:igso3-derivation@cref}{{[section][2][6]6.2}{[1][47][]47}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{47}{section*.15}\protected@file@percent }
+\newlabel{thm:igso3-scratch}{{6.4}{47}{The isotropic Gaussian distribution on $SO(3)$}{theorem.6.4}{}}
+\newlabel{thm:igso3-scratch@cref}{{[theorem][4][6]6.4}{[1][47][]47}{}{}{}}
+\newlabel{eq:igso3-scratch}{{6.1}{48}{The isotropic Gaussian distribution on $SO(3)$}{equation.6.1}{}}
+\newlabel{eq:igso3-scratch@cref}{{[equation][1][6]6.1}{[1][47][]48}{}{}{}}
+\newlabel{rem:igso3-truncation}{{6.5}{48}{The series must be truncated in practice}{theorem.6.5}{}}
+\newlabel{rem:igso3-truncation@cref}{{[theorem][5][6]6.5}{[1][48][]48}{}{}{}}
+\newlabel{prop:igso3-angle-marginal}{{6.6}{48}{The angle marginal density}{theorem.6.6}{}}
+\newlabel{prop:igso3-angle-marginal@cref}{{[theorem][6][6]6.6}{[1][48][]48}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2.1}The score of the $\mathrm  {IGSO}(3)$ kernel}{48}{subsection.6.2.1}\protected@file@percent }
+\newlabel{sec:igso3-score-derivation}{{6.2.1}{48}{The score of the $\mathrm {IGSO}(3)$ kernel}{subsection.6.2.1}{}}
+\newlabel{sec:igso3-score-derivation@cref}{{[subsection][1][6,2]6.2.1}{[1][48][]48}{}{}{}}
+\newlabel{prop:igso3-score-scratch}{{6.7}{48}{Riemannian score of $\mathrm {IGSO}(3)$}{theorem.6.7}{}}
+\newlabel{prop:igso3-score-scratch@cref}{{[theorem][7][6]6.7}{[1][48][]48}{}{}{}}
+\newlabel{eq:igso3-score-scratch}{{6.2}{48}{Riemannian score of $\mathrm {IGSO}(3)$}{equation.6.2}{}}
+\newlabel{eq:igso3-score-scratch@cref}{{[equation][2][6]6.2}{[1][48][]48}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2.2}Numerical implementation: truncation, tabulation, and caching}{49}{subsection.6.2.2}\protected@file@percent }
+\newlabel{sec:diff-so3-numerics}{{6.2.2}{49}{Numerical implementation: truncation, tabulation, and caching}{subsection.6.2.2}{}}
+\newlabel{sec:diff-so3-numerics@cref}{{[subsection][2][6,2]6.2.2}{[1][49][]49}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6.3}Riemannian denoising score matching and the reverse-time SDE on $SO(3)$}{50}{section.6.3}\protected@file@percent }
+\newlabel{sec:diff-so3}{{6.3}{50}{Riemannian denoising score matching and the reverse-time SDE on $SO(3)$}{section.6.3}{}}
+\newlabel{sec:diff-so3@cref}{{[section][3][6]6.3}{[1][50][]50}{}{}{}}
+\newlabel{thm:rdsm-scratch}{{6.8}{50}{Riemannian denoising score matching}{theorem.6.8}{}}
+\newlabel{thm:rdsm-scratch@cref}{{[theorem][8][6]6.8}{[1][50][]50}{}{}{}}
+\newlabel{eq:reverse-so3-scratch}{{6.3}{51}{Riemannian denoising score matching and the reverse-time SDE on $SO(3)$}{equation.6.3}{}}
+\newlabel{eq:reverse-so3-scratch@cref}{{[equation][3][6]6.3}{[1][51][]51}{}{}{}}
+\@writefile{toc}{\contentsline {part}{IV\hspace  {1em}Architecture}{52}{part.4}\protected@file@percent }
+\newlabel{part:architecture}{{IV}{53}{Architecture}{part.4}{}}
+\newlabel{part:architecture@cref}{{[part][4][]IV}{[1][53][]53}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {7}From Sets to Geometry: Attention, Message Passing, and the Equivariance Obstruction}{53}{chapter.7}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:pre-equiformer}{{7}{53}{From Sets to Geometry: Attention, Message Passing, and the Equivariance Obstruction}{chapter.7}{}}
+\newlabel{chap:pre-equiformer@cref}{{[chapter][7][]7}{[1][53][]53}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.1}The network's signature}{53}{section.7.1}\protected@file@percent }
+\newlabel{sec:network-signature-scratch}{{7.1}{53}{The network's signature}{section.7.1}{}}
+\newlabel{sec:network-signature-scratch@cref}{{[section][1][7]7.1}{[1][53][]53}{}{}{}}
+\newlabel{eq:network-signature-scratch}{{7.1}{53}{The network's signature}{equation.7.1}{}}
+\newlabel{eq:network-signature-scratch@cref}{{[equation][1][7]7.1}{[1][53][]53}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.2}Two structural requirements}{53}{section.7.2}\protected@file@percent }
+\newlabel{sec:two-requirements}{{7.2}{53}{Two structural requirements}{section.7.2}{}}
+\newlabel{sec:two-requirements@cref}{{[section][2][7]7.2}{[1][53][]53}{}{}{}}
+\newlabel{def:equivariance-full}{{7.1}{54}{Group action, invariance, equivariance}{theorem.7.1}{}}
+\newlabel{def:equivariance-full@cref}{{[theorem][1][7]7.1}{[1][54][]54}{}{}{}}
+\newlabel{prop:equivariant-invariant-scratch}{{7.2}{54}{Why equivariance, not merely invariance, is the right constraint}{theorem.7.2}{}}
+\newlabel{prop:equivariant-invariant-scratch@cref}{{[theorem][2][7]7.2}{[1][54][]54}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.3}Attention, and the permutation-equivariance half of the problem}{55}{section.7.3}\protected@file@percent }
+\newlabel{sec:transformer-scratch}{{7.3}{55}{Attention, and the permutation-equivariance half of the problem}{section.7.3}{}}
+\newlabel{sec:transformer-scratch@cref}{{[section][3][7]7.3}{[1][54][]55}{}{}{}}
+\newlabel{def:attention-scratch}{{7.3}{55}{Scaled dot-product self-attention; restated}{theorem.7.3}{}}
+\newlabel{def:attention-scratch@cref}{{[theorem][3][7]7.3}{[1][54][]55}{}{}{}}
+\newlabel{eq:transformer-block-scratch}{{7.2}{55}{Attention, and the permutation-equivariance half of the problem}{equation.7.2}{}}
+\newlabel{eq:transformer-block-scratch@cref}{{[equation][2][7]7.2}{[1][55][]55}{}{}{}}
+\newlabel{prop:perm-equivariance-scratch}{{7.4}{55}{Permutation equivariance of attention}{theorem.7.4}{}}
+\newlabel{prop:perm-equivariance-scratch@cref}{{[theorem][4][7]7.4}{[1][55][]55}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.4}Geometric graphs and message passing}{55}{section.7.4}\protected@file@percent }
+\newlabel{sec:gnn-scratch}{{7.4}{55}{Geometric graphs and message passing}{section.7.4}{}}
+\newlabel{sec:gnn-scratch@cref}{{[section][4][7]7.4}{[1][55][]55}{}{}{}}
+\newlabel{def:geometric-graph-scratch}{{7.5}{55}{Geometric graph; restated}{theorem.7.5}{}}
+\newlabel{def:geometric-graph-scratch@cref}{{[theorem][5][7]7.5}{[1][55][]55}{}{}{}}
+\newlabel{def:mpnn-scratch}{{7.6}{56}{Message passing layer; restated}{theorem.7.6}{}}
+\newlabel{def:mpnn-scratch@cref}{{[theorem][6][7]7.6}{[1][55][]56}{}{}{}}
+\newlabel{eq:mpnn-scratch}{{7.3}{56}{Message passing layer; restated}{equation.7.3}{}}
+\newlabel{eq:mpnn-scratch@cref}{{[equation][3][7]7.3}{[1][56][]56}{}{}{}}
+\newlabel{eq:rbf-scratch}{{7.4}{56}{Geometric graphs and message passing}{equation.7.4}{}}
+\newlabel{eq:rbf-scratch@cref}{{[equation][4][7]7.4}{[1][56][]56}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.5}The obstruction: invariant features cannot output a vector}{56}{section.7.5}\protected@file@percent }
+\newlabel{sec:invariance-obstruction}{{7.5}{56}{The obstruction: invariant features cannot output a vector}{section.7.5}{}}
+\newlabel{sec:invariance-obstruction@cref}{{[section][5][7]7.5}{[1][56][]56}{}{}{}}
+\newlabel{prop:invariance-obstruction-scratch}{{7.7}{57}{Invariant features cannot produce an equivariant vector output}{theorem.7.7}{}}
+\newlabel{prop:invariance-obstruction-scratch@cref}{{[theorem][7][7]7.7}{[1][56][]57}{}{}{}}
+\newlabel{eq:equivariance-concrete}{{7.5}{57}{The obstruction: invariant features cannot output a vector}{equation.7.5}{}}
+\newlabel{eq:equivariance-concrete@cref}{{[equation][5][7]7.5}{[1][57][]57}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7.6}A minimal repair, and why it is not enough}{57}{section.7.6}\protected@file@percent }
+\newlabel{sec:egnn-scratch}{{7.6}{57}{A minimal repair, and why it is not enough}{section.7.6}{}}
+\newlabel{sec:egnn-scratch@cref}{{[section][6][7]7.6}{[1][57][]57}{}{}{}}
+\newlabel{def:egnn-scratch}{{7.8}{57}{EGNN-style equivariant readout}{theorem.7.8}{}}
+\newlabel{def:egnn-scratch@cref}{{[theorem][8][7]7.8}{[1][57][]57}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {8}Equiformer and EquiformerV2}{59}{chapter.8}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:equiformer}{{8}{59}{Equiformer and EquiformerV2}{chapter.8}{}}
+\newlabel{chap:equiformer@cref}{{[chapter][8][]8}{[1][59][]59}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.1}From scalar messages to steerable messages}{59}{section.8.1}\protected@file@percent }
+\newlabel{sec:steerable-messages}{{8.1}{59}{From scalar messages to steerable messages}{section.8.1}{}}
+\newlabel{sec:steerable-messages@cref}{{[section][1][8]8.1}{[1][59][]59}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{59}{section*.16}\protected@file@percent }
+\newlabel{def:steerable-network-feature}{{8.1}{59}{Steerable node/edge feature, restated for the network}{theorem.8.1}{}}
+\newlabel{def:steerable-network-feature@cref}{{[theorem][1][8]8.1}{[1][59][]59}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.2}Embedding geometry: spherical harmonics on edges}{60}{section.8.2}\protected@file@percent }
+\newlabel{sec:edge-embedding-scratch}{{8.2}{60}{Embedding geometry: spherical harmonics on edges}{section.8.2}{}}
+\newlabel{sec:edge-embedding-scratch@cref}{{[section][2][8]8.2}{[1][60][]60}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation.}{60}{section*.17}\protected@file@percent }
+\newlabel{def:edge-embedding-scratch}{{8.2}{60}{Equivariant edge embedding}{theorem.8.2}{}}
+\newlabel{def:edge-embedding-scratch@cref}{{[theorem][2][8]8.2}{[1][60][]60}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.3}The eSCN reduction: aligning every edge to its own frame}{60}{section.8.3}\protected@file@percent }
+\newlabel{sec:equiformer-frame}{{8.3}{60}{The eSCN reduction: aligning every edge to its own frame}{section.8.3}{}}
+\newlabel{sec:equiformer-frame@cref}{{[section][3][8]8.3}{[1][60][]60}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Motivation, and the problem eSCN solves.}{60}{section*.18}\protected@file@percent }
+\newlabel{prop:esc-reduction}{{8.3}{60}{Rotating an edge onto a fixed axis reduces $SO(3)$ to $SO(2)$}{theorem.8.3}{}}
+\newlabel{prop:esc-reduction@cref}{{[theorem][3][8]8.3}{[1][60][]60}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.4}$SO(2)$-equivariant convolution: the actual EquiformerV2 message}{61}{section.8.4}\protected@file@percent }
+\newlabel{sec:so2-conv}{{8.4}{61}{$SO(2)$-equivariant convolution: the actual EquiformerV2 message}{section.8.4}{}}
+\newlabel{sec:so2-conv@cref}{{[section][4][8]8.4}{[1][61][]61}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{What an $SO(2)$-equivariant linear map looks like.}{61}{section*.19}\protected@file@percent }
+\newlabel{def:so2-conv}{{8.4}{61}{$SO(2)$ convolution, informal}{theorem.8.4}{}}
+\newlabel{def:so2-conv@cref}{{[theorem][4][8]8.4}{[1][61][]61}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.5}Equivariant nonlinearity: gating and the separable $S^2$ activation}{62}{section.8.5}\protected@file@percent }
+\newlabel{sec:equiformer-nonlinearity}{{8.5}{62}{Equivariant nonlinearity: gating and the separable $S^2$ activation}{section.8.5}{}}
+\newlabel{sec:equiformer-nonlinearity@cref}{{[section][5][8]8.5}{[1][62][]62}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{Why an ordinary nonlinearity breaks equivariance.}{62}{section*.20}\protected@file@percent }
+\newlabel{def:gate-scratch}{{8.5}{62}{Gate nonlinearity}{theorem.8.5}{}}
+\newlabel{def:gate-scratch@cref}{{[theorem][5][8]8.5}{[1][62][]62}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.6}Equivariant linear layers and normalisation}{63}{section.8.6}\protected@file@percent }
+\newlabel{sec:equiformer-linear-norm}{{8.6}{63}{Equivariant linear layers and normalisation}{section.8.6}{}}
+\newlabel{sec:equiformer-linear-norm@cref}{{[section][6][8]8.6}{[1][63][]63}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.7}Equivariant attention weights}{64}{section.8.7}\protected@file@percent }
+\newlabel{sec:equiformer-attention}{{8.7}{64}{Equivariant attention weights}{section.8.7}{}}
+\newlabel{sec:equiformer-attention@cref}{{[section][7][8]8.7}{[1][64][]64}{}{}{}}
+\@writefile{toc}{\contentsline {paragraph}{The constraint attention weights must satisfy.}{64}{section*.21}\protected@file@percent }
+\newlabel{prop:attention-weights-scalar}{{8.7}{64}{Attention weights must be invariant scalars}{theorem.8.7}{}}
+\newlabel{prop:attention-weights-scalar@cref}{{[theorem][7][8]8.7}{[1][64][]64}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {8.7.1}Assembling the full attention block}{65}{subsection.8.7.1}\protected@file@percent }
+\newlabel{prop:full-block-equivariant}{{8.8}{65}{The full block is equivariant}{theorem.8.8}{}}
+\newlabel{prop:full-block-equivariant@cref}{{[theorem][8][8]8.8}{[1][65][]65}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.8}Node embedding: turning chemistry into a steerable feature}{65}{section.8.8}\protected@file@percent }
+\newlabel{sec:node-embedding}{{8.8}{65}{Node embedding: turning chemistry into a steerable feature}{section.8.8}{}}
+\newlabel{sec:node-embedding@cref}{{[section][8][8]8.8}{[1][65][]65}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.9}Reading out the vector field}{66}{section.8.9}\protected@file@percent }
+\newlabel{sec:equiformer-readout}{{8.9}{66}{Reading out the vector field}{section.8.9}{}}
+\newlabel{sec:equiformer-readout@cref}{{[section][9][8]8.9}{[1][66][]66}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.10}EquiformerV1 vs.\ EquiformerV2: what actually changed, and what this codebase actually ships}{66}{section.8.10}\protected@file@percent }
+\newlabel{sec:v1-vs-v2-scratch}{{8.10}{66}{EquiformerV1 vs.\ EquiformerV2: what actually changed, and what this codebase actually ships}{section.8.10}{}}
+\newlabel{sec:v1-vs-v2-scratch@cref}{{[section][10][8]8.10}{[1][66][]66}{}{}{}}
+\newlabel{caution:hybrid-architecture}{{8.9}{67}{This codebase implements a hybrid, not pure V2}{theorem.8.9}{}}
+\newlabel{caution:hybrid-architecture@cref}{{[theorem][9][8]8.9}{[1][67][]67}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8.11}Summary: architecture, hyperparameters, and parameter count}{67}{section.8.11}\protected@file@percent }
+\newlabel{sec:equiformer-summary}{{8.11}{67}{Summary: architecture, hyperparameters, and parameter count}{section.8.11}{}}
+\newlabel{sec:equiformer-summary@cref}{{[section][11][8]8.11}{[1][67][]67}{}{}{}}
+\@writefile{toc}{\contentsline {part}{V\hspace  {1em}SigmaDock}{69}{part.5}\protected@file@percent }
+\newlabel{part:sigmadock}{{V}{70}{SigmaDock}{part.5}{}}
+\newlabel{part:sigmadock@cref}{{[part][5][]V}{[1][70][]70}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {9}SigmaDock: Full Reconstruction}{70}{chapter.9}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:sigmadock}{{9}{70}{SigmaDock: Full Reconstruction}{chapter.9}{}}
+\newlabel{chap:sigmadock@cref}{{[chapter][9][]9}{[1][70][]70}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.1}Choosing the state space}{70}{section.9.1}\protected@file@percent }
+\newlabel{sec:sigmadock-state-space}{{9.1}{70}{Choosing the state space}{section.9.1}{}}
+\newlabel{sec:sigmadock-state-space@cref}{{[section][1][9]9.1}{[1][70][]70}{}{}{}}
+\newlabel{def:pullback-volume}{{9.1}{70}{Pullback volume form}{theorem.9.1}{}}
+\newlabel{def:pullback-volume@cref}{{[theorem][1][9]9.1}{[1][70][]70}{}{}{}}
+\newlabel{thm:entanglement-scratch}{{9.2}{70}{Torsional entanglement}{theorem.9.2}{}}
+\newlabel{thm:entanglement-scratch@cref}{{[theorem][2][9]9.2}{[1][70][]70}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.2}The conformational manifold: what rigidity costs}{72}{section.9.2}\protected@file@percent }
+\newlabel{sec:conformational-manifold}{{9.2}{72}{The conformational manifold: what rigidity costs}{section.9.2}{}}
+\newlabel{sec:conformational-manifold@cref}{{[section][2][9]9.2}{[1][72][]72}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.3}FR3D: reducing fragment count}{73}{section.9.3}\protected@file@percent }
+\newlabel{sec:sigmadock-fr3d}{{9.3}{73}{FR3D: reducing fragment count}{section.9.3}{}}
+\newlabel{sec:sigmadock-fr3d@cref}{{[section][3][9]9.3}{[1][72][]73}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3.1}Rotatable-bond detection, as actually implemented}{73}{subsection.9.3.1}\protected@file@percent }
+\newlabel{sec:sigmadock-torsion-detection}{{9.3.1}{73}{Rotatable-bond detection, as actually implemented}{subsection.9.3.1}{}}
+\newlabel{sec:sigmadock-torsion-detection@cref}{{[subsection][1][9,3]9.3.1}{[1][73][]73}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.3.2}Dummy atoms and fragment boundaries}{73}{subsection.9.3.2}\protected@file@percent }
+\newlabel{sec:sigmadock-fr3d-dummies}{{9.3.2}{73}{Dummy atoms and fragment boundaries}{subsection.9.3.2}{}}
+\newlabel{sec:sigmadock-fr3d-dummies@cref}{{[subsection][2][9,3]9.3.2}{[1][73][]73}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.4}Triangulation: an invariant, soft geometric prior at fragment boundaries}{74}{section.9.4}\protected@file@percent }
+\newlabel{sec:triangulation-precise}{{9.4}{74}{Triangulation: an invariant, soft geometric prior at fragment boundaries}{section.9.4}{}}
+\newlabel{sec:triangulation-precise@cref}{{[section][4][9]9.4}{[1][73][]74}{}{}{}}
+\newlabel{thm:triangulation-precise}{{9.5}{74}{Triangulation determines the boundary bond angles}{theorem.9.5}{}}
+\newlabel{thm:triangulation-precise@cref}{{[theorem][5][9]9.5}{[1][74][]74}{}{}{}}
+\newlabel{rem:soft-constraint-dof}{{9.6}{75}{Degrees of freedom of the soft-constrained manifold}{theorem.9.6}{}}
+\newlabel{rem:soft-constraint-dof@cref}{{[theorem][6][9]9.6}{[1][75][]75}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.5}Symmetry: gauge invariance and stochastic $SE(3)$-equivariance}{75}{section.9.5}\protected@file@percent }
+\newlabel{sec:sigmadock-symmetry-precise}{{9.5}{75}{Symmetry: gauge invariance and stochastic $SE(3)$-equivariance}{section.9.5}{}}
+\newlabel{sec:sigmadock-symmetry-precise@cref}{{[section][5][9]9.5}{[1][75][]75}{}{}{}}
+\newlabel{thm:sigmadock-symmetry}{{9.7}{75}{SigmaDock's symmetry}{theorem.9.7}{}}
+\newlabel{thm:sigmadock-symmetry@cref}{{[theorem][7][9]9.7}{[1][75][]75}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.6}The forward (noising) process}{76}{section.9.6}\protected@file@percent }
+\newlabel{sec:sigmadock-forward}{{9.6}{76}{The forward (noising) process}{section.9.6}{}}
+\newlabel{sec:sigmadock-forward@cref}{{[section][6][9]9.6}{[1][76][]76}{}{}{}}
+\newlabel{rem:time-convention-scratch}{{9.8}{76}{SigmaDock's own internal time convention, relabelled}{theorem.9.8}{}}
+\newlabel{rem:time-convention-scratch@cref}{{[theorem][8][9]9.8}{[1][76][]76}{}{}{}}
+\newlabel{rem:dimensional-scale}{{9.9}{76}{Coordinate rescaling}{theorem.9.9}{}}
+\newlabel{rem:dimensional-scale@cref}{{[theorem][9][9]9.9}{[1][76][]76}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.7}Input graph, featurisation, and backbone}{77}{section.9.7}\protected@file@percent }
+\newlabel{sec:sigmadock-graph}{{9.7}{77}{Input graph, featurisation, and backbone}{section.9.7}{}}
+\newlabel{sec:sigmadock-graph@cref}{{[section][7][9]9.7}{[1][77][]77}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.7.1}Fragment reconstruction: the map $\varphi $}{77}{subsection.9.7.1}\protected@file@percent }
+\newlabel{sec:fragment-reconstruction}{{9.7.1}{77}{Fragment reconstruction: the map $\varphi $}{subsection.9.7.1}{}}
+\newlabel{sec:fragment-reconstruction@cref}{{[subsection][1][9,7]9.7.1}{[1][77][]77}{}{}{}}
+\newlabel{prop:fragment-reconstruction}{{9.10}{77}{Rigid per-fragment reconstruction}{theorem.9.10}{}}
+\newlabel{prop:fragment-reconstruction@cref}{{[theorem][10][9]9.10}{[1][77][]77}{}{}{}}
+\newlabel{eq:fragment-reconstruction-formula}{{9.1}{77}{Rigid per-fragment reconstruction}{equation.9.1}{}}
+\newlabel{eq:fragment-reconstruction-formula@cref}{{[equation][1][9]9.1}{[1][77][]77}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.8}The Newton--Euler prediction head}{78}{section.9.8}\protected@file@percent }
+\newlabel{sec:newton-euler-precise}{{9.8}{78}{The Newton--Euler prediction head}{section.9.8}{}}
+\newlabel{sec:newton-euler-precise@cref}{{[section][8][9]9.8}{[1][78][]78}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.8.1}From network output to a physical analogy}{78}{subsection.9.8.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.8.2}Net force, torque, and inertia: exact classical mechanics}{79}{subsection.9.8.2}\protected@file@percent }
+\newlabel{def:fragment-mass-precise}{{9.11}{79}{Fragment mass, per this codebase's specific convention}{theorem.9.11}{}}
+\newlabel{def:fragment-mass-precise@cref}{{[theorem][11][9]9.11}{[1][79][]79}{}{}{}}
+\newlabel{eq:newton-euler-precise}{{9.2}{79}{Net force, torque, and inertia: exact classical mechanics}{equation.9.2}{}}
+\newlabel{eq:newton-euler-precise@cref}{{[equation][2][9]9.2}{[1][79][]79}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.8.3}Newton--Maruyama: one discretised step of rigid-body dynamics}{80}{subsection.9.8.3}\protected@file@percent }
+\newlabel{eq:newton-maruyama-precise}{{9.3}{80}{Newton--Maruyama: one discretised step of rigid-body dynamics}{equation.9.3}{}}
+\newlabel{eq:newton-maruyama-precise@cref}{{[equation][3][9]9.3}{[1][79][]80}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {9.8.4}Dressing the raw output into a score: the two branches}{80}{subsection.9.8.4}\protected@file@percent }
+\newlabel{sec:sd-head-branches}{{9.8.4}{80}{Dressing the raw output into a score: the two branches}{subsection.9.8.4}{}}
+\newlabel{sec:sd-head-branches@cref}{{[subsection][4][9,8]9.8.4}{[1][80][]80}{}{}{}}
+\newlabel{eq:sd-head-precise}{{9.4}{80}{Dressing the raw output into a score: the two branches}{equation.9.4}{}}
+\newlabel{eq:sd-head-precise@cref}{{[equation][4][9]9.4}{[1][80][]80}{}{}{}}
+\newlabel{eq:sd-head-rot-space}{{9.5}{81}{Dressing the raw output into a score: the two branches}{equation.9.5}{}}
+\newlabel{eq:sd-head-rot-space@cref}{{[equation][5][9]9.5}{[1][80][]81}{}{}{}}
+\newlabel{eq:sd-head-rot-score}{{9.6}{81}{Dressing the raw output into a score: the two branches}{equation.9.6}{}}
+\newlabel{eq:sd-head-rot-score@cref}{{[equation][6][9]9.6}{[1][81][]81}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.9}The training loss}{81}{section.9.9}\protected@file@percent }
+\newlabel{sec:sigmadock-loss}{{9.9}{81}{The training loss}{section.9.9}{}}
+\newlabel{sec:sigmadock-loss@cref}{{[section][9][9]9.9}{[1][81][]81}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.10}Sampling}{82}{section.9.10}\protected@file@percent }
+\newlabel{sec:sigmadock-sampling}{{9.10}{82}{Sampling}{section.9.10}{}}
+\newlabel{sec:sigmadock-sampling@cref}{{[section][10][9]9.10}{[1][82][]82}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9.11}Ranking generated poses}{83}{section.9.11}\protected@file@percent }
+\newlabel{sec:sigmadock-ranking}{{9.11}{83}{Ranking generated poses}{section.9.11}{}}
+\newlabel{sec:sigmadock-ranking@cref}{{[section][11][9]9.11}{[1][83][]83}{}{}{}}
+\@writefile{toc}{\contentsline {part}{VI\hspace  {1em}Flow Matching}{84}{part.6}\protected@file@percent }
+\newlabel{part:flow-matching}{{VI}{85}{Flow Matching}{part.6}{}}
+\newlabel{part:flow-matching@cref}{{[part][6][]VI}{[1][85][]85}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {10}Continuous Normalizing Flows and Flow Matching in $\mathbb  R^d$}{85}{chapter.10}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:flow-matching}{{10}{85}{Continuous Normalizing Flows and Flow Matching in $\RR ^d$}{chapter.10}{}}
+\newlabel{chap:flow-matching@cref}{{[chapter][10][]10}{[1][85][]85}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10.1}Continuous normalizing flows}{85}{section.10.1}\protected@file@percent }
+\newlabel{sec:cnf}{{10.1}{85}{Continuous normalizing flows}{section.10.1}{}}
+\newlabel{sec:cnf@cref}{{[section][1][10]10.1}{[1][85][]85}{}{}{}}
+\newlabel{def:vector-field-flow}{{10.1}{85}{Time-dependent vector field, flow map}{theorem.10.1}{}}
+\newlabel{def:vector-field-flow@cref}{{[theorem][1][10]10.1}{[1][85][]85}{}{}{}}
+\newlabel{def:cnf}{{10.2}{85}{Continuous normalizing flow}{theorem.10.2}{}}
+\newlabel{def:cnf@cref}{{[theorem][2][10]10.2}{[1][85][]85}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1.1}The continuity equation}{86}{subsection.10.1.1}\protected@file@percent }
+\newlabel{thm:continuity}{{10.3}{86}{Continuity equation}{theorem.10.3}{}}
+\newlabel{thm:continuity@cref}{{[theorem][3][10]10.3}{[1][85][]86}{}{}{}}
+\newlabel{eq:continuity}{{10.1}{86}{Continuity equation}{equation.10.1}{}}
+\newlabel{eq:continuity@cref}{{[equation][1][10]10.1}{[1][85][]86}{}{}{}}
+\newlabel{eq:liouville}{{10.2}{86}{The continuity equation}{equation.10.2}{}}
+\newlabel{eq:liouville@cref}{{[equation][2][10]10.2}{[1][86][]86}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.1.2}CNF likelihood}{87}{subsection.10.1.2}\protected@file@percent }
+\newlabel{sec:cnf-likelihood}{{10.1.2}{87}{CNF likelihood}{subsection.10.1.2}{}}
+\newlabel{sec:cnf-likelihood@cref}{{[subsection][2][10,1]10.1.2}{[1][87][]87}{}{}{}}
+\newlabel{cor:instantaneous-cov}{{10.4}{87}{Instantaneous change of variables}{theorem.10.4}{}}
+\newlabel{cor:instantaneous-cov@cref}{{[theorem][4][10]10.4}{[1][87][]87}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10.2}Conditional flow matching}{87}{section.10.2}\protected@file@percent }
+\newlabel{sec:cfm-scratch}{{10.2}{87}{Conditional flow matching}{section.10.2}{}}
+\newlabel{sec:cfm-scratch@cref}{{[section][2][10]10.2}{[1][87][]87}{}{}{}}
+\newlabel{def:cond-path-cfm}{{10.5}{88}{Conditional probability path, conditional vector field}{theorem.10.5}{}}
+\newlabel{def:cond-path-cfm@cref}{{[theorem][5][10]10.5}{[1][87][]88}{}{}{}}
+\newlabel{thm:marginalisation-vf-scratch}{{10.6}{88}{Marginalisation of vector fields}{theorem.10.6}{}}
+\newlabel{thm:marginalisation-vf-scratch@cref}{{[theorem][6][10]10.6}{[1][88][]88}{}{}{}}
+\newlabel{eq:marginal-vf-scratch}{{10.3}{88}{Marginalisation of vector fields}{equation.10.3}{}}
+\newlabel{eq:marginal-vf-scratch@cref}{{[equation][3][10]10.3}{[1][88][]88}{}{}{}}
+\newlabel{thm:cfm-equivalence-scratch}{{10.7}{88}{Conditional flow matching}{theorem.10.7}{}}
+\newlabel{thm:cfm-equivalence-scratch@cref}{{[theorem][7][10]10.7}{[1][88][]88}{}{}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {10.2.1}The linear (conditional optimal transport) path}{89}{subsection.10.2.1}\protected@file@percent }
+\newlabel{sec:linear-path-scratch}{{10.2.1}{89}{The linear (conditional optimal transport) path}{subsection.10.2.1}{}}
+\newlabel{sec:linear-path-scratch@cref}{{[subsection][1][10,2]10.2.1}{[1][89][]89}{}{}{}}
+\newlabel{prop:linear-path-scratch}{{10.8}{89}{The linear path and its vector field}{theorem.10.8}{}}
+\newlabel{prop:linear-path-scratch@cref}{{[theorem][8][10]10.8}{[1][89][]89}{}{}{}}
+\newlabel{eq:linear-path-vf-scratch}{{10.4}{89}{The linear path and its vector field}{equation.10.4}{}}
+\newlabel{eq:linear-path-vf-scratch@cref}{{[equation][4][10]10.4}{[1][89][]89}{}{}{}}
+\newlabel{rem:cot-name}{{10.9}{89}{On the name ``conditional optimal transport''}{theorem.10.9}{}}
+\newlabel{rem:cot-name@cref}{{[theorem][9][10]10.9}{[1][89][]89}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {10.3}Sampling: integrating the learned ODE}{89}{section.10.3}\protected@file@percent }
+\newlabel{sec:cfm-sampling-scratch}{{10.3}{89}{Sampling: integrating the learned ODE}{section.10.3}{}}
+\newlabel{sec:cfm-sampling-scratch@cref}{{[section][3][10]10.3}{[1][89][]89}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {11}Riemannian Flow Matching}{91}{chapter.11}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:riemannian-fm}{{11}{91}{Riemannian Flow Matching}{chapter.11}{}}
+\newlabel{chap:riemannian-fm@cref}{{[chapter][11][]11}{[1][91][]91}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11.1}Vector fields and flows on a manifold}{91}{section.11.1}\protected@file@percent }
+\newlabel{sec:manifold-vf}{{11.1}{91}{Vector fields and flows on a manifold}{section.11.1}{}}
+\newlabel{sec:manifold-vf@cref}{{[section][1][11]11.1}{[1][91][]91}{}{}{}}
+\newlabel{def:manifold-vf}{{11.1}{91}{Vector field on a manifold, flow}{theorem.11.1}{}}
+\newlabel{def:manifold-vf@cref}{{[theorem][1][11]11.1}{[1][91][]91}{}{}{}}
+\newlabel{thm:rcfm-general}{{11.2}{91}{Riemannian conditional flow matching}{theorem.11.2}{}}
+\newlabel{thm:rcfm-general@cref}{{[theorem][2][11]11.2}{[1][91][]91}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11.2}The geodesic conditional path}{92}{section.11.2}\protected@file@percent }
+\newlabel{sec:geodesic-path-general}{{11.2}{92}{The geodesic conditional path}{section.11.2}{}}
+\newlabel{sec:geodesic-path-general@cref}{{[section][2][11]11.2}{[1][91][]92}{}{}{}}
+\newlabel{def:geodesic-interpolant}{{11.3}{92}{Geodesic interpolant}{theorem.11.3}{}}
+\newlabel{def:geodesic-interpolant@cref}{{[theorem][3][11]11.3}{[1][91][]92}{}{}{}}
+\newlabel{prop:geodesic-vf-general}{{11.4}{92}{Conditional vector field of the geodesic interpolant}{theorem.11.4}{}}
+\newlabel{prop:geodesic-vf-general@cref}{{[theorem][4][11]11.4}{[1][92][]92}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11.3}Flow matching on $SO(3)$}{92}{section.11.3}\protected@file@percent }
+\newlabel{sec:fm-so3-scratch}{{11.3}{92}{Flow matching on $SO(3)$}{section.11.3}{}}
+\newlabel{sec:fm-so3-scratch@cref}{{[section][3][11]11.3}{[1][92][]92}{}{}{}}
+\newlabel{def:so3-interp-detail}{{11.5}{92}{Geodesic interpolant on $SO(3)$, restated concretely}{theorem.11.5}{}}
+\newlabel{def:so3-interp-detail@cref}{{[theorem][5][11]11.5}{[1][92][]92}{}{}{}}
+\newlabel{eq:so3-interp-detail}{{11.1}{92}{Geodesic interpolant on $SO(3)$, restated concretely}{equation.11.1}{}}
+\newlabel{eq:so3-interp-detail@cref}{{[equation][1][11]11.1}{[1][92][]92}{}{}{}}
+\newlabel{prop:so3-constant-velocity}{{11.6}{92}{Constant right-trivialised velocity of the geodesic}{theorem.11.6}{}}
+\newlabel{prop:so3-constant-velocity@cref}{{[theorem][6][11]11.6}{[1][92][]92}{}{}{}}
+\newlabel{prop:so3-current-point}{{11.7}{93}{The current-point form: $SO(3)$ specialisation of \Cref {prop:geodesic-vf-general}}{theorem.11.7}{}}
+\newlabel{prop:so3-current-point@cref}{{[theorem][7][11]11.7}{[1][92][]93}{}{}{}}
+\newlabel{eq:so3-cvf-scratch}{{11.2}{93}{The current-point form: $SO(3)$ specialisation of \Cref {prop:geodesic-vf-general}}{equation.11.2}{}}
+\newlabel{eq:so3-cvf-scratch@cref}{{[equation][2][11]11.2}{[1][92][]93}{}{}{}}
+\newlabel{thm:rcfm-so3}{{11.8}{93}{Riemannian CFM loss on $SO(3)$}{theorem.11.8}{}}
+\newlabel{thm:rcfm-so3@cref}{{[theorem][8][11]11.8}{[1][93][]93}{}{}{}}
+\newlabel{rem:so3-fm-prior}{{11.9}{93}{Prior distribution}{theorem.11.9}{}}
+\newlabel{rem:so3-fm-prior@cref}{{[theorem][9][11]11.9}{[1][93][]93}{}{}{}}
+\newlabel{eq:so3-flow-euler-scratch}{{11.3}{93}{Flow matching on $SO(3)$}{equation.11.3}{}}
+\newlabel{eq:so3-flow-euler-scratch@cref}{{[equation][3][11]11.3}{[1][93][]93}{}{}{}}
+\newlabel{rem:so3-singularity-remark}{{11.10}{94}{Numerical instability near $t=1$}{theorem.11.10}{}}
+\newlabel{rem:so3-singularity-remark@cref}{{[theorem][10][11]11.10}{[1][94][]94}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {11.4}Flow matching on the pose manifold $SE(3)^N$}{94}{section.11.4}\protected@file@percent }
+\newlabel{sec:fm-se3n}{{11.4}{94}{Flow matching on the pose manifold $SE(3)^N$}{section.11.4}{}}
+\newlabel{sec:fm-se3n@cref}{{[section][4][11]11.4}{[1][94][]94}{}{}{}}
+\@writefile{toc}{\contentsline {part}{VII\hspace  {1em}SigmaFlow}{95}{part.7}\protected@file@percent }
+\gdef \LT@ii {\LT@entry 
+    {1}{114.43008pt}\LT@entry 
+    {1}{162.79968pt}\LT@entry 
+    {3}{260.63686pt}}
+\newlabel{part:sigmaflow}{{VII}{96}{SigmaFlow}{part.7}{}}
+\newlabel{part:sigmaflow@cref}{{[part][7][]VII}{[1][96][]96}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {12}SigmaFlow: Full Reconstruction}{96}{chapter.12}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:sigmaflow}{{12}{96}{SigmaFlow: Full Reconstruction}{chapter.12}{}}
+\newlabel{chap:sigmaflow@cref}{{[chapter][12][]12}{[1][96][]96}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.1}What changes, and what does not}{96}{section.12.1}\protected@file@percent }
+\newlabel{sec:sigmaflow-overview}{{12.1}{96}{What changes, and what does not}{section.12.1}{}}
+\newlabel{sec:sigmaflow-overview@cref}{{[section][1][12]12.1}{[1][96][]96}{}{}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {12.1}{Component-wise comparison, verified against the source in both trees. Rows above the double rule are unchanged; rows below are what this chapter derives.}}{96}{table.12.1}\protected@file@percent }
+\newlabel{tab:sigmadock-vs-sigmaflow-precise}{{12.1}{96}{Component-wise comparison, verified against the source in both trees. Rows above the double rule are unchanged; rows below are what this chapter derives}{table.12.1}{}}
+\newlabel{tab:sigmadock-vs-sigmaflow-precise@cref}{{[table][1][12]12.1}{[1][96][]96}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.2}A time-convention warning, confirmed at the source level}{97}{section.12.2}\protected@file@percent }
+\newlabel{sec:sigmaflow-time-convention}{{12.2}{97}{A time-convention warning, confirmed at the source level}{section.12.2}{}}
+\newlabel{sec:sigmaflow-time-convention@cref}{{[section][2][12]12.2}{[1][97][]97}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.3}Translation flow matching, exactly as implemented}{97}{section.12.3}\protected@file@percent }
+\newlabel{sec:sigmaflow-translation}{{12.3}{97}{Translation flow matching, exactly as implemented}{section.12.3}{}}
+\newlabel{sec:sigmaflow-translation@cref}{{[section][3][12]12.3}{[1][97][]97}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.4}Rotation flow matching, exactly as implemented}{98}{section.12.4}\protected@file@percent }
+\newlabel{sec:sigmaflow-rotation}{{12.4}{98}{Rotation flow matching, exactly as implemented}{section.12.4}{}}
+\newlabel{sec:sigmaflow-rotation@cref}{{[section][4][12]12.4}{[1][98][]98}{}{}{}}
+\newlabel{rem:r1-identity-simplification}{{12.1}{98}{The hard-coded $R_1\equiv I$ simplification}{theorem.12.1}{}}
+\newlabel{rem:r1-identity-simplification@cref}{{[theorem][1][12]12.1}{[1][98][]98}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.5}No output dressing: the entire diffusion-specific scalar machinery is gone}{99}{section.12.5}\protected@file@percent }
+\newlabel{sec:sigmaflow-nodressing}{{12.5}{99}{No output dressing: the entire diffusion-specific scalar machinery is gone}{section.12.5}{}}
+\newlabel{sec:sigmaflow-nodressing@cref}{{[section][5][12]12.5}{[1][99][]99}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.6}The loss function}{100}{section.12.6}\protected@file@percent }
+\newlabel{sec:sigmaflow-loss}{{12.6}{100}{The loss function}{section.12.6}{}}
+\newlabel{sec:sigmaflow-loss@cref}{{[section][6][12]12.6}{[1][100][]100}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.7}The full training step}{100}{section.12.7}\protected@file@percent }
+\newlabel{sec:sigmaflow-training-pipeline}{{12.7}{100}{The full training step}{section.12.7}{}}
+\newlabel{sec:sigmaflow-training-pipeline@cref}{{[section][7][12]12.7}{[1][100][]100}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.8}Sampling}{102}{section.12.8}\protected@file@percent }
+\newlabel{sec:sigmaflow-sampling}{{12.8}{102}{Sampling}{section.12.8}{}}
+\newlabel{sec:sigmaflow-sampling@cref}{{[section][8][12]12.8}{[1][101][]102}{}{}{}}
+\newlabel{rem:oracle-test-recap}{{12.2}{102}{The \texttt {use\_true\_vector\_field} oracle: what Test~1 established}{theorem.12.2}{}}
+\newlabel{rem:oracle-test-recap@cref}{{[theorem][2][12]12.2}{[1][102][]102}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.9}Likelihood and confidence: what is implemented, and what is not}{102}{section.12.9}\protected@file@percent }
+\newlabel{sec:likelihood-confidence}{{12.9}{102}{Likelihood and confidence: what is implemented, and what is not}{section.12.9}{}}
+\newlabel{sec:likelihood-confidence@cref}{{[section][9][12]12.9}{[1][102][]102}{}{}{}}
+\newlabel{caution:likelihood-not-implemented}{{12.3}{103}{Not implemented in this codebase}{theorem.12.3}{}}
+\newlabel{caution:likelihood-not-implemented@cref}{{[theorem][3][12]12.3}{[1][103][]103}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {12.10}A tested, and rejected, loss variant}{103}{section.12.10}\protected@file@percent }
+\newlabel{sec:variant-time-weighting}{{12.10}{103}{A tested, and rejected, loss variant}{section.12.10}{}}
+\newlabel{sec:variant-time-weighting@cref}{{[section][10][12]12.10}{[1][103][]103}{}{}{}}
+\newlabel{caution:time-weighting-empirical}{{12.4}{103}{Empirically tested, no benefit found; not part of this document's core theory}{theorem.12.4}{}}
+\newlabel{caution:time-weighting-empirical@cref}{{[theorem][4][12]12.4}{[1][103][]103}{}{}{}}
+\@writefile{toc}{\contentsline {part}{VIII\hspace  {1em}Synthesis}{104}{part.8}\protected@file@percent }
+\gdef \LT@iii {\LT@entry 
+    {1}{108.73918pt}\LT@entry 
+    {1}{85.97733pt}\LT@entry 
+    {1}{219.7052pt}}
+\newlabel{part:synthesis}{{VIII}{105}{Synthesis}{part.8}{}}
+\newlabel{part:synthesis@cref}{{[part][8][]VIII}{[1][105][]105}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{\numberline {13}Implementation Details, Numerical Stability, and Consistency Checks}{105}{chapter.13}\protected@file@percent }
+\@writefile{lof}{\addvspace {10\p@ }}
+\@writefile{lot}{\addvspace {10\p@ }}
+\newlabel{chap:numerics}{{13}{105}{Implementation Details, Numerical Stability, and Consistency Checks}{chapter.13}{}}
+\newlabel{chap:numerics@cref}{{[chapter][13][]13}{[1][105][]105}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13.1}Every clamp, epsilon, and numerical safeguard in one table}{105}{section.13.1}\protected@file@percent }
+\newlabel{sec:clamp-table}{{13.1}{105}{Every clamp, epsilon, and numerical safeguard in one table}{section.13.1}{}}
+\newlabel{sec:clamp-table@cref}{{[section][1][13]13.1}{[1][105][]105}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13.2}Masking, batching, and scatter conventions}{106}{section.13.2}\protected@file@percent }
+\newlabel{sec:masking-batching}{{13.2}{106}{Masking, batching, and scatter conventions}{section.13.2}{}}
+\newlabel{sec:masking-batching@cref}{{[section][2][13]13.2}{[1][106][]106}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13.3}Floating-point precision}{107}{section.13.3}\protected@file@percent }
+\newlabel{sec:precision}{{13.3}{107}{Floating-point precision}{section.13.3}{}}
+\newlabel{sec:precision@cref}{{[section][3][13]13.3}{[1][107][]107}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13.4}Dimensional and consistency checks}{107}{section.13.4}\protected@file@percent }
+\newlabel{sec:dimension-checks}{{13.4}{107}{Dimensional and consistency checks}{section.13.4}{}}
+\newlabel{sec:dimension-checks@cref}{{[section][4][13]13.4}{[1][107][]107}{}{}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {13.5}Summary of open items}{108}{section.13.5}\protected@file@percent }
+\newlabel{sec:open-items-summary}{{13.5}{108}{Summary of open items}{section.13.5}{}}
+\newlabel{sec:open-items-summary@cref}{{[section][5][13]13.5}{[1][107][]108}{}{}{}}
+\@writefile{toc}{\contentsline {chapter}{Closing Remarks}{109}{chapter*.22}\protected@file@percent }
+\gdef \@abspage@last{111}

@@ -1,0 +1,32 @@
+Found 209 true-ligand files. Predictions from: sigmaflow_12h_pred/
+  ...25/209
+  ...50/209
+  ...75/209
+  ...100/209
+  ...125/209
+  ...150/209
+  ...175/209
+  ...200/209
+
+Wrote 209 rows (0 complexes missing predictions) to posebusters_ligandonly_SigmaFlow_12h_framefix.csv
+
+Pass rates:
+mol_pred_loaded                   1.000
+mol_true_loaded                   1.000
+mol_cond_loaded                   0.000
+sanitization                      1.000
+inchi_convertible                 1.000
+all_atoms_connected               1.000
+no_radicals                       1.000
+molecular_formula                 1.000
+molecular_bonds                   1.000
+double_bond_stereochemistry       1.000
+tetrahedral_chirality             0.938
+bond_lengths                      0.555
+bond_angles                       0.483
+internal_steric_clash             0.478
+aromatic_ring_flatness            1.000
+non-aromatic_ring_non-flatness    1.000
+double_bond_flatness              1.000
+internal_energy                   0.574
+rmsd_â‰¤_2ã…                      0.029

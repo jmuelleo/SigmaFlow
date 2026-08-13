@@ -7,10 +7,34 @@ __pycache__/
 *.pyc
 
 # Generated sampling outputs, checkpoints, and benchmark results (never
-# committed per CLAUDE.md §9 - regenerable from a checkpoint + sample.py)
-/SigmaFlow_Development/experiments/
-/SigmaFlow_Development/sampling_output*/
-/SigmaFlow_Development/posebusters_results/
-/SigmaFlow_Development/pymol_scripts/
-/SigmaFlow_Development/Screenshots_3h_22.07.2026/
-/SigmaFlow_Development/rmsd_summary_all_runs.csv
+# committed per CLAUDE.md §9 - regenerable from a checkpoint + sample.py).
+# Matches at any depth so this also covers SigmaFlow_MinimalChange/,
+# SigmaFlow_Adapted/, and SigmaFlow_Variants/<name>/, not just
+# SigmaFlow_Development/.
+**/experiments/
+**/sampling_output*/
+**/posebusters_results/
+**/pymol_scripts/
+**/Screenshots*/
+**/rmsd_summary_all_runs.csv
+**/cache/
+
+# Local working copies used for the SigmaDock-vs-SigmaFlow bond-length
+# audit (2026-08-05): frozen baseline snapshot, adaptation sandbox, and
+# collector for tried-and-compared loss/architecture variants. Source-only
+# (see gitignore rules above for what's excluded within them); not part of
+# the tracked SigmaFlow_Development deliverable.
+/SigmaFlow_MinimalChange/
+/SigmaFlow_Adapted/
+
+# --- 2026-08-13: Reorganisation ---
+# Grosse Artefakte nie ins Repo
+*.tar.gz
+# Varianten: QUELLCODE versionieren, Ausgaben nicht.
+# (**/experiments/ und **/sampling_output*/ oben greifen bereits)
+!/SigmaFlow_Variants/
+/SigmaFlow_Variants/**/pymol_cases/
+/SigmaFlow_Variants/**/true_ligands/
+/SigmaFlow_Variants/**/*_pred/
+/SigmaFlow_Variants/**/stepsweep/
+/SigmaFlow_Variants/**/seeds10_*/
