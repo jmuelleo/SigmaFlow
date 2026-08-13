@@ -38,7 +38,26 @@ MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | exp100 | sigmadock}"
 CKPT="${CKPT:?CKPT auf den last.ckpt-Pfad setzen}"
 NUM_STEPS="${NUM_STEPS:-25}"
 SEED="${SLURM_ARRAY_TASK_ID:-0}"
-OUT_ROOT="${ARC_RUNS}/sampling/${MODEL}_nfe${NUM_STEPS}"
+
+# COMPARISON trennt die beiden wissenschaftlich verschiedenen Vergleiche
+# (Runbook 5.1). Sie duerfen nicht in einen Topf:
+#   controlled = gleiche NFE auf beiden Seiten, misst die Generatoren
+#   default    = jede Methode mit ihrem Vorgabewert, misst die Gesamtsysteme
+COMPARISON="${COMPARISON:-controlled}"
+
+# RANKING trennt Generatorqualitaet von Rankingqualitaet (Runbook 5.2).
+#   raw    = postprocessing.scoring=null, keine methodeneigene Auswahl
+#   ranked = mit methodeneigenem Scoring
+RANKING="${RANKING:-raw}"
+
+case "$COMPARISON" in controlled|default) ;; *) echo "COMPARISON: controlled|default"; exit 1 ;; esac
+case "$RANKING"    in raw|ranked)         ;; *) echo "RANKING: raw|ranked";           exit 1 ;; esac
+
+# Der Ausgabepfad traegt ALLE unterscheidenden Merkmale. Ohne RANKING und
+# COMPARISON darin wuerde ein Ranked-Lauf mit gleicher NFE die Raw-Posen
+# ueberschreiben - ein stiller Datenverlust, der erst bei der Auswertung
+# auffiele, und dann als Methodenunterschied fehlinterpretiert werden koennte.
+OUT_ROOT="${ARC_RUNS}/sampling/${MODEL}__${COMPARISON}__${RANKING}__nfe${NUM_STEPS}"
 
 case "$MODEL" in
   sigmaflow_minimal)
@@ -75,23 +94,39 @@ print("Herkunft verifiziert")
 PYCHECK
 
 mkdir -p "$OUT_ROOT"
+
+# Provenienz neben die Posen legen. Ohne das ist ein halbes Jahr spaeter nicht
+# mehr rekonstruierbar, welcher Checkpoint welche SDFs erzeugt hat.
+{
+    echo "model       = ${MODEL}"
+    echo "comparison  = ${COMPARISON}"
+    echo "ranking     = ${RANKING}"
+    echo "nfe         = ${NUM_STEPS}"
+    echo "seed        = ${SEED}"
+    echo "checkpoint  = ${CKPT}"
+    echo "code_dir    = ${CODE_DIR}"
+    echo "array_job   = ${SLURM_ARRAY_JOB_ID:-n/a}_${SLURM_ARRAY_TASK_ID:-n/a}"
+    echo "utc         = $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+} > "${OUT_ROOT}/sampling_metadata_seed${SEED}.txt"
+
+if [ "$RANKING" = "raw" ]; then
+    SCORING_ARGS=(postprocessing.scoring=null postprocessing.bust_config=null)
+else
+    # Methodeneigenes Scoring aktiv lassen (Vorgabe der Konfiguration).
+    SCORING_ARGS=()
+fi
+
 $PYTHON scripts/sample.py \
     ckpt="${CKPT}" \
     data_dir="${ARC_DATA}" \
     experiment=posebusters \
     output_dir="${OUT_ROOT}" \
-    run_tag="${MODEL}_s${SEED}" \
+    run_tag="${MODEL}_${COMPARISON}_${RANKING}_s${SEED}" \
     seed="${SEED}" \
     num_seeds=1 \
     ode.num_steps="${NUM_STEPS}" \
     graph.sample_conformer=false \
-    postprocessing.scoring=null \
-    postprocessing.bust_config=null \
+    "${SCORING_ARGS[@]}" \
     hydra.run.dir="${OUT_ROOT}/hydra_out_seed${SEED}"
-
-# `postprocessing.scoring=null` ist Absicht: das ist die RAW/GENERATOR-Auswertung
-# ohne methodeneigenes Ranking. Fuer die "ranked"-Variante dasselbe Skript mit
-# gesetztem scoring erneut fahren und in ein ANDERES OUT_ROOT schreiben,
-# damit beide Zahlen nebeneinander stehen (Runbook Abschnitt 8).
 
 echo "Ergebnisse: ${OUT_ROOT}/results/posebusters/<model>/seed_${SEED}/"
