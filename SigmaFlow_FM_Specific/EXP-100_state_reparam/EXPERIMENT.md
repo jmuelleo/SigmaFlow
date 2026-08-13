@@ -111,12 +111,33 @@ Geometrie ergaben sich abweichende Bindungsmengen, `frag_atom_idx` und
 `dummy_frag_sizes`. Ein daraus gebautes Kabsch-Ziel wäre still falsch gewesen.
 Stattdessen wird der Graph **festgehalten** und nur die Geometrie ersetzt.
 
-### C.2 EXP-100 ist an der Inferenz ein exakter No-Op
+### C.2 Wann EXP-100 an der Inferenz ein No-Op ist — und wann nicht
 
-`conf/sampling/base.yaml` setzt `sample_conformer: true`. An der Inferenz **ist**
-`frag_mol` bereits der generierte Konformer, also `ref_conf_pos == ref_pos` und
-`R_1 = I` — gemessen exakt 0.00 Grad. Die Intervention wirkt ausschließlich auf
-der Trainingsseite. Genau das macht sie zu einer sauberen Einzelintervention.
+**Korrektur einer früheren Aussage in diesem Dokument.** Es hieß hier, EXP-100
+sei an der Inferenz generell ein exakter No-Op. Das gilt nur für
+`sample_conformer=true`, und **die tatsächlich benutzten Sampling-Skripte setzen
+durchgängig `graph.sample_conformer=false`** (geprüft: alle Skripte in
+`slurm/`). Präzise:
+
+| Sampling-Modus | `ref_conf_pos` | `R_1` | Wirkung von EXP-100 |
+|---|---|---|---|
+| `sample_conformer=true` | identisch zu `ref_pos` | `I` (gemessen 0.00°) | exakter No-Op |
+| `sample_conformer=false` (**der verwendete Modus**) | generierter Konformer | ≠ `I` | `C_F` ist der leakage-freie Konformer statt der Fragmentgeometrie aus der gebundenen Pose |
+
+Im tatsächlich verwendeten Modus ändert EXP-100 also auch die Inferenz — und
+zwar in die saubere Richtung: SigmaFlow-Minimal speist dort die **interne
+Geometrie der Kristallpose** als Referenzfragment ein (Bindungslängen und
+-winkel aus der Struktur), EXP-100 ersetzt sie durch den generierten Konformer.
+
+`R_1` selbst wird beim Sampling nicht verwendet (nur `R_ref = I` und, falls
+`use_true_vector_field=True`, die Diagnose) — es entsteht dadurch kein Leck.
+Auch `trans_1` kürzt sich heraus: `pos_0 − trans_1 = C_F` per Konstruktion.
+
+**Konsequenz für die Interpretation des ARC-Laufs:** EXP-100 ist gegenüber
+SigmaFlow-Minimal eine Änderung auf **beiden** Seiten (Trainingsziel *und*
+Inferenz-Referenzgeometrie), nicht nur auf der Trainingsseite. Das bleibt eine
+einzige, kohärente Intervention — „Referenzgeometrie = inferenzverfügbarer
+Konformer" — aber die frühere, engere Formulierung war falsch.
 
 Der eigentliche Gehalt von EXP-100 lässt sich damit schärfer fassen als bisher:
 
