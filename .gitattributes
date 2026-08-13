@@ -1,0 +1,7 @@
+# Shell- und SLURM-Skripte MUESSEN mit LF ausgecheckt werden. Mit CRLF
+# scheitert die Shebang-Zeile auf Linux mit
+#   /bin/bash^M: bad interpreter: No such file or directory
+# Das Repo wird unter Windows bearbeitet und auf ARC (Linux) ausgefuehrt,
+# der Fall tritt also garantiert ein, wenn man ihn nicht festlegt.
+*.sh    text eol=lf
+*.slurm text eol=lf
