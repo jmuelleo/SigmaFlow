@@ -258,11 +258,35 @@
 \contentsline {section}{\numberline {13.6}A defect found on the way}{165}{section.13.6}%
 \contentsline {section}{\numberline {13.7}Summary tables}{166}{section.13.7}%
 \contentsline {section}{\numberline {13.8}Open items}{166}{section.13.8}%
-\contentsline {part}{VIII\hspace {1em}Synthesis}{167}{part.8}%
-\contentsline {chapter}{\numberline {14}Implementation Details, Numerical Stability, and Consistency Checks}{168}{chapter.14}%
-\contentsline {section}{\numberline {14.1}Every clamp, epsilon, and numerical safeguard in one table}{168}{section.14.1}%
-\contentsline {section}{\numberline {14.2}Masking, batching, and scatter conventions}{169}{section.14.2}%
-\contentsline {section}{\numberline {14.3}Floating-point precision}{170}{section.14.3}%
-\contentsline {section}{\numberline {14.4}Dimensional and consistency checks}{170}{section.14.4}%
-\contentsline {section}{\numberline {14.5}Summary of open items}{171}{section.14.5}%
-\contentsline {chapter}{Closing Remarks}{172}{chapter*.72}%
+\contentsline {chapter}{\numberline {14}Backbone, Mechanics, and Generative Semantics}{167}{chapter.14}%
+\contentsline {section}{\numberline {14.1}Layer A is byte-identical}{167}{section.14.1}%
+\contentsline {section}{\numberline {14.2}Layer B: the mechanical reduction}{168}{section.14.2}%
+\contentsline {section}{\numberline {14.3}Layer C, SigmaDock: a score model}{168}{section.14.3}%
+\contentsline {paragraph}{Time.}{168}{section*.72}%
+\contentsline {paragraph}{Translation: VP-SDE.}{168}{section*.73}%
+\contentsline {paragraph}{Rotation: IGSO(3).}{168}{section*.74}%
+\contentsline {paragraph}{Scaling --- the part that matters for the comparison.}{169}{section*.75}%
+\contentsline {paragraph}{Two further losses, both switched off.}{169}{section*.76}%
+\contentsline {paragraph}{Sampling.}{169}{section*.77}%
+\contentsline {section}{\numberline {14.4}Layer C, SigmaFlow: a velocity model}{169}{section.14.4}%
+\contentsline {paragraph}{Time --- reversed.}{169}{section*.78}%
+\contentsline {paragraph}{Paths and targets.}{169}{section*.79}%
+\contentsline {paragraph}{No scaling.}{170}{section*.80}%
+\contentsline {paragraph}{Sampling.}{170}{section*.81}%
+\contentsline {section}{\numberline {14.5}Score versus velocity}{170}{section.14.5}%
+\contentsline {section}{\numberline {14.6}Numerical validation}{170}{section.14.6}%
+\contentsline {subsection}{\numberline {14.6.1}Source distributions are not quite matched}{171}{subsection.14.6.1}%
+\contentsline {subsection}{\numberline {14.6.2}An inherited weight that lost its justification}{171}{subsection.14.6.2}%
+\contentsline {subsection}{\numberline {14.6.3}The log map is not exact}{172}{subsection.14.6.3}%
+\contentsline {subsection}{\numberline {14.6.4}\texttt {sigma\_min} is dead}{172}{subsection.14.6.4}%
+\contentsline {section}{\numberline {14.7}The minimal-change table}{172}{section.14.7}%
+\contentsline {section}{\numberline {14.8}Findings, categorised}{172}{section.14.8}%
+\contentsline {section}{\numberline {14.9}Verdict}{173}{section.14.9}%
+\contentsline {part}{VIII\hspace {1em}Synthesis}{174}{part.8}%
+\contentsline {chapter}{\numberline {15}Implementation Details, Numerical Stability, and Consistency Checks}{175}{chapter.15}%
+\contentsline {section}{\numberline {15.1}Every clamp, epsilon, and numerical safeguard in one table}{175}{section.15.1}%
+\contentsline {section}{\numberline {15.2}Masking, batching, and scatter conventions}{176}{section.15.2}%
+\contentsline {section}{\numberline {15.3}Floating-point precision}{177}{section.15.3}%
+\contentsline {section}{\numberline {15.4}Dimensional and consistency checks}{177}{section.15.4}%
+\contentsline {section}{\numberline {15.5}Summary of open items}{178}{section.15.5}%
+\contentsline {chapter}{Closing Remarks}{179}{chapter*.82}%

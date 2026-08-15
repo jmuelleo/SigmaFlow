@@ -10800,6 +10800,481 @@ Deliberately left for the next round, to keep this one narrow:
 \end{itemize}
 
 
+\chapter{Backbone, Mechanics, and Generative Semantics}
+\label{chap:engine-swap}
+
+The previous chapter established what the network emits. This one asks a
+different question: \emph{which parts of the code belong to the geometry,
+which to the diffusion process, which were changed for flow matching --- and
+are the changes mathematically coherent?}
+
+The organising device is a strict three-layer split. Confusing the layers is
+what makes ``score'' and ``velocity'' look interchangeable when they are not.
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+& Layer & Content & Status \\
+\midrule
+A & geometric backbone & graph, embeddings, EquiformerV2, $\ell=1$ readout & byte-identical \\
+B & mechanical reduction & force $\to$ torque $\to$ inertia $\to$ $\omega$ & formula-identical \\
+C & generative semantics & path, target, loss, sampler & entirely replaced \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Layer A is byte-identical}
+\label{sec:engine-layer-a}
+
+Not ``similar'': identical. A file-by-file \texttt{diff} of the backbone
+between \file{SigmaDock/src\_sigmadock\_net/} and
+\file{SigmaFlow\_Minimal/src/sigmadock/net/} returns zero differing lines for
+all seventeen files, \file{model.py} included --- so the graph construction,
+the featurisation, the attention, the normalisation, the $S^2$ activation and
+the readout are the same code, and the trainable parameter count is
+identical by construction.
+
+Outside \file{net/}, the only differences in the shared pipeline are
+non-semantic:
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+File & Differing lines & Nature \\
+\midrule
+\file{net/*} (17 files) & $0$ & --- \\
+\file{chem/processing.py} & $0$ & --- \\
+\file{oracle.py} & $5$ & one comment \\
+\file{data.py} & $13$ & error reporting, one added \texttt{None} check \\
+\file{chem/parsing.py} & $12$ & --- \\
+\file{diff/so3\_utils.py} & $2$ & one clamp, \Cref{sec:engine-logmap} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+For the minimal-change claim this is the strongest available evidence, and it
+is worth stating plainly: at layer A there is nothing to audit, because there
+is nothing different.
+
+\section{Layer B: the mechanical reduction}
+\label{sec:engine-layer-b}
+
+Both models pool the per-atom field identically. Writing $f_i$ for the
+per-atom vector of \Cref{chap:output-heads} and $f$ for a fragment:
+\begin{align}
+F_f &= \sum_{i\in f} f_i, & m_f &= |f| \quad(\text{atom count, all masses } 1), \\
+\tau_f &= \sum_{i\in f} (x_i - c_f)\times f_i, &
+I_f &= \sum_{i\in f}\bigl(\|r_i\|^2 I_3 - r_ir_i^{\mathsf T}\bigr), \\
+\Delta T_f &= F_f/m_f, & \Delta W_f &= I_f^{-1}\tau_f .
+\end{align}
+These are textbook rigid-body formulae with two deviations, both present in
+both models:
+\begin{itemize}
+\item \textbf{Uniform unit masses.} $m_i\equiv1$, so $m_f$ is an atom count
+      and $I_f$ is a count-weighted inertia. Physically this is a body of
+      uniform ``atoms'', not of real atomic masses.
+\item \textbf{Two regularisations.} $I_f$ is eigenvalue-clamped from below at
+      $\max(10^{-8},\,10^{-8}\operatorname{tr}I_f/3)$ before use, then a
+      further $10^{-8}I_3$ is added inside \pyfunc{newton\_maruyama}; and
+      $\widehat{\Delta W}$ is clamped to $\pm10^3$. Whether the latter ever
+      binds is listed as open in \Cref{sec:head-open}.
+\end{itemize}
+Nothing here is learned. The only trainable object in the entire chain is the
+per-atom field.
+
+\begin{remark}[Is \texttt{forces} a force?]
+\label{rem:forces-is-a-name}
+No. There is no energy function, no conservativity constraint, and nothing in
+either loss that rewards $f_i$ for being the gradient of anything. The
+correct description is: an \textbf{atom-wise $\ell=1$ equivariant vector
+field}, which the code names \texttt{forces} and \emph{consumes as if} it
+were a force field, because the Newton--Euler reduction is a convenient,
+exactly equivariant way to pool $N$ atom vectors into $6$ rigid-body numbers.
+
+This document therefore uses ``force-like'' or ``per-atom vector field'',
+and reserves ``force'' for the name in the source. The distinction matters
+once one asks what the network is being trained to represent --- which is the
+subject of the rest of this chapter.
+\end{remark}
+
+\section{Layer C, SigmaDock: a score model}
+\label{sec:engine-sigmadock}
+
+\paragraph{Time.} $t\sim\Unif[\varepsilon_t,1]$ with $\varepsilon_t=0.01$.
+$t=0$ is \emph{data}, $t=1$ is \emph{noise}.
+
+\paragraph{Translation: VP-SDE.} With $\beta(t)=\beta_{\min}+t(\beta_{\max}-\beta_{\min})$,
+$\beta_{\min}=0.1$, $\beta_{\max}=20$, and $\alpha_t=e^{-\frac12\int_0^t\beta}$,
+\begin{equation}
+x_t = \alpha_t x_0 + \sqrt{1-\alpha_t^2}\,z,\qquad z\sim\mathcal N(0,I_3),
+\end{equation}
+so the target is the \emph{conditional} score
+\begin{equation}
+\label{eq:engine-dock-trans-target}
+s^\star = \nabla_{x_t}\log p_t(x_t\mid x_0) = -\frac{x_t-\alpha_tx_0}{1-\alpha_t^2}.
+\end{equation}
+
+\paragraph{Rotation: IGSO(3).} $\sigma(t)$ follows a logarithmic schedule from
+$0.1$ to $1.5$, and
+\begin{equation}
+R_t = \Delta R\,R_0,\qquad \Delta R\sim\mathrm{IGSO}(3)\bigl(\sigma(t)\bigr),
+\end{equation}
+i.e.\ left multiplication. The target is
+\begin{equation}
+\label{eq:engine-dock-rot-target}
+s^\star_R = R_t\,\log\!\bigl(R_0^{\mathsf T}R_t\bigr)\cdot
+\frac{\partial_\omega\log f_{\sigma}(\omega)}{\omega},
+\qquad \omega = \text{angle}(R_0^{\mathsf T}R_t),
+\end{equation}
+with $f_\sigma$ the truncated IGSO(3) angle density.
+
+\paragraph{Scaling --- the part that matters for the comparison.}
+\begin{equation}
+\hat s = F_f\cdot\underbrace{\frac{1}{\sigma(t)}}_{\texttt{score\_scaling}},
+\qquad
+\mathcal L = \underbrace{\frac{1}{\texttt{score\_scaling}^2}}_{\lambda(t)=\sigma(t)^2}\,
+\bigl\|\hat s - s^\star\bigr\|^2
+= \bigl\|F_f - \sigma(t)\,s^\star\bigr\|^2 .
+\end{equation}
+The two factors cancel exactly. So SigmaDock's network does \emph{not} learn
+the score: it learns the \textbf{variance-normalised score} $\sigma_t s^\star$,
+a quantity of roughly unit scale at every $t$. This is the standard device
+that stops the loss from being dominated by small-$t$ samples where
+$\|s^\star\|\sim1/\sigma$ diverges. The same construction, with
+$\lambda=1/\texttt{score\_scaling}^2$ from the IGSO(3) table, is used for
+rotation.
+
+\paragraph{Two further losses, both switched off.} \pyfunc{compute\_losses}
+also returns data-space terms \texttt{T0} and \texttt{R0}, but the trainer's
+defaults are \texttt{trans\_data\_weight = rot\_data\_weight = 0.0}. Both
+models therefore train exactly two active terms, weighted $1.0$ and $0.5$.
+
+\paragraph{Sampling.} Reverse SDE, with injected noise:
+$x_{t-1} = x_t - \bigl[(f_t - g_t^2s_t)\,dt + \eta\,g_t\sqrt{dt}\,z\bigr]$.
+
+\section{Layer C, SigmaFlow: a velocity model}
+\label{sec:engine-sigmaflow}
+
+\paragraph{Time --- reversed.} Same sampler, same $\varepsilon_t$, but now
+$t=0$ is the \emph{source} and $t=1$ is the \emph{data}.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Meaning & SigmaDock & SigmaFlow \\
+\midrule
+$t=0$ & data & source (noise) \\
+$t=1$ & noise & data \\
+data endpoint & \texttt{T0}, \texttt{R0} & \texttt{trans\_1}, \texttt{R\_1} \\
+source endpoint & terminal law of the SDE & \texttt{sample\_init} \\
+training & corrupt forwards & interpolate \\
+sampling & integrate $1\to0$ & integrate $0\to1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The renaming \texttt{T0}$\to$\texttt{trans\_1}, \texttt{R0}$\to$\texttt{R\_1}
+is not cosmetic: it tracks the flipped convention, and the variable holding
+the ground-truth pose changed its index. Both files feed the \emph{same}
+sinusoidal encoder the raw $t$; nothing diffusion-specific (no $\sigma$, no
+$\log\sigma$) is passed. Per the standing rule that a deterministic,
+invertible reparametrisation of time is not by itself a defect, this is
+clean --- the encoder is a generic function of $t$, and each model is trained
+from scratch under its own convention.
+
+\paragraph{Paths and targets.}
+\begin{align}
+x_t &= (1-t)x_0 + tx_1, & u_t &= x_1-x_0, & x_0&\sim\mathcal N(0,I_3), \\
+R_t &= R_0\exp\!\bigl(t\log(R_0^{\mathsf T}R_1)\bigr), &
+u^R_t &= \log(R_0^{\mathsf T}R_1), & R_0&\sim\text{Haar}.
+\end{align}
+Both targets are \emph{constant in $t$}. For rotation this is a property of
+the geodesic, not an approximation: with $L=\log(R_0^{\mathsf T}R_1)$,
+$\dot R_t = R_0\exp(tL)L = R_tL$, so
+$\widehat{\omega^{\mathrm{bd}}} = R_t^{\mathsf T}\dot R_t = L$ for every $t$.
+
+The code contains a second form, $\log(R_t^{\mathsf T}R_1)/(1-t)$ and
+$(x_1-x_t)/(1-t)$. These are algebraically equal --- $R_t^{\mathsf T}R_1 =
+\exp((1-t)L)$ --- but the constant form has no $1/(1-t)$ and is used in
+training; the divided form appears only as a diagnostic in
+\file{diff/sampling.py}. Preferring the non-singular parametrisation is the
+right call.
+
+\paragraph{No scaling.} \pyfunc{\_compute\_vector\_field} applies no factor to
+translation and only the frame conjugation to rotation. The loss is a plain
+MSE. This is correct for flow matching --- $u_t$ has no $t$-dependent
+divergence to tame --- and it is the single largest semantic difference from
+SigmaDock.
+
+\paragraph{Sampling.} Explicit Euler, $1$ network evaluation per step;
+\texttt{heun} is available at $2$ evaluations per step.
+
+\section{Score versus velocity}
+\label{sec:engine-score-vs-velocity}
+
+\begin{caution}[Same representation, different statistics]
+\label{caution:same-rep-different-target}
+A translational score and a translational velocity are both $\ell=1$ vectors.
+A rotational score and a rotational flow velocity are both tangent vectors on
+$SO(3)$. Representation theory constrains \emph{how an object transforms}; it
+says nothing about \emph{which statistical quantity it is}. The two questions
+are independent, and conflating them is what makes an engine swap look like a
+relabelling.
+
+This is precisely why the swap is possible at all: layers A and B care only
+about the transformation law, which is unchanged, so they can be reused
+verbatim while layer C is replaced wholesale.
+\end{caution}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lll}
+\toprule
+Property & Diffusion score & Flow velocity \\
+\midrule
+Object & $\nabla_x\log p_t(x)$ & $u_t(x)$, tangent to the transport \\
+Represents & slope of a log-density & a displacement rate \\
+Units (translation) & $1/\text{length}$ & $\text{length}/\text{unit }t$ \\
+Behaviour as $t\to$ data & diverges like $1/\sigma_t$ & finite, here constant \\
+Needs $\lambda(t)$ & yes & no \\
+Target & \eqref{eq:engine-dock-trans-target} & $x_1-x_0$ \\
+Sampling & reverse SDE, stochastic & ODE, deterministic \\
+Transformation law & $v\mapsto Qv$ & $v\mapsto Qv$ \\
+\bottomrule
+\end{tabular}
+\caption{The last row is the whole point: identical geometry, opposite
+statistics, even reciprocal units.}
+\label{tab:score-vs-velocity}
+\end{table}
+
+The units row deserves emphasis. Positions are divided by
+\texttt{dimensional\_scale} $=2.7$\,\AA, so both models work in the same
+dimensionless coordinates --- but a score in those coordinates is an
+\emph{inverse} length and a velocity is a length. The same network output
+tensor means reciprocal physical things in the two models. Since neither
+model converts to \AA{} before the loss, and each is trained end-to-end in
+its own convention, this is consistent; it is a trap only if one compares raw
+loss values between the two, which would be meaningless.
+
+\section{Numerical validation}
+\label{sec:engine-numerics}
+
+All float64, \file{audits/engine\_swap\_audit.py}, no GPU or checkpoint
+required.
+
+\begin{center}
+\begin{tabular}{llr}
+\toprule
+Check & Method & Result \\
+\midrule
+$u_t$ is $\dot x_t$ & central difference, $t\in[0.01,0.99]$ & $\le7\times10^{-11}$ \\
+$u^R_t$ is $R_t^{\mathsf T}\dot R_t$ & central difference & $\le3\times10^{-10}$ \\
+endpoints & $x_t,R_t$ at $t=0,1$ & exact \\
+Euler exactness & full integration, $dt=0.5,0.25,0.1$ & $\le3\times10^{-16}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Euler reproduces the endpoint exactly at \emph{any} step size, because the
+paths are a straight line and a one-parameter subgroup. That confirms the
+integrator implements $x+dt\,v$ and $R\exp(dt\,v)$ and nothing else --- no
+inherited $\sigma$ or noise factor survived the port.
+
+\subsection{Source distributions are not quite matched}
+\label{sec:engine-sources}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+ & SigmaDock terminal law & SigmaFlow source \\
+\midrule
+translation & $\mathcal N(\alpha_1x_0,(1-\alpha_1^2)I)$, $\alpha_1=6.6\times10^{-3}$ & $\mathcal N(0,I)$ \\
+ & \multicolumn{2}{l}{std differs by $2\times10^{-5}$ --- effectively identical} \\
+\midrule
+rotation & $\mathrm{IGSO}(3)(\sigma{=}1.5)$, mean angle $115.0^\circ$ & Haar, mean angle $126.5^\circ$ \\
+ & \multicolumn{2}{l}{total variation $0.130$ --- \textbf{not} identical} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+IGSO(3) at $\sigma=1.5$ has not yet reached the uniform distribution; it is
+short of mass at large angles. SigmaFlow starts from exactly Haar. The
+difference is modest but real, and it is a comparison confounder rather than
+a bug: SigmaFlow's prior is the mathematically correct one for its
+construction, and SigmaDock's is whatever its schedule reaches at $t=1$.
+Recording it matters because a rotational metric that is already close to the
+random baseline is sensitive to exactly this.
+
+\subsection{An inherited weight that lost its justification}
+\label{sec:engine-weights}
+
+Both trainers combine $1.0\cdot\mathcal L_{\text{trans}} +
+0.5\cdot\mathcal L_{\text{rot}}$. In SigmaDock those weights sit on top of
+$\lambda(t)=\sigma(t)^2$, which renders both terms dimensionless and
+$O(1)$; the $1{:}0.5$ ratio is then a genuine preference between two
+comparable numbers. In SigmaFlow the $\lambda$ is gone --- correctly --- but
+the $1{:}0.5$ came along unchanged, and now multiplies two raw MSEs in
+different units.
+
+Measured target magnitudes (Haar rotations, $R_1=I$):
+\begin{center}
+\begin{tabular}{lrrr}
+\toprule
+COM spread (normalised) & $\EE\|u_{\text{trans}}\|^2$ & $\EE\|u^R\|_F^2$ & weighted ratio \\
+\midrule
+$0.5$ & $3.77$ & $10.59$ & $0.71$ \\
+$1.0$ & $6.04$ & $10.62$ & $1.14$ \\
+$2.0$ & $15.12$ & $10.55$ & $2.87$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+$\EE\|u^R\|_F^2 = 2\,\EE[\theta^2]\approx10.6$ is essentially
+data-independent, since $\theta$ is a Haar angle. The translation term scales
+with \texttt{dimensional\_scale}. So the effective balance is set by a
+normalisation constant chosen for a different purpose, and the $1{:}0.5$ is
+inherited, not derived. It is not obviously wrong --- the ratio lands within a
+factor of three of unity --- but it is unjustified, and it should be recorded
+as a hyperparameter rather than a principled choice.
+
+\subsection{The log map is not exact}
+\label{sec:engine-logmap}
+
+Because the rotational target \emph{is} $\log(R_0^{\mathsf T}R_1)$, the
+accuracy of the log map is the accuracy of the target. Over $40{,}000$ Haar
+rotations in float64:
+\[
+\bigl\|\exp(\log R)-R\bigr\|_\infty:\quad
+\text{median }5\times10^{-7},\quad
+99\%\ 2.8\times10^{-3},\quad
+\max 2\times10^{-2}.
+\]
+Nine orders of magnitude above machine precision. Two independent causes,
+both inherited from SigmaDock:
+
+\begin{enumerate}
+\item \pyfunc{Omega} computes
+      $\arccos\bigl(\tfrac{(1-10^{-6})\operatorname{tr}R-1}{2}\bigr)$. The
+      factor $(1-10^{-6})$ is a guard against $\arccos$ leaving its domain,
+      but it shrinks \emph{every} trace, biasing every angle. At exactly
+      $90^\circ$ the error is $5.00\times10^{-7}$\,rad --- the measured floor.
+\item \pyfunc{rotation\_vector\_from\_matrix} switches to its near-$\pi$
+      branch only at $|\theta-\pi|<10^{-2}$. Between roughly $178^\circ$ and
+      $179.4^\circ$ it still uses $\theta/(2\sin\theta)$, where $\sin\theta$
+      is already near zero. Measured error at $179^\circ$: $4.3\times10^{-3}$.
+\end{enumerate}
+
+\begin{caution}[Correcting a comment in \file{so3\_flow\_matcher.py}]
+\label{caution:omega-not-fixed}
+A comment there states that the original clamp was ``fixed''. SigmaFlow does
+narrow it from $[-0.99,0.99]$ to $[-1+10^{-7},1-10^{-7}]$ --- the only line by
+which \file{so3\_utils.py} differs between the two repositories --- and that
+removed a gross error affecting $9\%$ of samples. But the map is still not
+exact, for the two reasons above. ``Improved'' is accurate; ``fixed'' is not.
+
+Magnitude, honestly: relative to a target of norm $\approx2$, this is
+$2\times10^{-7}$ typically and $\approx0.5\%$ at worst. It cannot explain a
+rotational failure measured at $138^\circ$ against a $132^\circ$ random
+baseline, which is an $O(1)$ effect. It is worth fixing for hygiene, not as a
+hypothesis.
+\end{caution}
+
+\subsection{\texttt{sigma\_min} is dead}
+Setting \texttt{sigma\_min} to $999$ versus $0$ changes neither $x_t$ nor
+$u_t$ (relative difference $10^{0}$ only through the reseeded draw; the code
+path never reads the field). \pyfunc{SO3\_FlowMatcher} does not accept the
+argument at all. It is stored, threaded through
+\pyfunc{SigmaFlowGenerator.\_\_init\_\_} and the checkpoint, and never used.
+Keeping it invites the reader to believe the path is stochastic. It should
+either be removed or documented as reserved.
+
+\section{The minimal-change table}
+\label{sec:engine-diff-table}
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{lllll}
+\toprule
+Component & SigmaDock & SigmaFlow & Same? & Should it differ? \\
+\midrule
+graph construction & \multicolumn{2}{l}{identical code} & yes & no \\
+EquiformerV2 & \multicolumn{2}{l}{byte-identical, 17 files} & yes & no \\
+$\ell=1$ readout & \multicolumn{2}{l}{\texttt{narrow(1,1,3)}} & yes & no \\
+parameter count & \multicolumn{2}{l}{identical by construction} & yes & no \\
+mechanical reduction & \multicolumn{2}{l}{same formulae} & yes & no \\
+time encoder & sinusoidal on $t$ & sinusoidal on $t$ & yes & no \\
+\midrule
+time convention & $0$ data, $1$ noise & $0$ source, $1$ data & no & \textbf{yes} \\
+corruption / path & VP-SDE, IGSO(3) & linear, geodesic & no & \textbf{yes} \\
+target & normalised score & velocity & no & \textbf{yes} \\
+$\lambda(t)$ & $\sigma_t^2$ & none & no & \textbf{yes} \\
+sampler & reverse SDE & Euler ODE & no & \textbf{yes} \\
+frame conversion & none needed & $R_t^{\mathsf T}\omega R_t$ & no & \textbf{yes} \\
+\midrule
+source (translation) & $\approx\mathcal N(0,I)$ & $\mathcal N(0,I)$ & yes & --- \\
+source (rotation) & IGSO(3)$(1.5)$ & Haar & \textbf{no} & confounder \\
+loss weights $1{:}0.5$ & with $\lambda$ & without $\lambda$ & yes & \textbf{should have been revisited} \\
+\pyfunc{Omega} clamp & $[-0.99,0.99]$ & $[-1{+}10^{-7},\,\cdot\,]$ & no & yes, but incomplete \\
+\texttt{sigma\_min} & n/a & present, unused & --- & remove \\
+\bottomrule
+\end{tabular}
+\caption{Everything above the first rule is shared; everything between the
+rules is a necessary consequence of the engine swap; everything below is
+neither, and is where the scientific risk lives.}
+\label{tab:minimal-change}
+\end{table}
+
+\section{Findings, categorised}
+\label{sec:engine-findings}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Finding & Category & Severity \\
+\midrule
+$S^2$ / edge-gauge non-determinism, $\approx10\%$ & shared backbone & open, \texttt{PENDING ARC} \\
+log map inexact ($10^{-7}$ typ., $10^{-2}$ max) & shared backbone & low \\
+unit masses in the inertia tensor & shared backbone & by design \\
+\midrule
+rotational source Haar vs.\ IGSO(3)$(1.5)$ & confounder & low--moderate \\
+$1{:}0.5$ weights kept without $\lambda$ & flow-specific & moderate \\
+\texttt{sigma\_min} stored, never read & flow-specific & cosmetic \\
+\midrule
+``fixed'' claim for \pyfunc{Omega} & documentation & corrected here \\
+``forces'' read as physical forces & documentation & corrected here \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+No \emph{diffusion-specific} defect was found in SigmaDock on the paths
+examined, and --- the question this round was really asked to answer --- no
+diffusion-specific scaling factor survived into SigmaFlow. The
+$\sigma$-dependent machinery (\pyfunc{score\_scaling}, \pyfunc{input\_scaling},
+the $\partial_\omega\log f$ table, $\lambda(t)$) is absent from
+\file{diff/} in SigmaFlow, not merely bypassed.
+
+\section{Verdict}
+\label{sec:engine-verdict}
+
+\begin{center}
+\fbox{\parbox{0.92\textwidth}{\textbf{Mostly a clean engine swap, with two
+confounders.}
+
+Layers A and B are shared to the byte. Every layer-C difference is a
+necessary consequence of replacing a score model by a velocity model, and the
+flow-matching construction is internally consistent: the targets are provably
+the derivatives of their own paths, the integrator implements exactly the
+derived ODE, prediction and target transform identically, and no inherited
+$\sigma$-scaling remains.
+
+The two confounders are the rotational source distribution (Haar versus
+IGSO(3) at $\sigma=1.5$, total variation $0.130$) and the translation/rotation
+loss weights, retained from a setting in which a normalisation made them
+comparable and now applied where it does not. Neither invalidates the
+comparison; both must be stated when it is reported.}}
+\end{center}
+
+
 \part{Synthesis}
 \label{part:synthesis}
 % ================================================================

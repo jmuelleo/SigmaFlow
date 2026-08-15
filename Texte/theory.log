@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.1.13)  15 AUG 2026 20:50
+This is pdfTeX, Version 3.141592653-2.6-1.40.28 (TeX Live 2025) (preloaded format=pdflatex 2026.1.13)  15 AUG 2026 21:05
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -726,21 +726,21 @@ l.31 ...ly dangerous points}{32}{subsection.3.3.4}
                                                   % [1
 
 
-] [2] [3] [4] [5] [6])
-\tf@toc=\write5
-\openout5 = `theory.toc'.
-
- [7]
-LaTeX Font Info:    Trying to load font information for T1+zi4 on input line 186.
+] [2] [3] [4] [5] [6]
+LaTeX Font Info:    Trying to load font information for T1+zi4 on input line 281.
  (c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/tex/latex/inconsolata/t1zi4.fd
 File: t1zi4.fd 2018/01/14 T1/zi4 (Inconsolata)
 )
 LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
-(Font)              scaled to size 10.95pt on input line 186.
- [8
+(Font)              scaled to size 10.95pt on input line 281.
+)
+\tf@toc=\write5
+\openout5 = `theory.toc'.
+
+ [7{c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-0.enc}] [8
 
 
-{c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/enc/dvips/inconsolata/i4-t1-0.enc}] [9] [10] [11
+] [9] [10] [11
 
 
 ]
@@ -1719,248 +1719,274 @@ Overfull \hbox (4.95982pt too wide) in paragraph at lines 10497--10500
 []\T1/cmr/m/n/10.95 From step 9 on-ward the ob-ject is a ma-trix in $[]\OT1/cmr/m/n/10.95 (3)$\T1/cmr/m/n/10.95 , and it stays a ma-trix: \T1/zi4/m/n/10.95 compute_losses
  []
 
-[162] [163] [164] [165] [166] [167
-
-]
+[162] [163] [164] [165] [166]
 Chapter 14.
 
-Underfull \hbox (badness 2772) in paragraph at lines 10831--10831
+Overfull \hbox (33.30817pt too wide) in paragraph at lines 10815--10824
+ [] 
+ []
+
+
+Overfull \hbox (30.09105pt too wide) in paragraph at lines 10829--10836
+\T1/cmr/m/n/10.95 Not ``sim-i-lar'': iden-ti-cal. A file-by-file \T1/zi4/m/n/10.95 diff \T1/cmr/m/n/10.95 of the back-bone be-tween \T1/zi4/m/n/10.95 SigmaDock/src_sigmadock_net/
+ []
+
+[167
+
+] [168] [169] [170] [171]
+LaTeX Font Info:    Font shape `T1/zi4/b/n' will be
+(Font)              scaled to size 12.0pt on input line 11181.
+LaTeX Font Info:    Font shape `U/lasy/b/n' in size <5> not available
+(Font)              Font shape `U/lasy/m/n' tried instead on input line 11196.
+LaTeX Font Info:    Font shape `T1/zi4/m/n' will be
+(Font)              scaled to size 10.0pt on input line 11202.
+
+Overfull \hbox (26.76195pt too wide) in paragraph at lines 11196--11223
+ [][] 
+ []
+
+[172] [173] [174
+
+]
+Chapter 15.
+
+Underfull \hbox (badness 2772) in paragraph at lines 11306--11306
 []|\T1/zi4/m/n/10.95 Omega \T1/cmr/m/n/10.95 (an-gle from
  []
 
 
-Overfull \hbox (57.02867pt too wide) in paragraph at lines 10831--10831
+Overfull \hbox (57.02867pt too wide) in paragraph at lines 11306--11306
 []|$[]\OT1/cmr/m/n/10.95 (\OMS/cmsy/m/n/10.95 ^^A\OML/cmm/m/it/10.95 ; \OMS/cmsy/m/n/10.95 ^^@\OT1/cmr/m/n/10.95 1[]10[]\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 1[]10[])$
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10831--10831
+Underfull \hbox (badness 10000) in paragraph at lines 11306--11306
 \T1/cmr/m/n/10.95 (Sig-maFlow);
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10831--10831
+Underfull \hbox (badness 10000) in paragraph at lines 11306--11306
 \OT1/cmr/m/n/10.95 (\OMS/cmsy/m/n/10.95 ^^@\OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 99\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 99)$
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10831--10831
+Underfull \hbox (badness 10000) in paragraph at lines 11306--11306
 \T1/cmr/m/n/10.95 (orig-i-nal Sig-
  []
 
 
-Underfull \hbox (badness 7151) in paragraph at lines 10831--10831
+Underfull \hbox (badness 7151) in paragraph at lines 11306--11306
 \T1/cmr/m/n/10.95 maDock, now
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10831--10831
+Underfull \hbox (badness 10000) in paragraph at lines 11306--11306
 \T1/cmr/m/n/10.95 recog-nised as
  []
 
 
-Underfull \hbox (badness 1062) in paragraph at lines 10831--10831
+Underfull \hbox (badness 1062) in paragraph at lines 11306--11306
 \T1/cmr/m/n/10.95 a bug for the
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10831--10831
+Underfull \hbox (badness 10000) in paragraph at lines 11306--11306
 \T1/cmr/m/n/10.95 flow-matching
  []
 
 
-Overfull \hbox (51.08557pt too wide) in paragraph at lines 10832--10832
+Overfull \hbox (51.08557pt too wide) in paragraph at lines 11307--11307
 []|\T1/zi4/m/n/10.95 rotation_vector_from_matrix| 
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 []|\T1/cmr/m/n/10.95 soft blend
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 \T1/cmr/m/n/10.95 (\T1/zi4/m/n/10.95 isclose\T1/cmr/m/n/10.95 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 [][]\OT1/cmr/m/n/10.95 10[]$\T1/cmr/m/n/10.95 )
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 \T1/cmr/m/n/10.95 near $\OML/cmm/m/it/10.95 ^^R[]\OT1/cmr/m/n/10.95 0$\T1/cmr/m/n/10.95 ;
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 \T1/cmr/m/n/10.95 hard/loose
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 \T1/cmr/m/n/10.95 blend
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10832--10832
+Underfull \hbox (badness 10000) in paragraph at lines 11307--11307
 \T1/cmr/m/n/10.95 ($[][]\OT1/cmr/m/n/10.95 10[]$\T1/cmr/m/n/10.95 )
  []
 
 
-Underfull \hbox (badness 6173) in paragraph at lines 10832--10833
+Underfull \hbox (badness 6173) in paragraph at lines 11307--11308
 []|\T1/cmr/m/n/10.95 avoids $[] \OML/cmm/m/it/10.95 ^^R[]\OT1/cmr/m/n/10.95 0$ \T1/cmr/m/n/10.95 di-vi-sion in $[]\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 R\OT1/cmr/m/n/10.95 ) =
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10833--10833
+Underfull \hbox (badness 10000) in paragraph at lines 11308--11308
 []|\T1/zi4/m/n/10.95 d_log_f_d_omega
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10833--10833
+Underfull \hbox (badness 10000) in paragraph at lines 11308--11308
 \T1/cmr/m/n/10.95 (IGSO(3) score
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10833--10833
+Underfull \hbox (badness 10000) in paragraph at lines 11308--11308
 []|\T1/cmr/m/n/10.95 hard branch
  []
 
 
-Underfull \hbox (badness 1112) in paragraph at lines 10833--10833
+Underfull \hbox (badness 1112) in paragraph at lines 11308--11308
 \T1/cmr/m/n/10.95 at $\OML/cmm/m/it/10.95 ^^[[] < \OT1/cmr/m/n/10.95 0\OML/cmm/m/it/10.95 :\OT1/cmr/m/n/10.95 3$\T1/cmr/m/n/10.95 :
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10833--10833
+Underfull \hbox (badness 10000) in paragraph at lines 11308--11308
 \T1/cmr/m/n/10.95 ap-prox-i-ma-tion
  []
 
 
-Overfull \hbox (40.13559pt too wide) in paragraph at lines 10834--10834
+Overfull \hbox (40.13559pt too wide) in paragraph at lines 11309--11309
 []|\T1/zi4/m/n/10.95 get_fragment_mass_inertia| 
  []
 
 
-Overfull \hbox (47.1954pt too wide) in paragraph at lines 10834--10834
+Overfull \hbox (47.1954pt too wide) in paragraph at lines 11309--11309
 []\OT1/cmr/m/n/10.95 (10[] [](\OML/cmm/m/it/10.95 I\OT1/cmr/m/n/10.95 )\OML/cmm/m/it/10.95 =\OT1/cmr/m/n/10.95 3\OML/cmm/m/it/10.95 ; \OT1/cmr/m/n/10.95 10[])$\T1/cmr/m/n/10.95 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10834--10834
+Underfull \hbox (badness 10000) in paragraph at lines 11309--11309
 \T1/cmr/m/n/10.95 plus $\OT1/cmr/m/n/10.95 +10[]\OML/cmm/m/it/10.95 I$
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10835--10835
+Underfull \hbox (badness 10000) in paragraph at lines 11310--11310
 []|\T1/zi4/m/n/10.95 omega$\OT1/cmr/m/n/10.95 =
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10835--10835
+Underfull \hbox (badness 10000) in paragraph at lines 11310--11310
 []\OT1/cmr/m/n/10.95 (\OML/cmm/m/it/10.95 dW\OT1/cmr/m/n/10.95 )$
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10835--10835
+Underfull \hbox (badness 10000) in paragraph at lines 11310--11310
 \T1/cmr/m/n/10.95 clamped en-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10835--10835
+Underfull \hbox (badness 10000) in paragraph at lines 11310--11310
 \T1/cmr/m/n/10.95 try-wise to
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10836--10836
+Underfull \hbox (badness 10000) in paragraph at lines 11311--11311
 []|\T1/zi4/m/n/10.95 d_f_igso3_d_omega\T1/cmr/m/n/10.95 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10836--10836
+Underfull \hbox (badness 10000) in paragraph at lines 11311--11311
 []|\T1/cmr/m/n/10.95 fixed trun-ca-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10836--10836
+Underfull \hbox (badness 10000) in paragraph at lines 11311--11311
 \T1/cmr/m/n/10.95 terms; an-gle
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10836--10836
+Underfull \hbox (badness 10000) in paragraph at lines 11311--11311
 \T1/cmr/m/n/10.95 grid ex-cludes
  []
 
 
-Underfull \hbox (badness 6542) in paragraph at lines 10838--10838
+Underfull \hbox (badness 6542) in paragraph at lines 11313--11313
 \OML/cmm/m/it/10.95 r[]\OT1/cmr/m/n/10.95 ]$\T1/cmr/m/n/10.95 , degree-
  []
 
 
-Underfull \hbox (badness 1062) in paragraph at lines 10838--10838
+Underfull \hbox (badness 1062) in paragraph at lines 11313--11313
 \T1/cmr/m/n/10.95 ish-ing (with 2
  []
 
 
-Underfull \hbox (badness 3364) in paragraph at lines 10838--10838
+Underfull \hbox (badness 3364) in paragraph at lines 11313--11313
 \T1/cmr/m/n/10.95 deriva-tives) at
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 []|\T1/cmr/m/n/10.95 Assorted \T1/zi4/m/n/10.95 vee\T1/cmr/m/n/10.95 ,
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 []|\T1/cmr/m/it/10.95 print\T1/cmr/m/n/10.95 -only
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 \T1/cmr/m/n/10.95 warn-ings (not
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 \T1/cmr/m/n/10.95 raised ex-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 \T1/cmr/m/n/10.95 cep-tions) on
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 \T1/cmr/m/n/10.95 a non-skew-
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10839--10839
+Underfull \hbox (badness 10000) in paragraph at lines 11314--11314
 \T1/cmr/m/n/10.95 symmetric
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 10840--10840
+Underfull \hbox (badness 10000) in paragraph at lines 11315--11315
 \T1/cmr/m/n/10.95 caught up-
  []
 
-ignored error: Infinite glue shrinkage found in box being split [168
+ignored error: Infinite glue shrinkage found in box being split [175
 
 ]
-Overfull \hbox (18.76921pt too wide) in paragraph at lines 10848--10866
+Overfull \hbox (18.76921pt too wide) in paragraph at lines 11323--11341
 \T1/cmr/m/n/10.95 Every per-fragment or per-molecule re-duc-tion en-coun-tered in Chap-ters [][]9[][] and [][]12[][] (net force/torque,
  []
 
-[169]
-Overfull \hbox (335.1626pt too wide) in paragraph at lines 10891--10905
+[176]
+Overfull \hbox (335.1626pt too wide) in paragraph at lines 11366--11380
  [] 
  []
 
-[170] [171] [172
+[177] [178] [179
 
 ] (./theory.aux)
  ***********
@@ -1968,21 +1994,21 @@ LaTeX2e <2025-11-01>
 L3 programming layer <2025-12-29>
  ***********
 Package rerunfilecheck Info: File `theory.out' has not changed.
-(rerunfilecheck)             Checksum: E2EA5CE3030A72F27FE59091C9926FA6;56446.
+(rerunfilecheck)             Checksum: E75267EAFC13565CCC4DF71FCD902D92;59801.
  ) 
 Here is how much of TeX's memory you used:
- 29993 strings out of 469519
- 596572 string characters out of 5468256
- 1027432 words of memory out of 5000000
- 57380 multiletter control sequences out of 15000+600000
- 675949 words of font info for 195 fonts, out of 8000000 for 9000
+ 30115 strings out of 469519
+ 598557 string characters out of 5468256
+ 1029792 words of memory out of 5000000
+ 57447 multiletter control sequences out of 15000+600000
+ 678941 words of font info for 207 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
  106i,14n,108p,616b,1279s stack positions out of 10000i,1000n,20000p,200000b,200000s
- <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbi1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0800.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2074.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1440.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2488.600pk><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4b.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4r.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmex8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmss8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
-Output written on theory.pdf (174 pages, 1212767 bytes).
+ <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1000.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbi1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm0800.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2074.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1000.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1200.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1440.600pk> <c:/Users/julia/AppData/Roaming/TinyTeX/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2488.600pk><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4b.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/inconsolata/Inconsolata-zi4r.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmex8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmib10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cmextra/cmmib8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmss8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/euler/eufm10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msam10.pfb><c:/Users/julia/AppData/Roaming/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/symbols/msbm10.pfb>
+Output written on theory.pdf (181 pages, 1281192 bytes).
 PDF statistics:
- 4335 PDF objects out of 5155 (max. 8388607)
- 3487 compressed objects within 35 object streams
- 793 named destinations out of 1000 (max. 500000)
- 1613 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 4555 PDF objects out of 5155 (max. 8388607)
+ 3634 compressed objects within 37 object streams
+ 841 named destinations out of 1000 (max. 500000)
+ 1725 words of extra memory for PDF output out of 10000 (max. 10000000)
 
