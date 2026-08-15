@@ -5670,13 +5670,24 @@ reindexing, and for the rigid-motion group $SE(3)$ acting by
 $\Phi_{(Q,b)}(\mathbf x)_i = Q\mathbf x_i+b$, \Cref{def:equivariance-full}
 specialises to exactly the two requirements stated informally above; for
 the rotational part of \eqref{eq:network-signature-scratch}, using the
-world/body-frame bookkeeping fixed in \Cref{sec:so3-trivialisation}
-(equivariance of the \emph{body-frame} rotational output under a
-\emph{world-frame} rotation of the whole scene means the body-frame output
-is left \emph{unchanged}, since it is expressed relative to the fragment's
-own, co-rotating frame --- an important, easily-misstated point, discussed
-again with the network's actual output convention in
-\Cref{sec:equiformer-readout}).
+world/body-frame bookkeeping fixed in \Cref{sec:so3-trivialisation}. Under
+the action $R\mapsto QR$ on an \emph{absolute} fragment orientation, a
+body-frame rotational output is left \emph{unchanged}, since it is expressed
+relative to the fragment's own, co-rotating frame.
+
+\begin{caution}[This is the textbook case, and it is \emph{not} SigmaFlow's]
+\label{caution:absolute-vs-delta}
+The invariance just stated holds for $R\mapsto QR$. SigmaFlow's $R_t$ is not
+an absolute orientation but a \emph{delta} rotation measured against the
+reference structure \texttt{pos\_0}, which rotates along with the scene; the
+group therefore acts by conjugation $R_t\mapsto QR_tQ^{\mathsf T}$, and the
+body-frame output is \emph{not} invariant but transforms by conjugation too.
+This is derived from the code and measured in
+\Cref{sec:head-group-action}; the general lesson --- ``body-frame'' fixes the
+relation to $\dot R$, not the transformation law --- is stated in
+\Cref{caution:head-correction}. The network's own output convention is
+discussed in \Cref{sec:equiformer-readout}.
+\end{caution}
 
 \begin{proposition}[Why equivariance, not merely invariance, is the right constraint]
 \label{prop:equivariant-invariant-scratch}
@@ -10244,6 +10255,551 @@ recipe.
 \clearpage
 
 % ================================================================
+\chapter{The Output Heads, Audited}
+\label{chap:output-heads}
+
+This chapter answers one question for each quantity the generative process
+consumes: \emph{what is this object, in which space does it live, in which
+frame is it expressed, and how must it transform under a global rotation?}
+
+The method is deliberately narrow. No frame label is taken from a comment, a
+variable name, or an earlier passage of this document --- several of those
+have already been shown to disagree with each other. Every claim below is
+first derived from the operations the code actually performs, and then
+confirmed numerically by applying a random $Q\in SO(3)$ to a real input graph
+and comparing the two sides of the candidate transformation law. Where the
+derivation and the measurement disagree, the measurement decides what the
+code does, and the disagreement is recorded rather than smoothed over.
+
+\begin{caution}[Three heads were expected; the code has one]
+\label{caution:one-head-not-three}
+The natural mental model of a rigid-fragment docking network --- one head for
+translation, one for rotation, one for torsion --- does not describe
+SigmaDock or SigmaFlow. \pyfunc{EquiformerV2.forward} has exactly one
+geometric output:
+\[
+\texttt{forces}\in\RR^{N\times3},
+\]
+one $3$-vector per \emph{atom}. Translation and rotation are not predicted;
+they are \emph{derived} from that single field by classical rigid-body
+mechanics, outside the network. Torsion is not predicted at all. The rest of
+this chapter is organised around that fact.
+\end{caution}
+
+\section{Locating the heads}
+\label{sec:heads-locate}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Output & Where it is produced & Kind \\
+\midrule
+per-atom pseudo-force & \file{net/model.py}::\pyfunc{EquiformerV2.forward} & network \\
+translation & \file{diff/sigma\_flow\_generator.py}::\pyfunc{linear\_mechanics} & derived \\
+rotation & same, then \pyfunc{newton\_maruyama}, then \pyfunc{\_compute\_vector\_field} & derived \\
+torsion & --- & does not exist \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A repository-wide search for \texttt{torsion} and \texttt{dihedral} returns
+$160$ hits, all of them in \file{chem/} (fragmentation and preprocessing),
+\file{config.py}, \file{data.py}, and one comment in \file{net/\_\_init\_\_.py}
+labelling edge type $3$. In \file{diff/} the count is zero, and in
+\file{net/} the only occurrence is that comment. There is no torsion head to
+audit.
+
+\begin{remark}[What replaced the torsion head]
+\label{rem:torsion-is-fragmentation}
+Torsional flexibility has not been dropped; it has been moved out of the
+model and into the state space. \pyfunc{detect\_torsional\_bonds} cuts the
+ligand at its rotatable bonds into $F$ rigid fragments, and each fragment
+carries its own $SE(3)$ element. A torsion about a cut bond is then not an
+angle the network predicts, but the \emph{relative} rigid motion of the two
+fragments on either side --- already representable by the existing per-fragment
+outputs. This is why the state space is $SE(3)^F$ and not
+$SE(3)\times\mathbb T^k$: the torsional degrees of freedom were converted
+into rigid-body ones at the data-processing stage.
+
+The price is that bond lengths and angles across a cut are no longer
+constrained by construction, which is exactly what the triangulation prior of
+\Cref{chap:sigmadock} exists to repair.
+\end{remark}
+
+\section{The tensor entering the heads}
+\label{sec:heads-input}
+
+Only one tensor leaves the backbone.
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Property & Value \\
+\midrule
+Object & \pyfunc{SO3\_Embedding}, attribute \texttt{.embedding} \\
+Shape & \shape{N, (L+1)\textasciicircum 2, C} $=$ \shape{N, 16, 128} at defaults \\
+Level & node (per atom); edges are consumed, not returned \\
+$(\ell,m)$ layout & flattened, $\ell$-major: index $\ell^2+\ell+m$ \\
+$L$ & \texttt{l\_max\_list} $=(3,)$ \\
+$m$ cap & \texttt{m\_max\_list} $=(2,)$, applied in the \emph{edge} frame only \\
+Frame & global (world); the edge frame exists only inside a block \\
+Last op before readout & \pyfunc{self.norm}, then \pyfunc{self.force\_block} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The index map $\ell^2+\ell+m$ gives, for $L=3$:
+
+\begin{center}
+\begin{tabular}{lccccc}
+\toprule
+$\ell$ & $m$ range & indices & count & running total & role \\
+\midrule
+$0$ & $0$ & $0$ & $1$ & $1$ & scalars \\
+$1$ & $-1..1$ & $1,2,3$ & $3$ & $4$ & \textbf{the readout} \\
+$2$ & $-2..2$ & $4..8$ & $5$ & $9$ & internal only \\
+$3$ & $-3..3$ & $9..15$ & $7$ & $16$ & internal only \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\pyfunc{force\_block} is a further \pyfunc{SO2EquivariantGraphAttention}
+--- a full attention block, not a linear layer --- configured with one output
+channel. Its output is sliced by \texttt{narrow(1, 1, 3)}: axis $1$, offset
+$1$, length $3$, i.e.\ exactly indices $1,2,3$, exactly $\ell=1$. Degrees
+$\ell=0,2,3$ are computed and then discarded at the very last step.
+
+\section{Translation}
+\label{sec:head-translation}
+
+\paragraph{Mathematical requirement.} A translational velocity is a polar
+vector: under a global rotation of the scene it must satisfy
+$v(Qx)=Q\,v(x)$.
+
+\paragraph{What the code does.} \pyfunc{linear\_mechanics} sums the per-atom
+field over each fragment, and \pyfunc{newton\_maruyama} divides by the atom
+count:
+\[
+F_f=\sum_{i\in f}f_i,
+\qquad
+v_f^{\mathrm{tr}}=\frac{F_f}{m_f},\qquad m_f=|f| .
+\]
+That is the whole translation head. There is no projection layer, no
+magnitude/direction factorisation, no separate $\ell=0$ scaling, and no
+learned pooling --- an unweighted sum and a division by an integer. In
+particular the answer to ``is $v$ built as $s\,u/\|u\|$ from an $\ell=0$
+magnitude and a normalised $\ell=1$ direction?'' is \textbf{no}, for
+translation and for rotation alike. Every head in this codebase is linear in
+the per-atom field.
+
+The centre of mass enters only through \pyfunc{get\_fragment\_com\_and\_rot},
+and only as the pivot for the torque; the net force does not use it.
+
+\begin{codebox}
+\textbf{Where does it live?} \\
+$v^{\mathrm{tr}}_f\in\RR^3$, one per fragment. \\
+\textbf{Frame:} world, the same Cartesian frame as the input coordinates
+(after pocket-COM subtraction and division by
+\texttt{dimensional\_scale}). \\
+\textbf{Transformation law:} $v^{\mathrm{tr}}(Qx)=Q\,v^{\mathrm{tr}}(x)$. \\
+\textbf{Measured:} $4.5\times10^{-15}$ relative, float64
+(\Cref{tab:head-residuals}).
+\end{codebox}
+
+\section{Rotation}
+\label{sec:head-rotation}
+
+This is the head that matters, and the one where the labels in the source
+have historically been wrong.
+
+\subsection{The two angular velocities, restated next to the code}
+
+For a curve $R(\tau)$ in $SO(3)$ there are two ways to write the tangent, and
+they are distinguished by the \emph{equation}, never by a label:
+\begin{align}
+\dot R &= R\,\widehat{\omega^{\mathrm{bd}}}
+&&\text{body coordinates,} \label{eq:head-body}\\
+\dot R &= \widehat{\omega^{\mathrm{sp}}}\,R
+&&\text{spatial (world) coordinates,} \label{eq:head-spatial}
+\end{align}
+related by
+\begin{equation}
+\label{eq:head-adjoint}
+\omega^{\mathrm{sp}} = R\,\omega^{\mathrm{bd}},
+\qquad\text{equivalently}\qquad
+\widehat{\omega^{\mathrm{sp}}} = R\,\widehat{\omega^{\mathrm{bd}}}\,R^{\mathsf T}.
+\end{equation}
+The second form of \eqref{eq:head-adjoint} is the one the code uses, because
+it stores $\widehat\omega$, not $\omega$. Conjugation by a rotation preserves
+skew-symmetry, so both sides are genuine $\so(3)$ elements.
+
+Two consumption sites in SigmaFlow fix which of
+\eqref{eq:head-body}--\eqref{eq:head-spatial} the loss and the sampler expect,
+and they agree:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Site & Code & Implies \\
+\midrule
+target & \pyfunc{calc\_rot\_vector\_field}: $\log(R_t^{\mathsf T}R_1)/(1-t)$ & body \\
+integrator & \pyfunc{euler\_step}: \texttt{R\_t @ exp(v\_t*dt)} & body \\
+\bottomrule
+\end{tabular}
+\end{center}
+$R_{\text{next}}=R_t\exp(v\,dt)$ is right multiplication, i.e.\ $\dot R=Rv$,
+i.e.\ \eqref{eq:head-body}. The docstring of \pyfunc{calc\_rot\_vector\_field}
+calls this ``right trivialised''; \Cref{sec:so3-trivialisation} of this
+document calls the same object left-trivialised. Both names are in
+circulation and neither is used here as evidence --- \eqref{eq:head-body} is
+the definition, the label is not.
+
+\subsection{The trace, operation by operation}
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+\# & Operation & Code & Shape \\
+\midrule
+1 & backbone features & \pyfunc{blocks}, \pyfunc{norm} & \shape{N,16,128} \\
+2 & attention readout & \pyfunc{force\_block} & \shape{N,16,1} \\
+3 & select $\ell=1$ & \texttt{narrow(1,1,3)} & \shape{N,3,1} \\
+4 & flatten & \texttt{view(-1,3)} & \shape{N,3} \\
+5 & sign flip, ligand select & \pyfunc{\_compute\_forces}: \texttt{-eps[idx]} & \shape{N\_L,3} \\
+6 & torque about COM & $\tau_f=\sum_{i\in f}(x_i-c_f)\times f_i$ & \shape{F,3} \\
+7 & inertia solve & $\Delta W=I_f^{-1}\tau_f$ & \shape{F,3} \\
+8 & hat map & $\widehat{\Delta W}$, then clamp to $\pm10^3$ & \shape{F,3,3} \\
+9 & \textbf{frame conversion} & $R_t^{\mathsf T}\,\widehat{\Delta W}\,R_t$ & \shape{F,3,3} \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Step 9 is the only place a rotation matrix touches the rotational output. It
+lives in \pyfunc{\_compute\_vector\_field} and it is the ``frame fix''. It
+happens \emph{after} aggregation, on the per-fragment quantity, and it uses
+$R_t$ --- the flow-matching path variable --- not an edge frame and not a
+learned rotation.
+
+Reading \eqref{eq:head-adjoint} right to left: steps 6--8 produce
+$\widehat{\omega^{\mathrm{sp}}}$, and step 9 computes
+$R_t^{\mathsf T}\widehat{\omega^{\mathrm{sp}}}R_t=\widehat{\omega^{\mathrm{bd}}}$.
+So the head does produce the body-frame quantity that steps ``target'' and
+``integrator'' above require. The derivation and the code agree.
+
+\subsection{$\RR^3$ or $\so(3)$?}
+
+Both, at different points, and the code changes representation twice:
+\begin{itemize}
+\item Steps 6--7 hold $\tau_f,\Delta W\in\RR^3$: three numbers, an ordinary
+      Cartesian triple.
+\item Step 8 applies the hat map
+      $\widehat{\cdot}:\RR^3\to\so(3)$, a linear isomorphism onto the
+      skew-symmetric $3\times3$ matrices, with $\widehat v\,w=v\times w$.
+\item From step 9 onward the object is a matrix in $\so(3)$, and it stays a
+      matrix: \pyfunc{compute\_losses} takes a Frobenius norm over the last
+      two axes, and \pyfunc{euler\_step} feeds it to the matrix exponential.
+\end{itemize}
+So the \emph{stored} object is a $3\times3$ matrix, and the loss is computed
+on matrices. Since $\|\widehat a-\widehat b\|_F^2=2\|a-b\|_2^2$, the matrix
+Frobenius loss equals twice the vector loss --- a constant factor, absorbed
+into the loss weight, but worth knowing when comparing loss magnitudes across
+implementations.
+
+\subsection{Rotation or rotation rate?}
+
+The head does not predict $R_{\text{new}}$. Every quantity from step 6 onward
+lives in a tangent space: $\so(3)$, the Lie algebra, not the group. The
+network output is a \emph{rate}, integrated by
+$R_{\text{next}}=R_t\exp(v\,dt)$. It is only a \emph{velocity} rather than a
+score because of how the target is built --- and that distinction, together
+with the units and scaling question, is the subject of the next round, not
+this one.
+
+\subsection{The group action is conjugation, not left multiplication}
+\label{sec:head-group-action}
+
+Here the standard textbook statement and this codebase part company, and the
+difference is not cosmetic.
+
+\paragraph{Mathematical requirement.} If a global rotation acts on fragment
+orientations by $R\mapsto QR$, then a body-frame angular velocity is
+\emph{invariant}: from \eqref{eq:head-body},
+$\dot R\mapsto Q\dot R$ and $R\mapsto QR$ give
+$\widehat{\omega^{\mathrm{bd}}}=R^{\mathsf T}\dot R\mapsto
+R^{\mathsf T}Q^{\mathsf T}Q\dot R=R^{\mathsf T}\dot R$,
+unchanged. A spatial one transforms as
+$\omega^{\mathrm{sp}}\mapsto Q\omega^{\mathrm{sp}}$. That is the standard
+dichotomy, and it is what this document asserted before this audit.
+
+\paragraph{What SigmaFlow actually implements.} $R_t$ is not a fragment's
+absolute orientation. It is a \emph{delta} rotation relative to the reference
+structure \texttt{pos\_0}, applied about the fragment COM by
+\pyfunc{get\_transformations\_from\_rototranslations}:
+\begin{equation}
+\label{eq:head-pose-map}
+x^{(t)}_i = \Delta R_f\,(x^{(0)}_i-c_f) + c_f + \Delta T_f,
+\qquad \Delta R_f = R_t R_1^{\mathsf T} .
+\end{equation}
+Two facts about \eqref{eq:head-pose-map} settle the group action:
+\begin{enumerate}
+\item \texttt{pos\_0} is an \emph{input} to the network --- it is read by
+      \pyfunc{compute\_edge\_embedding} for the boundary edges --- so a global
+      rotation of the scene rotates it too: $x^{(0)}\mapsto Qx^{(0)}$,
+      $c_f\mapsto Qc_f$.
+\item \pyfunc{get\_fragment\_com\_and\_rot} returns $R_1=I_3$
+      \emph{unconditionally}, with the comment ``Rotation matrix is identity:
+      it is (and should be) independent in the vector field.''
+\end{enumerate}
+Substituting $x^{(0)}\mapsto Qx^{(0)}$, $c_f\mapsto Qc_f$ into
+\eqref{eq:head-pose-map} and demanding $x^{(t)}\mapsto Qx^{(t)}$ forces
+\begin{equation}
+\label{eq:head-conjugation}
+\boxed{\;R_t\;\longmapsto\;Q\,R_t\,Q^{\mathsf T}\;}
+\end{equation}
+and not $R_t\mapsto QR_t$. This is also the only action compatible with
+$R_1\equiv I$: conjugation fixes the identity, $QIQ^{\mathsf T}=I$, whereas
+left multiplication does not, $QI=Q\ne I$.
+
+Measured directly against \pyfunc{\_apply\_transformations}, asking which
+substitution reproduces $Q\,x^{(t)}$:
+\begin{center}
+\begin{tabular}{lr}
+\toprule
+Substitution & relative residual \\
+\midrule
+$R_t\mapsto QR_t$ & $1.06$ \\
+$R_t\mapsto QR_tQ^{\mathsf T}$ & $3.7\times10^{-16}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\begin{proposition}[The body-frame output is \emph{not} invariant here]
+\label{prop:head-not-invariant}
+Under \eqref{eq:head-conjugation},
+\[
+\widehat{\omega^{\mathrm{bd}}}
+= R_t^{\mathsf T}\widehat{\omega^{\mathrm{sp}}}R_t
+\;\longmapsto\;
+(QR_tQ^{\mathsf T})^{\mathsf T}\,(Q\widehat{\omega^{\mathrm{sp}}}Q^{\mathsf T})\,(QR_tQ^{\mathsf T})
+= Q\,\bigl(R_t^{\mathsf T}\widehat{\omega^{\mathrm{sp}}}R_t\bigr)\,Q^{\mathsf T},
+\]
+i.e.\ it transforms by conjugation, equivalently
+$\omega^{\mathrm{bd}}\mapsto Q\,\omega^{\mathrm{bd}}$ after the vee map.
+It is \textbf{not} left unchanged.
+\end{proposition}
+
+\begin{caution}[Correction to \Cref{sec:two-requirements}]
+\label{caution:head-correction}
+An earlier passage of this document stated that ``equivariance of the
+body-frame rotational output under a world-frame rotation of the whole scene
+means the body-frame output is left \emph{unchanged}, since it is expressed
+relative to the fragment's own, co-rotating frame''. That is correct for the
+action $R\mapsto QR$ on an \emph{absolute} orientation. It is false for
+SigmaFlow, whose $R_t$ is a delta rotation against a co-rotating reference
+and therefore conjugates. Measured: the invariance hypothesis fails at
+$1.20$ relative, the conjugation hypothesis holds at $2.3\times10^{-15}$.
+
+The lesson generalises: ``body-frame'' fixes the relation between the tangent
+vector and $\dot R$; it does \emph{not} by itself determine the
+transformation law, because that also depends on how the group acts on $R$.
+Both must be stated.
+\end{caution}
+
+Crucially, the target transforms the same way. With
+$u_t^R=\log(R_t^{\mathsf T}R_1)/(1-t)$ and $R_1=I$ preserved by conjugation,
+$u_t^R\mapsto Q\,u_t^R\,Q^{\mathsf T}$ --- measured $8.3\times10^{-15}$.
+Prediction and target therefore transform identically, the Frobenius norm of
+their difference is invariant, and the loss is a well-defined function on the
+quotient. \textbf{The frame fix is correct.}
+
+\begin{codebox}
+\textbf{Where does it live?} \\
+$\widehat{\omega^{\mathrm{bd}}}\in\so(3)$, stored as \shape{F,3,3};
+equivalently $\omega^{\mathrm{bd}}\in\RR^3$ via the vee map. \\
+\textbf{Frame:} body, in the sense $\dot R=R\widehat\omega$
+\eqref{eq:head-body} --- fixed by \pyfunc{euler\_step}'s right
+multiplication, not by any comment. \\
+\textbf{Transformation law:}
+$\widehat\omega\mapsto Q\widehat\omega Q^{\mathsf T}$ under
+$R_t\mapsto QR_tQ^{\mathsf T}$, \emph{not} invariant. \\
+\textbf{Measured:} $2.3\times10^{-15}$ relative, float64.
+\end{codebox}
+
+\section{Numerical verification}
+\label{sec:head-numerics}
+
+\paragraph{Setup.} Two real complexes from the dummy set, $N=887$ nodes,
+$E=4564$ edges; randomly initialised weights with
+\texttt{zero\_init\_last=False} (the default \texttt{True} zeroes the final
+layer, so the network would output exactly $0$ and every equivariance test
+would pass vacuously); \pyfunc{eval} mode, all dropout at $0$; float64
+throughout the geometric path; $12$ Haar-random rotations per row; residuals
+are $\max|a-b|/\max(\|a\|_\infty,\|b\|_\infty)$.
+
+Equivariance is a property of the architecture, not of the weights, so no
+trained checkpoint is needed --- and a trained one would prove less, since a
+low loss is not evidence of a correct frame.
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{llr}
+\toprule
+Quantity & Hypothesis tested & Residual \\
+\midrule
+\texttt{forces} & $f(Qx)=Q\,f(x)$ & $5.3\times10^{-15}$ \\
+\texttt{forces} & $f(Qx)=f(x)$ & $1.47$ \\
+\texttt{forces} & $f(Qx)=PQP^{\mathsf T}f(x)$ & $1.49$ \\
+\midrule
+\texttt{total\_force} & $F\mapsto QF$ & $4.5\times10^{-15}$ \\
+\texttt{total\_torque} & $\tau\mapsto Q\tau$ & $1.3\times10^{-15}$ \\
+inertia & $I\mapsto QIQ^{\mathsf T}$ & $8.6\times10^{-16}$ \\
+\texttt{delta\_W} & $\Delta W\mapsto Q\,\Delta W$ & $2.4\times10^{-15}$ \\
+\texttt{omega} & $\widehat\omega\mapsto Q\widehat\omega Q^{\mathsf T}$ & $2.6\times10^{-15}$ \\
+\midrule
+\texttt{pred\_u\_t\_R} & invariant & $1.20$ \\
+\texttt{pred\_u\_t\_R} & $u\mapsto QuQ^{\mathsf T}$ & $2.3\times10^{-15}$ \\
+\texttt{u\_t\_R} (target) & $u\mapsto QuQ^{\mathsf T}$ & $8.3\times10^{-15}$ \\
+\bottomrule
+\end{tabular}
+\caption{Frame audit. Rows use the gate activation, which is exactly
+equivariant; see \Cref{sec:head-s2-caveat} for the production configuration.
+$P$ is the permutation $xyz\mapsto yzx$.}
+\label{tab:head-residuals}
+\end{table}
+
+\paragraph{The permutation hypothesis, and why it had to be tested.}
+In the \texttt{e3nn} convention the real $\ell=1$ spherical harmonics are
+ordered $(m=-1,0,+1)\propto(y,z,x)$, not $(x,y,z)$. Had the readout inherited
+that ordering while the mechanics downstream read the three numbers as
+Cartesian $xyz$, the composed map would transform as $PQP^{\mathsf T}$ and
+the bug would be nearly invisible: the output would still be a $3$-vector of
+plausible magnitude, and the loss would still decrease. It is refuted at
+$1.49$.
+
+The reason it is refuted closes a loop left open earlier: \pyfunc{init\_edge\_rot\_mat}
+builds \texttt{rot\_inv} with columns $[n_z,n_x,n_y]$, aligning the edge to
+$e_2$ --- the \emph{second} axis. In the $(y,z,x)$ ordering the second slot is
+exactly the $m=0$ slot, which is what the eSCN reduction requires. The
+apparently odd choice of $e_2$ over $e_1$ and the apparently odd $(y,z,x)$
+ordering are the same convention, and they cancel. What last round recorded
+as a bare empirical fact now has its reason.
+
+\section{A defect found on the way}
+\label{sec:head-s2-caveat}
+
+The first pass of this audit produced residuals near $10^{-1}$ for
+\emph{every} hypothesis, too noisy to separate ``exact'' from
+``approximate''. The cause turned out to be worth reporting in its own right.
+
+\pyfunc{init\_edge\_rot\_mat} chooses the axis perpendicular to each edge by
+\texttt{torch.rand\_like}, freshly, on every forward pass. The eSCN
+construction is supposed to be indifferent to that choice: different choices
+differ by a rotation about the edge axis, and the $SO(2)$ convolution
+commutes with it. Measured on the production configuration
+($128$ channels, $6$ layers, $L=3$, $m_{\max}=2$, $14.98$\,M parameters), it
+is not indifferent:
+
+\begin{center}
+\begin{tabular}{lrr}
+\toprule
+Configuration & gauge dependence & equivariance error \\
+\midrule
+S$^2$ activation (production default) & $1.06\times10^{-1}$ & $9.4\times10^{-2}$ \\
+gate activation & $1.4\times10^{-15}$ & $5.3\times10^{-15}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Swapping only the activation moves both numbers by fourteen orders of
+magnitude, which localises the defect precisely. In
+\pyfunc{SO2EquivariantGraphAttention.forward} the S$^2$ activation sits at
+line~$270$, between \texttt{\_rotate} (line~$250$) and \texttt{\_rotate\_inv}
+(line~$324$) --- that is, \emph{inside the edge frame}. It evaluates features
+on a fixed grid on the sphere, and that grid is not invariant under rotation
+about the edge axis. The arbitrary azimuthal choice therefore moves the
+features relative to the grid, and the discretisation error does not cancel.
+
+Two consequences follow, and neither is a rounding issue:
+\begin{itemize}
+\item \textbf{The forward pass is not deterministic.} In \pyfunc{eval} mode,
+      with all dropout disabled, two evaluations of the identical input differ
+      by about $10\%$ relative. During ODE sampling a fresh gauge is drawn at
+      every step.
+\item \textbf{$SO(3)$ equivariance is broken at the same order.} About $10\%$,
+      in the shipped configuration.
+\end{itemize}
+
+\begin{caution}[Scope, and what is \emph{not} claimed]
+\label{caution:s2-scope}
+These numbers are measured at \textbf{random initialisation}. Whether
+training suppresses the effect --- by learning features that are smooth enough
+on the grid for aliasing to be small --- is not established here, and cannot
+be: the only checkpoints available locally are $15$-step archives. Measuring
+this on a trained checkpoint is marked \texttt{PENDING ARC VALIDATION}.
+
+It is also not claimed that this explains the rotation-channel failure. It is
+a quantified, reproducible defect in the shipped configuration, on the path
+the rotational output travels, and it is a candidate --- nothing stronger
+until it is measured on trained weights. Note also that it affects SigmaDock
+and SigmaFlow \emph{identically}, since both use the same backbone, so it
+cannot by itself explain a \emph{difference} between them.
+\end{caution}
+
+\section{Summary tables}
+\label{sec:head-tables}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{llllll}
+\toprule
+Head & Backbone input & Irreps used & Intermediate & Final & Geometric type \\
+\midrule
+translation & \shape{N,16,128} & $\ell=1$ only & \shape{N,3} & \shape{F,3} & polar vector \\
+rotation & \shape{N,16,128} & $\ell=1$ only & \shape{N,3} & \shape{F,3,3} & $\so(3)$ element \\
+torsion & --- & --- & --- & --- & does not exist \\
+\bottomrule
+\end{tabular}
+\caption{Both heads read the same three numbers per atom. They differ only in
+how those numbers are pooled: sum for translation, cross-product moment for
+rotation.}
+\label{tab:head-shapes}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\begin{tabular}{lllr}
+\toprule
+Quantity & Coordinates & Under global $Q$ & Residual \\
+\midrule
+per-atom force & world & $f\mapsto Qf$ & $5.3\times10^{-15}$ \\
+translation & world & $v\mapsto Qv$ & $4.5\times10^{-15}$ \\
+torque & world & $\tau\mapsto Q\tau$ & $1.3\times10^{-15}$ \\
+$\widehat{\omega^{\mathrm{sp}}}$ (\texttt{omega}) & world & $\widehat\omega\mapsto Q\widehat\omega Q^{\mathsf T}$ & $2.6\times10^{-15}$ \\
+$\widehat{\omega^{\mathrm{bd}}}$ (\texttt{pred\_u\_t\_R}) & body & $\widehat\omega\mapsto Q\widehat\omega Q^{\mathsf T}$ & $2.3\times10^{-15}$ \\
+torsion & --- & --- & --- \\
+\bottomrule
+\end{tabular}
+\caption{Frames. The last two rows carry the point of this chapter: the
+body-frame quantity transforms \emph{by the same law} as the world-frame one,
+because the group acts on $R_t$ by conjugation
+\eqref{eq:head-conjugation}. Body-frame does not imply invariant.}
+\label{tab:head-frames}
+\end{table}
+
+\section{Open items}
+\label{sec:head-open}
+
+Deliberately left for the next round, to keep this one narrow:
+\begin{itemize}
+\item S$^2$ aliasing on a trained checkpoint --- \texttt{PENDING ARC VALIDATION}.
+\item Score-versus-velocity semantics, units, and the
+      \texttt{dimensional\_scale} bookkeeping.
+\item Whether the $\pm10^3$ clamp on $\widehat{\Delta W}$ in
+      \pyfunc{newton\_maruyama} ever binds in practice, and what it does to
+      the gradient when it does.
+\item The inertia eigenvalue clamp, likewise.
+\end{itemize}
+
+
 \part{Synthesis}
 \label{part:synthesis}
 % ================================================================
