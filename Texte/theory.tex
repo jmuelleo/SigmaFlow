@@ -7300,10 +7300,21 @@ $m_{\max}=2$ says only components with $|m|\le2$ are retained, so for
 $\ell=3$ the $m=\pm3$ components are discarded outright.
 
 This is a deliberate efficiency measure in the eSCN scheme --- the $SO(2)$
-blocks are indexed by $m$, so capping $m$ caps the number of blocks --- and it
-is a genuine approximation: the discarded components are not zero, they are
-dropped. Worth knowing when reasoning about what angular patterns the model
-can represent; the answer is not simply ``everything up to degree $3$''.
+blocks are indexed by $m$, so capping $m$ caps the number of blocks.
+
+Where exactly it acts is worth pinning down, because the code makes it easy
+to misread. \pyfunc{SO3\_Rotation.rotate} selects only the \emph{rows} of the
+Wigner matrix with $|m|\le m_{\max}$, so the truncated components are never
+computed in the edge frame; \pyfunc{rotate\_inv} selects the corresponding
+\emph{columns} and maps back into the full $(L+1)^2$ layout, with the source
+comment ``\texttt{Assume mmax = lmax when rotating back}''. So the global-frame
+output is full-length; it is the \emph{rank} that is reduced.
+
+Crucially, this does \textbf{not} break equivariance
+(\Cref{prop:mmax-equivariant}) --- it restricts capacity. Worth knowing when
+reasoning about what angular patterns the model can represent; the answer is
+not simply ``everything up to degree $3$'', but the failure mode is a blind
+spot, not a frame error.
 \end{remark}
 
 \subsection{What ``separable'' means here}
@@ -7340,18 +7351,131 @@ Edge rotation and its inverse & exact & $D^\ell$ is a representation \\
 Attention weights from $m=0$ & exact & \Cref{prop:m0-invariant} \\
 Sum aggregation, residual & exact & linearity \\
 RMS normalisation & exact (measured $5\times10^{-8}$) & \Cref{sec:v2-normalisation} \\
+$m_{\max}<L$ truncation & exact (measured $2\times10^{-6}$) & \Cref{prop:mmax-equivariant} \\
 \midrule
 $S^2$ activation (grid round trip) & \textbf{approximate} & quadrature aliasing \\
-$m_{\max}<L$ truncation & \textbf{approximate} & discards $|m|>m_{\max}$ \\
 \bottomrule
 \end{tabular}
 \end{center}
 
 Honest summary: every operation is exactly equivariant \emph{except} the
-nonlinearity and the $m$-truncation, and both are approximations whose size
-grows with $L$. ``Equivariant by construction'' is true of the
-architecture's design and false of its arithmetic.
+nonlinearity. ``Equivariant by construction'' is true of the architecture's
+design and true of its arithmetic everywhere but the $S^2$ activation, whose
+deviation grows with $L$.
 \end{tcolorbox}
+
+\begin{proposition}[The $m$-truncation preserves equivariance but loses information]
+\label{prop:mmax-equivariant}
+Let $\Pi_{m_{\max}}$ discard all components with $|m|>m_{\max}$, applied
+\emph{in the edge-aligned frame}, and let
+$T_{ij}=D(Q_{ij})^{-1}\,\Pi_{m_{\max}}\,D(Q_{ij})$ be the composite
+``rotate in, truncate, rotate back''. Then $T_{ij}$ is exactly
+$SO(3)$-equivariant: under a global rotation $Q$, both the features and the
+edge frame transform consistently, and $T$ commutes with the action. However
+$T_{ij}$ is a projection of rank $\sum_{\ell\le L}\min(2\ell+1,2m_{\max}+1)$,
+strictly less than $(L+1)^2$ when $m_{\max}<L$.
+\end{proposition}
+
+\begin{proof}[Argument]
+Under $x\mapsto Qx$ the edge direction becomes $Q\hat x_{ij}$, so the frame
+rotation satisfies $Q'_{ij}=Q_{ij}Q^{-1}$ up to the residual $SO(2)$ about
+the alignment axis. Hence $D(Q'_{ij})D(Q)=D(Q_{ij})$: \emph{the edge-frame
+representation of the feature is unchanged by a global rotation}. Truncation
+in that frame is therefore applied to the same object either way, and
+rotating back reintroduces exactly the transformation $D(Q)$. The residual
+$SO(2)$ gauge freedom does not spoil this because rotations about the
+alignment axis act \emph{diagonally in $m$}
+(\Cref{prop:m0-invariant}), so $\Pi_{m_{\max}}$ commutes with them.
+\end{proof}
+
+\begin{remark}[What the truncation costs, measured]
+\label{rem:mmax-measured}
+For SigmaDock's $L=3$, $m_{\max}=2$: the composite $T_{ij}$ has rank
+$\mathbf{14}$ out of $16$. The two discarded dimensions are exactly the
+$m=\pm3$ components of $\ell=3$ \emph{in the edge frame}. In the global frame
+nothing is zeroed --- the output has all $16$ components populated --- but it
+is constrained to a $14$-dimensional, edge-dependent subspace.
+
+Equivariance error, measured over $300$ random rotations: $2\times10^{-6}$
+with truncation versus $4\times10^{-7}$ without, both at float32 round-off.
+So this is an \textbf{expressiveness restriction, not a symmetry violation}
+--- a distinction worth making precisely, because the two have completely
+different consequences: the first costs model capacity, the second would cost
+correctness.
+\end{remark}
+
+\section{The block, in the order the code executes it}
+\label{sec:v2-block-order}
+
+The theory so far names the ingredients. This section fixes their order,
+read from \file{net/transformer\_block.py}::\pyfunc{TransBlockV2.forward}
+rather than assumed from the Transformer literature.
+
+\paragraph{The order is strict pre-norm, twice.}
+\begin{equation}
+\label{eq:v2-block-order}
+\begin{aligned}
+h &\;\longleftarrow\; h + \mathrm{Drop}\Bigl(\mathrm{Attn}\bigl(\mathrm{Norm}_1(h)\bigr)\Bigr) \\
+h &\;\longleftarrow\; h + \mathrm{Drop}\Bigl(\mathrm{FFN}\bigl(\mathrm{Norm}_2(h)\bigr)\Bigr)
+\end{aligned}
+\end{equation}
+i.e.\ normalisation \emph{inside} each residual branch, never on the skip
+path. Two normalisation layers per block, two residual additions, and the
+dropout (\pyfunc{GraphDropPath} plus \pyfunc{EquivariantDropoutArraySphericalHarmonics})
+applied to the branch output before the addition.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Step & Class / call & Acts on & Equivariance \\
+\midrule
+1 & save $h$ as \texttt{x\_res} & --- & --- \\
+2 & \pyfunc{self.norm\_1} & $[N,(L{+}1)^2,C]$ & exact \\
+3 & \pyfunc{self.ga} (graph attention) & node + edge & exact except $S^2$ act \\
+4 & \pyfunc{drop\_path}, \pyfunc{proj\_drop} & branch only & exact (scaling) \\
+5 & $h \mathrel{+}= $ \texttt{x\_res} & --- & exact \\
+6 & save $h$ as \texttt{x\_res} & --- & --- \\
+7 & \pyfunc{self.norm\_2} & $[N,(L{+}1)^2,C]$ & exact \\
+8 & \pyfunc{self.ffn} & node only & exact except $S^2$ act \\
+9 & \pyfunc{drop\_path}, \pyfunc{proj\_drop} & branch only & exact \\
+10 & \pyfunc{ffn\_shortcut} on \texttt{x\_res} \emph{if channels change} & skip path & exact \\
+11 & $h \mathrel{+}= $ \texttt{x\_res} & --- & exact \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Step 10 is the one detail that departs from a textbook Transformer: when the
+feed-forward sub-block changes the channel count, the residual path cannot
+simply be added, so an equivariant linear layer (\pyfunc{SO3\_LinearV2}) is
+applied to the \emph{skip} tensor first. It is still a channel-mixing map of
+the form $A^{(\ell)}\otimes I_{2\ell+1}$, so \Cref{prop:sum-equivariant-maps}
+still applies.
+
+\paragraph{Why pre-norm.} With post-norm, the residual stream passes through a
+normalisation at every block, and gradients through a deep stack are
+attenuated. Pre-norm leaves the skip path untouched, so there is a clean
+identity path from input to output --- the standard reason modern
+Transformers use it. Nothing about the choice is equivariance-related; both
+orders would be equivariant.
+
+\paragraph{Edge orientation, fixed from the code.} In
+\pyfunc{SO2EquivariantGraphAttention.forward}:
+\[
+\texttt{edge\_index[0]} = \text{source } j,
+\qquad
+\texttt{edge\_index[1]} = \text{target } i ,
+\]
+read off from \texttt{x\_source.\_expand\_edge(edge\_index[0])} and
+\texttt{x\_target.\_expand\_edge(edge\_index[1])}. Consistently,
+aggregation is \texttt{x\_message.\_reduce\_edge(edge\_index[1], ...)}, and the
+attention normalisation is
+\[
+\alpha_{ij}=\frac{\exp(s_{ij})}{\sum_{k\in\mathcal N(i)}\exp(s_{ik})},
+\]
+i.e.\ \texttt{softmax(alpha, edge\_index[1])} --- per \emph{target} node, over
+its incoming edges. This matches the convention $x_{ij}=x_j-x_i$ fixed in
+\Cref{caution:edge-orientation}: the message flows $j\to i$ and the softmax
+normalises what arrives at $i$.
 
 \section{Normalisation in EquiformerV2}
 \label{sec:v2-normalisation}
