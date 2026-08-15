@@ -6984,8 +6984,90 @@ rotated back \emph{afterward}, via
 edge has a different direction and hence a different aligned frame.
 \end{codebox}
 
+\section{Why EquiformerV2 exists: the cost of full \texorpdfstring{$SO(3)$}{SO(3)} coupling}
+\label{sec:v1-to-v2}
+
+Equiformer (V1) is the architecture assembled in
+\Cref{sec:the-steerable-message,sec:equiformer-attention}: steerable
+features, Clebsch--Gordan messages, invariant attention weights, gating,
+residual blocks. It is correct and it works. What it is not is cheap, and
+understanding \emph{where} the cost sits is the whole motivation for V2.
+
+\subsection{Counting the work in one message}
+
+The message \eqref{eq:steerable-message} evaluates, for each edge and each
+allowed triple $(\ell_1,\ell_2,\ell)$,
+\[
+z^{(\ell)}_m=\sum_{m_1=-\ell_1}^{\ell_1}\sum_{m_2=-\ell_2}^{\ell_2}
+C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}\,x^{(\ell_1)}_{m_1}\,y^{(\ell_2)}_{m_2} .
+\]
+Three separate multiplicities pile up:
+
+\begin{enumerate}
+\item \textbf{Over $m$-indices.} Even exploiting the sparsity
+$m=m_1+m_2$, each output component still sums over $O(\min(\ell_1,\ell_2))$
+terms, and there are $2\ell+1$ output components.
+\item \textbf{Over coupling paths.} With degrees up to $L$, the number of
+admissible triples $(\ell_1,\ell_2,\ell)$ with all three $\le L$ grows
+roughly like $L^3$. Every one of them is a separate contraction with its own
+coefficient array.
+\item \textbf{Over channel pairs.} \eqref{eq:tp-layer} sums over
+$C_1\times C_2$ channel pairs per path.
+\end{enumerate}
+
+The product of the three is what makes raising $L$ expensive. Doubling $L$
+does not double the cost; it multiplies it by something closer to $8$ from
+the path count alone, before the per-path work is counted. This is the
+concrete reason V1 implementations are usually run at $L=1$ or $L=2$: not
+because higher degrees are useless, but because they were unaffordable.
+
+\begin{quote}
+\textbf{The question V2 answers:} can the coupling be computed in a frame
+where most of it is unnecessary?
+\end{quote}
+
+\subsection{The idea: use a frame in which the edge is trivial}
+
+Here is the observation. In \eqref{eq:steerable-message} the second factor is
+not an arbitrary feature --- it is $Y^{\ell_2}(\hat x_{ij})$, the spherical
+harmonic of \emph{one specific direction}. And a spherical harmonic evaluated
+at a direction aligned with the reference axis is almost entirely zero:
+all but its $m=0$ component vanish.
+
+So if we first rotate into a frame where the edge \emph{is} the reference
+axis, the sum over $m_2$ collapses to the single term $m_2=0$. Combined with
+$m=m_1+m_2$, this forces $m=m_1$: \textbf{the double sum degenerates into a
+diagonal map in $m$}. That is the entire trick, and everything else --- the
+rotation matrices, the $SO(2)$ language, the $m=0$ attention channels --- is
+bookkeeping around it.
+
+\begin{proposition}[Cost of the coupling before and after alignment]
+\label{prop:so2-cost}
+Fix a path $(\ell_1,\ell_2,\ell)$ and one channel pair. In a general frame,
+the contraction costs $O\bigl((2\ell+1)\cdot\min(2\ell_1,2\ell_2)\bigr)$
+multiply--adds. In the edge-aligned frame, where only $m_2=0$ survives, it
+costs $O(2\ell+1)$: one multiplication per output component. The saving per
+path is therefore a factor of order $\min(\ell_1,\ell_2)$.
+\end{proposition}
+
+\begin{caution}[The rotation is not free, and that is the real trade]
+\label{caution:so2-tradeoff}
+Rotating into the edge frame means applying $D^\ell(Q_{ij})$ to every
+steerable feature on that edge --- a dense $(2\ell+1)\times(2\ell+1)$
+matrix--vector product per degree, per channel, \emph{per edge}, and again to
+rotate back. That is real work, and for small $L$ it can exceed what it
+saves.
+
+The reason it pays at larger $L$ is that the rotation cost grows like
+$\sum_\ell(2\ell+1)^2=O(L^3)$ per channel, while the \emph{number of
+coupling paths} it eliminates work from grows like $O(L^3)$ \emph{as well},
+each path having its own $m$-sum. In other words: the rotation is paid once
+per edge and amortised over all paths and channels. This is why
+EquiformerV2 can run at $L=4$--$6$ where V1 was confined to $L\le2$, and it
+is also why the reduction would be pointless for a single path.
+\end{caution}
+
 \section{$SO(2)$-equivariant convolution: the actual EquiformerV2 message}
-\label{sec:so2-conv}
 \label{sec:so2-conv}
 
 \paragraph{What an $SO(2)$-equivariant linear map looks like.} By the same
@@ -7116,12 +7198,221 @@ rather than coefficients), and the result is projected back
 (\pyfunc{FromS2Grid}) into spherical-harmonic coefficients. An additional,
 separate scalar ``gating'' path (extra invariant channels produced
 alongside the main $SO(2)$-convolution output) modulates this activation
-further, combining both mechanisms. We record this as the precise
-implemented nonlinearity without re-deriving the grid-sampling equivariance
-argument in full technical detail (it is a standard construction in the
-equivariant-networks literature, e.g.\ Cohen et al., \emph{Spherical CNNs},
-ICLR 2018).
+further, combining both mechanisms. The equivariance of this construction is
+\emph{not} exact once discretised; the next subsection derives where it
+holds, where it fails, and by how much.
 \end{codebox}
+
+\subsection{Resolving the apparent contradiction}
+\label{sec:s2-activation-resolved}
+
+\Cref{ex:relu-not-equivariant} proved that applying $\mathrm{ReLU}$
+componentwise to an $\ell=1$ feature breaks equivariance. The activation just
+described applies $\mathrm{SiLU}$ pointwise and claims to be fine. Both
+cannot be true without a distinction, and that distinction is the most
+important idea in this subsection.
+
+\paragraph{Two different spaces.} The coefficients $x^{(\ell)}_m$ and the
+function they represent are different objects:
+\[
+\underbrace{\bigl\{x^{(\ell)}_m\bigr\}_{\ell\le L,\,|m|\le\ell}}_{\text{coefficients}}
+\qquad\longleftrightarrow\qquad
+\underbrace{f(\omega)=\sum_{\ell,m}x^{(\ell)}_m\,Y^\ell_m(\omega)}_{\text{a function } f:S^2\to\RR} .
+\]
+The $m$-components are \emph{Fourier coefficients} of $f$ in the
+spherical-harmonic basis. Applying $\sigma$ to a coefficient is like applying
+it to a Fourier coefficient of an audio signal: meaningless, because the
+index is a bookkeeping label. Applying $\sigma$ to $f(\omega)$ is like
+applying it to the waveform: natural.
+
+\paragraph{Why pointwise on the sphere is exactly equivariant.} A rotation
+acts on functions by reparametrising the argument,
+$(Q\cdot f)(\omega)=f(Q^{-1}\omega)$ (\Cref{caution:action-not-matmul} ---
+note the inverse). Then for any $\sigma:\RR\to\RR$,
+\[
+\bigl(\sigma\circ(Q\cdot f)\bigr)(\omega)
+=\sigma\bigl(f(Q^{-1}\omega)\bigr)
+=(\sigma\circ f)(Q^{-1}\omega)
+=\bigl(Q\cdot(\sigma\circ f)\bigr)(\omega).
+\]
+The middle step is just the definition of composition. \emph{A pointwise
+operation cannot tell which point it is standing at}, so it commutes with any
+relabelling of points --- and a rotation is exactly a relabelling. That is why
+the operation is legal in function space and illegal in coefficient space:
+there, a rotation is not a relabelling but a genuine mixing.
+
+\paragraph{Why the discretised version is only approximate.}
+\begin{enumerate}[nosep]
+\item \textbf{Coefficients $\to$ grid.} Exact: evaluating a band-limited
+function at fixed points.
+\item \textbf{Pointwise $\sigma$.} Exact in function space --- \emph{but}
+$\sigma(f)$ is no longer band-limited. A nonlinearity creates arbitrarily
+high angular frequencies.
+\item \textbf{Grid $\to$ coefficients.} The projection onto degrees $\le L$
+is computed by quadrature on a \emph{finite, fixed} grid. Since $\sigma(f)$
+has energy above the band limit, the quadrature aliases; and because the grid
+is fixed in space while $f$ rotates, the aliasing error depends on the
+orientation. \emph{That orientation dependence is the loss of equivariance.}
+\end{enumerate}
+In the continuum the operation \emph{is} exactly equivariant: the space of
+degree-$\le L$ functions is rotation-invariant, and orthogonal projection
+onto a rotation-invariant subspace commutes with rotation. The error is
+entirely an artefact of discretisation.
+
+\begin{remark}[How large is the error in this implementation?]
+\label{rem:s2-error-measured}
+Measurable, and not negligible. Feeding random coefficients through the
+shipped activations and comparing $\mathrm{act}(D^\ell(Q)x)$ with
+$D^\ell(Q)\,\mathrm{act}(x)$ over random $Q\in SO(3)$:
+
+\begin{center}
+\begin{tabular}{cccc}
+\toprule
+$L$ & \pyfunc{S2Activation} & \pyfunc{SeparableS2Activation} & round trip \emph{without} $\sigma$ \\
+\midrule
+$1$ & $1.3\times10^{-2}$ & $1.5\times10^{-2}$ & $7\times10^{-16}$ \\
+$2$ & $8.1\times10^{-2}$ & $2.1\times10^{-1}$ & $8\times10^{-16}$ \\
+$3$ & $6.3\times10^{-1}$ & $3.9\times10^{-1}$ & $1\times10^{-15}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Two conclusions. First, the grid transform pair itself is exact to machine
+precision (last column) --- the transforms are not the problem, the
+nonlinearity's out-of-band energy is. Second, the deviation grows sharply
+with $L$, and SigmaDock runs at $L=3$ with \texttt{use\_sep\_s2\_act=True},
+i.e.\ in the bottom row.
+
+\textbf{Caveat.} These are measured on \emph{random Gaussian} coefficients,
+the worst case: equal energy in every degree maximises out-of-band leakage. A
+trained network's features are dominated by low degrees, so the effective
+deviation in a real forward pass is smaller, possibly much smaller. We have
+not measured that, and it would require a trained checkpoint. What the table
+does establish is that this layer is \textbf{not exactly equivariant by
+construction}, and that its deviation grows with $L$.
+\end{remark}
+
+\begin{remark}[A second, separate truncation: $m_{\max}<\ell_{\max}$]
+\label{rem:mmax-truncation}
+SigmaDock sets \texttt{l\_max\_list=(3,)} but \texttt{m\_max\_list=(2,)}.
+These are different knobs: $L=3$ says features carry degrees up to $3$;
+$m_{\max}=2$ says only components with $|m|\le2$ are retained, so for
+$\ell=3$ the $m=\pm3$ components are discarded outright.
+
+This is a deliberate efficiency measure in the eSCN scheme --- the $SO(2)$
+blocks are indexed by $m$, so capping $m$ caps the number of blocks --- and it
+is a genuine approximation: the discarded components are not zero, they are
+dropped. Worth knowing when reasoning about what angular patterns the model
+can represent; the answer is not simply ``everything up to degree $3$''.
+\end{remark}
+
+\subsection{What ``separable'' means here}
+\label{sec:separable-meaning}
+
+\pyfunc{SeparableS2Activation} is not a different mathematical idea; it is a
+split by degree:
+\begin{itemize}[nosep]
+\item the $\ell=0$ channels get an \emph{ordinary} $\mathrm{SiLU}$ applied
+directly --- legal without any grid, because scalars are invariant
+(\Cref{sec:nonlin-scalar}), and exact;
+\item the $\ell\ge1$ channels go through the grid round trip;
+\item the outputs are concatenated, the separately-computed scalar part
+\emph{replacing} the grid-computed $\ell=0$ output.
+\end{itemize}
+The saving is modest --- one degree out of $(L+1)^2$ components --- but the
+scalar path is both cheaper and exactly equivariant, so there is no reason to
+route it through the grid. The name refers to separating the invariant
+channels from the rest, not to a factorisation of the sphere.
+
+\begin{tcolorbox}[colback=red!3,colframe=red!40!black,title={Exact versus approximate equivariance: the ledger}]
+The answer differs by operation, so it is worth keeping a running list.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Operation & Equivariance & Basis \\
+\midrule
+Edge vector, distance, $\hat x$ & exact & algebra \\
+Spherical harmonics $Y^\ell$ & exact & \Cref{eq:sph-equivariance-scratch} \\
+Clebsch--Gordan product & exact & \Cref{prop:cg-equivariant} \\
+Equivariant linear / channel mixing & exact & \Cref{prop:schur-scratch} \\
+Edge rotation and its inverse & exact & $D^\ell$ is a representation \\
+Attention weights from $m=0$ & exact & \Cref{prop:m0-invariant} \\
+Sum aggregation, residual & exact & linearity \\
+RMS normalisation & exact (measured $5\times10^{-8}$) & \Cref{sec:v2-normalisation} \\
+\midrule
+$S^2$ activation (grid round trip) & \textbf{approximate} & quadrature aliasing \\
+$m_{\max}<L$ truncation & \textbf{approximate} & discards $|m|>m_{\max}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Honest summary: every operation is exactly equivariant \emph{except} the
+nonlinearity and the $m$-truncation, and both are approximations whose size
+grows with $L$. ``Equivariant by construction'' is true of the
+architecture's design and false of its arithmetic.
+\end{tcolorbox}
+
+\section{Normalisation in EquiformerV2}
+\label{sec:v2-normalisation}
+
+\Cref{rem:norm-preview} flagged that ordinary LayerNorm is unavailable here.
+The reason, stated precisely: LayerNorm computes a mean and variance across a
+feature axis and subtracts the mean. For $\ell\ge1$, the quantity
+$\frac{1}{2\ell+1}\sum_m x_m$ is \emph{not} invariant --- it is a particular
+linear functional of the components, and a rotation mixes them, so
+subtracting it introduces a frame-dependent shift. That is the same error as
+componentwise $\mathrm{ReLU}$, in a different guise.
+
+What the shipped default (\texttt{norm\_type="rms\_norm\_sh"}, class
+\pyfunc{EquivariantRMSNormArraySphericalHarmonicsV2}) does instead is exactly
+what the theory of \Cref{sec:equivariant-layers} permits, and it is worth
+walking through because every choice in it is forced:
+
+\begin{enumerate}
+\item \textbf{Centering only on $\ell=0$, and only across channels.} The mean
+is taken over the \emph{channel} axis of the $\ell=0$ slice alone
+(\texttt{feature.narrow(1,0,1).mean(dim=2)}). Scalars are invariant, so
+subtracting any function of them is safe; the $\ell\ge1$ block is never
+centred. This is \Cref{sec:bias-terms}'s bias rule applied to a running
+statistic.
+\item \textbf{The scale is built from an invariant.} The normaliser is
+$\sum_m x_m^2$ summed over the $m$ axis (then averaged over channels), which
+is invariant because $D^\ell(Q)$ is orthogonal
+(\Cref{prop:norm-invariant}). Dividing an equivariant feature by an invariant
+scalar preserves equivariance.
+\item \textbf{Affine scale is one weight per $(\ell,\text{channel})$,
+broadcast across $m$.} The learned tensor has shape
+$[1,\,L+1,\,C]$ and is expanded along the $m$ axis by an index map. This is
+precisely the $A^{(\ell)}\otimes I_{2\ell+1}$ form of
+\eqref{eq:equivariant-linear-kron}, restricted to a diagonal $A$.
+\item \textbf{Affine bias only on $\ell=0$.} Added exclusively to the
+$\ell=0$ slice, as \Cref{sec:bias-terms} requires.
+\end{enumerate}
+
+\begin{proposition}[The RMS normalisation is equivariant]
+\label{prop:rmsnorm-equivariant}
+With $n(x)=\bigl(\overline{\sum_m x_m^2}+\epsilon\bigr)^{-1/2}$ invariant and
+$w^{(\ell)}_c$ independent of $m$, the map
+$x^{(\ell)}_{c,m}\mapsto w^{(\ell)}_c\,n(x)\,x^{(\ell)}_{c,m}$ (plus a bias on
+$\ell=0$) satisfies
+$x\mapsto D^\ell(Q)x \Rightarrow \mathrm{out}\mapsto D^\ell(Q)\,\mathrm{out}$.
+\end{proposition}
+
+\begin{proof}
+$n(D^\ell(Q)x)=n(x)$ since $D^\ell(Q)$ is orthogonal and $n$ depends on $x$
+only through $\sum_m x_m^2$. The remaining factors $w^{(\ell)}_c$ and $n(x)$
+are scalars, which commute with $D^\ell(Q)$. The $\ell=0$ bias is added to a
+block on which $D^0(Q)=1$.
+\end{proof}
+
+Verified numerically: at $L=3$ with the shipped class, the relative deviation
+between $\mathrm{norm}(D x)$ and $D\,\mathrm{norm}(x)$ over $300$ random
+rotations is $5\times10^{-8}$ --- i.e.\ float32 round-off in the Wigner
+matrices, not a structural error. The contrast with the $S^2$ activation's
+$3.9\times10^{-1}$ at the same $L$ is instructive: one of these layers is
+exactly equivariant and the other is not, and the difference is entirely
+whether a discretisation was involved.
 
 \section{Equivariant linear layers and normalisation}
 \label{sec:equiformer-linear-norm}

@@ -1,235 +1,244 @@
-\contentsline {chapter}{How to read this document}{7}{chapter*.2}%
-\contentsline {section}{Global notation}{8}{section*.3}%
-\contentsline {part}{I\hspace {1em}Preliminaries}{10}{part.1}%
-\contentsline {chapter}{\numberline {1}The Protein--Ligand Docking Problem}{11}{chapter.1}%
-\contentsline {section}{\numberline {1.1}Proteins and ligands}{11}{section.1.1}%
-\contentsline {section}{\numberline {1.2}Poses and degrees of freedom}{12}{section.1.2}%
-\contentsline {section}{\numberline {1.3}What a docking model predicts, and what it does not}{13}{section.1.3}%
-\contentsline {section}{\numberline {1.4}Evaluation: RMSD and structural validity}{13}{section.1.4}%
-\contentsline {chapter}{\numberline {2}Probability and Generative Modelling Foundations}{15}{chapter.2}%
-\contentsline {section}{\numberline {2.1}Densities, conditional densities, and pushforward}{15}{section.2.1}%
-\contentsline {section}{\numberline {2.2}Score functions}{16}{section.2.2}%
-\contentsline {section}{\numberline {2.3}Why the score suffices for sampling: Langevin dynamics}{17}{section.2.3}%
-\contentsline {section}{\numberline {2.4}Kullback--Leibler divergence and maximum likelihood}{18}{section.2.4}%
-\contentsline {section}{\numberline {2.5}Generative modelling as distribution transport}{21}{section.2.5}%
-\contentsline {part}{II\hspace {1em}Geometry}{23}{part.2}%
-\contentsline {chapter}{\numberline {3}Manifolds, Groups, and Rigid Motion}{24}{chapter.3}%
-\contentsline {section}{\numberline {3.1}Manifolds and tangent spaces}{24}{section.3.1}%
-\contentsline {paragraph}{Motivation.}{24}{section*.4}%
-\contentsline {paragraph}{Intuition.}{24}{section*.5}%
-\contentsline {subsection}{\numberline {3.1.1}Why a tangent space at all, and why one per point}{25}{subsection.3.1.1}%
-\contentsline {paragraph}{The same idea, three times.}{25}{section*.6}%
-\contentsline {subsection}{\numberline {3.1.2}Measuring: Riemannian metrics and geodesics}{26}{subsection.3.1.2}%
-\contentsline {subsection}{\numberline {3.1.3}Replacing $x+v$ and $y-x$: the exponential and logarithmic maps}{26}{subsection.3.1.3}%
-\contentsline {section}{\numberline {3.2}Groups and Lie groups}{28}{section.3.2}%
-\contentsline {paragraph}{Motivation.}{28}{section*.7}%
-\contentsline {section}{\numberline {3.3}The rotation group $SO(3)$}{28}{section.3.3}%
-\contentsline {subsection}{\numberline {3.3.1}Definition and dimension}{28}{subsection.3.3.1}%
-\contentsline {subsection}{\numberline {3.3.2}The Lie algebra $\so (3)$ and the hat/vee maps}{29}{subsection.3.3.2}%
-\contentsline {subsection}{\numberline {3.3.3}The exponential map: Rodrigues' formula}{30}{subsection.3.3.3}%
-\contentsline {paragraph}{Motivation.}{30}{section*.8}%
-\contentsline {subsection}{\numberline {3.3.4}The logarithmic map, and its numerically dangerous points}{31}{subsection.3.3.4}%
-\contentsline {paragraph}{Motivation.}{31}{section*.9}%
-\contentsline {subsection}{\numberline {3.3.5}$SO(3)$ as a metric space, and Brownian motion's invariant measure}{33}{subsection.3.3.5}%
-\contentsline {section}{\numberline {3.4}Left and right trivialisation, resolved for this document}{34}{section.3.4}%
-\contentsline {section}{\numberline {3.5}The pose group $SE(3)$ and the product manifold $SE(3)^N$}{36}{section.3.5}%
-\contentsline {paragraph}{Metric choice.}{36}{section*.10}%
-\contentsline {section}{\numberline {3.6}The torsion space $\mathbb T^k$}{37}{section.3.6}%
-\contentsline {chapter}{\numberline {4}Steerable Representations: Spherical Harmonics, Wigner Matrices, and Clebsch--Gordan Coefficients}{39}{chapter.4}%
-\contentsline {section}{\numberline {4.1}The problem this chapter exists to solve}{39}{section.4.1}%
-\contentsline {subsection}{\numberline {4.1.1}Rotating the whole system changes nothing physical}{39}{subsection.4.1.1}%
-\contentsline {subsection}{\numberline {4.1.2}Two different kinds of ``unchanged''}{40}{subsection.4.1.2}%
-\contentsline {paragraph}{Some quantities should not change at all.}{40}{section*.11}%
-\contentsline {paragraph}{Other quantities must change, in lockstep.}{40}{section*.12}%
-\contentsline {subsection}{\numberline {4.1.3}Why an ordinary network does not do this by itself}{40}{subsection.4.1.3}%
-\contentsline {subsection}{\numberline {4.1.4}Why data augmentation is not a substitute}{41}{subsection.4.1.4}%
-\contentsline {section}{\numberline {4.2}Group actions: how a group moves things}{42}{section.4.2}%
-\contentsline {paragraph}{The problem.}{42}{section*.13}%
-\contentsline {section}{\numberline {4.3}Invariance and equivariance, formally}{43}{section.4.3}%
-\contentsline {section}{\numberline {4.4}Why representation theory, and not something simpler}{45}{section.4.4}%
-\contentsline {section}{\numberline {4.5}Representations of $SO(3)$}{46}{section.4.5}%
-\contentsline {paragraph}{Motivation.}{46}{section*.14}%
-\contentsline {section}{\numberline {4.6}Spherical harmonics}{47}{section.4.6}%
-\contentsline {paragraph}{Motivation.}{47}{section*.15}%
-\contentsline {paragraph}{Intuition: from the circle to the sphere.}{47}{section*.16}%
-\contentsline {subsection}{\numberline {4.6.1}Explicit low-degree formulas, and the connection to familiar operations}{49}{subsection.4.6.1}%
-\contentsline {section}{\numberline {4.7}Wigner-$D$ matrices}{49}{section.4.7}%
-\contentsline {section}{\numberline {4.8}The anatomy of a steerable feature}{50}{section.4.8}%
-\contentsline {subsection}{\numberline {4.8.1}One feature, four indices}{50}{subsection.4.8.1}%
-\contentsline {subsection}{\numberline {4.8.2}Why 16 channels of $\ell =1$ is not a 48-dimensional vector}{51}{subsection.4.8.2}%
-\contentsline {subsection}{\numberline {4.8.3}What the channel index is for}{52}{subsection.4.8.3}%
-\contentsline {paragraph}{Where the CNN analogy holds, and where it breaks.}{52}{section*.17}%
-\contentsline {subsection}{\numberline {4.8.4}A concrete feature specification}{52}{subsection.4.8.4}%
-\contentsline {section}{\numberline {4.9}Tensor products and Clebsch--Gordan coefficients}{53}{section.4.9}%
-\contentsline {paragraph}{Motivation.}{53}{section*.18}%
-\contentsline {subsection}{\numberline {4.9.1}Starting from two ordinary vectors}{53}{subsection.4.9.1}%
-\contentsline {paragraph}{Two products we already know.}{53}{section*.19}%
-\contentsline {paragraph}{The question that forces tensor products.}{54}{section*.20}%
-\contentsline {subsection}{\numberline {4.9.2}The outer product and how it rotates}{54}{subsection.4.9.2}%
-\contentsline {subsection}{\numberline {4.9.3}Decomposing $1\otimes 1$ completely}{55}{subsection.4.9.3}%
-\contentsline {paragraph}{Step 1: split any matrix into three pieces.}{55}{section*.21}%
-\contentsline {paragraph}{Step 2: count dimensions.}{55}{section*.22}%
-\contentsline {paragraph}{Step 3: each piece is closed under $T\DOTSB \mapstochar \rightarrow QTQ^\top $.}{55}{section*.23}%
-\contentsline {paragraph}{Step 4: identify each piece as a known irrep.}{56}{section*.24}%
-\contentsline {paragraph}{Conclusion.}{57}{section*.25}%
-\contentsline {subsection}{\numberline {4.9.4}The selection rule as a type system}{58}{subsection.4.9.4}%
-\contentsline {subsection}{\numberline {4.9.5}Clebsch--Gordan coefficients are a change of basis}{58}{subsection.4.9.5}%
-\contentsline {paragraph}{Two bases for one space.}{58}{section*.26}%
-\contentsline {paragraph}{The coefficients are the transition matrix.}{59}{section*.27}%
-\contentsline {subsection}{\numberline {4.9.6}Reading \eqref {eq:cg-scratch} index by index}{59}{subsection.4.9.6}%
-\contentsline {subsection}{\numberline {4.9.7}Why the result is equivariant}{61}{subsection.4.9.7}%
-\contentsline {subsection}{\numberline {4.9.8}From the mathematical product to a network layer}{62}{subsection.4.9.8}%
-\contentsline {paragraph}{Adding channels.}{62}{section*.28}%
-\contentsline {subsection}{\numberline {4.9.9}Where this meets geometry: the edge direction}{64}{subsection.4.9.9}%
-\contentsline {section}{\numberline {4.10}Consequences for equivariant linear maps and nonlinearities}{65}{section.4.10}%
-\contentsline {subsection}{\numberline {4.10.1}The question}{65}{subsection.4.10.1}%
-\contentsline {paragraph}{The intuition first.}{65}{section*.29}%
-\contentsline {subsection}{\numberline {4.10.2}The condition a linear layer must satisfy}{65}{subsection.4.10.2}%
-\contentsline {subsection}{\numberline {4.10.3}Three cases, worked by hand}{66}{subsection.4.10.3}%
-\contentsline {paragraph}{Case 1: scalar $\to $ scalar.}{66}{section*.30}%
-\contentsline {paragraph}{Case 2: vector $\to $ vector.}{66}{section*.31}%
-\contentsline {paragraph}{Case 3: scalar $\to $ vector.}{66}{section*.32}%
-\contentsline {subsection}{\numberline {4.10.4}Schur's lemma}{67}{subsection.4.10.4}%
-\contentsline {subsection}{\numberline {4.10.5}What the layer actually looks like}{68}{subsection.4.10.5}%
-\contentsline {subsection}{\numberline {4.10.6}Bias terms}{69}{subsection.4.10.6}%
-\contentsline {subsection}{\numberline {4.10.7}Why linear layers are not enough}{69}{subsection.4.10.7}%
-\contentsline {subsection}{\numberline {4.10.8}Nonlinearity 1: scalars are unrestricted}{70}{subsection.4.10.8}%
-\contentsline {subsection}{\numberline {4.10.9}Nonlinearity 2: norm nonlinearities}{70}{subsection.4.10.9}%
-\contentsline {subsection}{\numberline {4.10.10}Nonlinearity 3: gating}{71}{subsection.4.10.10}%
-\contentsline {paragraph}{The mechanism, in one line.}{71}{section*.33}%
-\contentsline {paragraph}{As a network block.}{71}{section*.34}%
-\contentsline {paragraph}{Why this is strictly more expressive than a norm nonlinearity.}{71}{section*.35}%
-\contentsline {subsection}{\numberline {4.10.11}The three admissible operations, and what each is for}{72}{subsection.4.10.11}%
-\contentsline {subsection}{\numberline {4.10.12}A small block, end to end}{72}{subsection.4.10.12}%
-\contentsline {paragraph}{Input.}{72}{section*.36}%
-\contentsline {paragraph}{Equivariant linear.}{72}{section*.37}%
-\contentsline {paragraph}{Gate.}{72}{section*.38}%
-\contentsline {paragraph}{Output.}{72}{section*.39}%
-\contentsline {paragraph}{What is still missing.}{73}{section*.40}%
-\contentsline {subsection}{\numberline {4.10.13}Summary in one formula}{73}{subsection.4.10.13}%
-\contentsline {part}{III\hspace {1em}Diffusion Models}{75}{part.3}%
-\contentsline {chapter}{\numberline {5}Diffusion Models in $\mathbb R^d$}{76}{chapter.5}%
-\contentsline {section}{\numberline {5.1}Denoising score matching}{76}{section.5.1}%
-\contentsline {section}{\numberline {5.2}The SDE perspective, and why a single noise level is not enough}{77}{section.5.2}%
-\contentsline {subsection}{\numberline {5.2.1}Score, weighting, and the training objective in continuous time}{78}{subsection.5.2.1}%
-\contentsline {subsection}{\numberline {5.2.2}The reverse-time SDE}{79}{subsection.5.2.2}%
-\contentsline {section}{\numberline {5.3}The probability flow ODE, and the bridge to flow matching}{79}{section.5.3}%
-\contentsline {chapter}{\numberline {6}Diffusion Models on $SO(3)$}{81}{chapter.6}%
-\contentsline {section}{\numberline {6.1}Brownian motion on a Riemannian manifold}{81}{section.6.1}%
-\contentsline {paragraph}{Motivation.}{81}{section*.41}%
-\contentsline {section}{\numberline {6.2}The heat kernel on $SO(3)$: $\mathrm {IGSO}(3)$}{82}{section.6.2}%
-\contentsline {paragraph}{Motivation.}{82}{section*.42}%
-\contentsline {subsection}{\numberline {6.2.1}The score of the $\mathrm {IGSO}(3)$ kernel}{83}{subsection.6.2.1}%
-\contentsline {subsection}{\numberline {6.2.2}Numerical implementation: truncation, tabulation, and caching}{84}{subsection.6.2.2}%
-\contentsline {section}{\numberline {6.3}Riemannian denoising score matching and the reverse-time SDE on $SO(3)$}{85}{section.6.3}%
-\contentsline {part}{IV\hspace {1em}Architecture}{87}{part.4}%
-\contentsline {chapter}{\numberline {7}From Sets to Geometry: Attention, Message Passing, and the Equivariance Obstruction}{88}{chapter.7}%
-\contentsline {section}{\numberline {7.1}The network's signature}{88}{section.7.1}%
-\contentsline {section}{\numberline {7.2}Two structural requirements}{88}{section.7.2}%
-\contentsline {section}{\numberline {7.3}Attention, and the permutation-equivariance half of the problem}{90}{section.7.3}%
-\contentsline {section}{\numberline {7.4}Geometric graphs and message passing}{90}{section.7.4}%
-\contentsline {subsection}{\numberline {7.4.1}An ordinary GNN, with no geometry at all}{90}{subsection.7.4.1}%
-\contentsline {subsection}{\numberline {7.4.2}The question: where is the 3D structure?}{91}{subsection.7.4.2}%
-\contentsline {subsection}{\numberline {7.4.3}Why absolute positions are the wrong input}{91}{subsection.7.4.3}%
-\contentsline {paragraph}{The fix, and why it works.}{92}{section*.43}%
-\contentsline {subsection}{\numberline {7.4.4}Splitting an edge into radius and direction}{92}{subsection.7.4.4}%
-\contentsline {subsection}{\numberline {7.4.5}The radial half: from a distance to a feature vector}{93}{subsection.7.4.5}%
-\contentsline {subsection}{\numberline {7.4.6}The cutoff}{94}{subsection.7.4.6}%
-\contentsline {subsection}{\numberline {7.4.7}The angular half: why spherical harmonics}{94}{subsection.7.4.7}%
-\contentsline {paragraph}{What the different degrees carry.}{95}{section*.44}%
-\contentsline {subsection}{\numberline {7.4.8}Recombining radius and direction}{95}{subsection.7.4.8}%
-\contentsline {section}{\numberline {7.5}The obstruction: invariant features cannot output a vector}{96}{section.7.5}%
-\contentsline {section}{\numberline {7.6}A minimal repair, and why it is not enough}{97}{section.7.6}%
-\contentsline {section}{\numberline {7.7}The steerable message}{98}{section.7.7}%
-\contentsline {subsection}{\numberline {7.7.1}The equation}{98}{subsection.7.7.1}%
-\contentsline {paragraph}{$h^{(\ell _1)}_{j}$ --- what the neighbour knows.}{98}{section*.45}%
-\contentsline {paragraph}{$Y^{\ell _2}(\hat x_{ij})$ --- where the neighbour is.}{98}{section*.46}%
-\contentsline {paragraph}{$\otimes _{\mathrm {cg}}$ --- the only legal way to multiply them.}{99}{section*.47}%
-\contentsline {paragraph}{$w^{(\ell _1,\ell _2,\ell )}(d_{ij})$ --- how much, at this distance.}{99}{section*.48}%
-\contentsline {paragraph}{$m^{(\ell )}_{ij}$ --- the result.}{99}{section*.49}%
-\contentsline {subsection}{\numberline {7.7.2}Two cases worth doing by hand}{99}{subsection.7.7.2}%
-\contentsline {subsection}{\numberline {7.7.3}Aggregation over neighbours}{100}{subsection.7.7.3}%
-\contentsline {subsection}{\numberline {7.7.4}Self-interaction and residual connections}{101}{subsection.7.7.4}%
-\contentsline {subsection}{\numberline {7.7.5}The pipeline, end to end}{102}{subsection.7.7.5}%
-\contentsline {subsection}{\numberline {7.7.6}A small worked example}{102}{subsection.7.7.6}%
-\contentsline {paragraph}{Which coupling paths exist?}{102}{section*.50}%
-\contentsline {paragraph}{Messages.}{103}{section*.51}%
-\contentsline {paragraph}{Aggregation and update.}{103}{section*.52}%
-\contentsline {paragraph}{Sanity check.}{103}{section*.53}%
-\contentsline {subsection}{\numberline {7.7.7}What is fixed and what is learned}{103}{subsection.7.7.7}%
-\contentsline {subsection}{\numberline {7.7.8}Why this deserves the name ``steerable''}{103}{subsection.7.7.8}%
-\contentsline {subsection}{\numberline {7.7.9}The question this leaves open}{104}{subsection.7.7.9}%
-\contentsline {chapter}{\numberline {8}Equiformer and EquiformerV2}{105}{chapter.8}%
-\contentsline {section}{\numberline {8.1}From scalar messages to steerable messages}{105}{section.8.1}%
-\contentsline {paragraph}{Motivation.}{105}{section*.54}%
-\contentsline {section}{\numberline {8.2}Embedding geometry: spherical harmonics on edges}{106}{section.8.2}%
-\contentsline {paragraph}{Motivation.}{106}{section*.55}%
-\contentsline {section}{\numberline {8.3}The eSCN reduction: aligning every edge to its own frame}{106}{section.8.3}%
-\contentsline {paragraph}{Motivation, and the problem eSCN solves.}{106}{section*.56}%
-\contentsline {section}{\numberline {8.4}$SO(2)$-equivariant convolution: the actual EquiformerV2 message}{107}{section.8.4}%
-\contentsline {paragraph}{What an $SO(2)$-equivariant linear map looks like.}{107}{section*.57}%
-\contentsline {section}{\numberline {8.5}Equivariant nonlinearity: gating and the separable $S^2$ activation}{108}{section.8.5}%
-\contentsline {paragraph}{Why an ordinary nonlinearity breaks equivariance.}{108}{section*.58}%
-\contentsline {section}{\numberline {8.6}Equivariant linear layers and normalisation}{109}{section.8.6}%
-\contentsline {section}{\numberline {8.7}Equivariant attention weights}{110}{section.8.7}%
-\contentsline {subsection}{\numberline {8.7.1}Ordinary attention, recalled}{110}{subsection.8.7.1}%
-\contentsline {paragraph}{The constraint attention weights must satisfy.}{110}{section*.59}%
-\contentsline {subsection}{\numberline {8.7.2}Where the invariant comes from: the $m=0$ channels}{111}{subsection.8.7.2}%
-\contentsline {subsection}{\numberline {8.7.3}Assembling the full attention block}{112}{subsection.8.7.3}%
-\contentsline {section}{\numberline {8.8}Node embedding: turning chemistry into a steerable feature}{113}{section.8.8}%
-\contentsline {section}{\numberline {8.9}Reading out the vector field}{114}{section.8.9}%
-\contentsline {section}{\numberline {8.10}EquiformerV1 vs.\ EquiformerV2: what actually changed, and what this codebase actually ships}{114}{section.8.10}%
-\contentsline {section}{\numberline {8.11}Summary: architecture, hyperparameters, and parameter count}{115}{section.8.11}%
-\contentsline {part}{V\hspace {1em}SigmaDock}{116}{part.5}%
-\contentsline {chapter}{\numberline {9}SigmaDock: Full Reconstruction}{117}{chapter.9}%
-\contentsline {section}{\numberline {9.1}Choosing the state space}{117}{section.9.1}%
-\contentsline {section}{\numberline {9.2}The conformational manifold: what rigidity costs}{119}{section.9.2}%
-\contentsline {section}{\numberline {9.3}FR3D: reducing fragment count}{120}{section.9.3}%
-\contentsline {subsection}{\numberline {9.3.1}Rotatable-bond detection, as actually implemented}{120}{subsection.9.3.1}%
-\contentsline {subsection}{\numberline {9.3.2}Dummy atoms and fragment boundaries}{120}{subsection.9.3.2}%
-\contentsline {section}{\numberline {9.4}Triangulation: an invariant, soft geometric prior at fragment boundaries}{121}{section.9.4}%
-\contentsline {section}{\numberline {9.5}Symmetry: gauge invariance and stochastic $SE(3)$-equivariance}{122}{section.9.5}%
-\contentsline {section}{\numberline {9.6}The forward (noising) process}{123}{section.9.6}%
-\contentsline {section}{\numberline {9.7}Input graph, featurisation, and backbone}{124}{section.9.7}%
-\contentsline {subsection}{\numberline {9.7.1}Fragment reconstruction: the map $\varphi $}{124}{subsection.9.7.1}%
-\contentsline {section}{\numberline {9.8}The Newton--Euler prediction head}{125}{section.9.8}%
-\contentsline {subsection}{\numberline {9.8.1}From network output to a physical analogy}{125}{subsection.9.8.1}%
-\contentsline {subsection}{\numberline {9.8.2}Net force, torque, and inertia: exact classical mechanics}{126}{subsection.9.8.2}%
-\contentsline {subsection}{\numberline {9.8.3}Newton--Maruyama: one discretised step of rigid-body dynamics}{127}{subsection.9.8.3}%
-\contentsline {subsection}{\numberline {9.8.4}Dressing the raw output into a score: the two branches}{127}{subsection.9.8.4}%
-\contentsline {section}{\numberline {9.9}The training loss}{128}{section.9.9}%
-\contentsline {section}{\numberline {9.10}Sampling}{129}{section.9.10}%
-\contentsline {section}{\numberline {9.11}Ranking generated poses}{130}{section.9.11}%
-\contentsline {part}{VI\hspace {1em}Flow Matching}{131}{part.6}%
-\contentsline {chapter}{\numberline {10}Continuous Normalizing Flows and Flow Matching in $\mathbb R^d$}{132}{chapter.10}%
-\contentsline {section}{\numberline {10.1}Continuous normalizing flows}{132}{section.10.1}%
-\contentsline {subsection}{\numberline {10.1.1}The continuity equation}{133}{subsection.10.1.1}%
-\contentsline {subsection}{\numberline {10.1.2}CNF likelihood}{134}{subsection.10.1.2}%
-\contentsline {section}{\numberline {10.2}Conditional flow matching}{134}{section.10.2}%
-\contentsline {subsection}{\numberline {10.2.1}The linear (conditional optimal transport) path}{136}{subsection.10.2.1}%
-\contentsline {section}{\numberline {10.3}Sampling: integrating the learned ODE}{137}{section.10.3}%
-\contentsline {chapter}{\numberline {11}Riemannian Flow Matching}{138}{chapter.11}%
-\contentsline {section}{\numberline {11.1}Vector fields and flows on a manifold}{138}{section.11.1}%
-\contentsline {section}{\numberline {11.2}The geodesic conditional path}{139}{section.11.2}%
-\contentsline {section}{\numberline {11.3}Flow matching on $SO(3)$}{139}{section.11.3}%
-\contentsline {section}{\numberline {11.4}Flow matching on the pose manifold $SE(3)^N$}{141}{section.11.4}%
-\contentsline {part}{VII\hspace {1em}SigmaFlow}{142}{part.7}%
-\contentsline {chapter}{\numberline {12}SigmaFlow: Full Reconstruction}{143}{chapter.12}%
-\contentsline {section}{\numberline {12.1}What changes, and what does not}{143}{section.12.1}%
-\contentsline {section}{\numberline {12.2}A time-convention warning, confirmed at the source level}{144}{section.12.2}%
-\contentsline {section}{\numberline {12.3}Translation flow matching, exactly as implemented}{144}{section.12.3}%
-\contentsline {section}{\numberline {12.4}Rotation flow matching, exactly as implemented}{145}{section.12.4}%
-\contentsline {section}{\numberline {12.5}No output dressing: the entire diffusion-specific scalar machinery is gone}{146}{section.12.5}%
-\contentsline {section}{\numberline {12.6}The loss function}{147}{section.12.6}%
-\contentsline {section}{\numberline {12.7}The full training step}{147}{section.12.7}%
-\contentsline {section}{\numberline {12.8}Sampling}{149}{section.12.8}%
-\contentsline {section}{\numberline {12.9}Likelihood and confidence: what is implemented, and what is not}{149}{section.12.9}%
-\contentsline {section}{\numberline {12.10}A tested, and rejected, loss variant}{150}{section.12.10}%
-\contentsline {part}{VIII\hspace {1em}Synthesis}{151}{part.8}%
-\contentsline {chapter}{\numberline {13}Implementation Details, Numerical Stability, and Consistency Checks}{152}{chapter.13}%
-\contentsline {section}{\numberline {13.1}Every clamp, epsilon, and numerical safeguard in one table}{152}{section.13.1}%
-\contentsline {section}{\numberline {13.2}Masking, batching, and scatter conventions}{153}{section.13.2}%
-\contentsline {section}{\numberline {13.3}Floating-point precision}{154}{section.13.3}%
-\contentsline {section}{\numberline {13.4}Dimensional and consistency checks}{154}{section.13.4}%
-\contentsline {section}{\numberline {13.5}Summary of open items}{155}{section.13.5}%
-\contentsline {chapter}{Closing Remarks}{156}{chapter*.60}%
+\contentsline {chapter}{How to read this document}{8}{chapter*.2}%
+\contentsline {section}{Global notation}{9}{section*.3}%
+\contentsline {part}{I\hspace {1em}Preliminaries}{11}{part.1}%
+\contentsline {chapter}{\numberline {1}The Protein--Ligand Docking Problem}{12}{chapter.1}%
+\contentsline {section}{\numberline {1.1}Proteins and ligands}{12}{section.1.1}%
+\contentsline {section}{\numberline {1.2}Poses and degrees of freedom}{13}{section.1.2}%
+\contentsline {section}{\numberline {1.3}What a docking model predicts, and what it does not}{14}{section.1.3}%
+\contentsline {section}{\numberline {1.4}Evaluation: RMSD and structural validity}{14}{section.1.4}%
+\contentsline {chapter}{\numberline {2}Probability and Generative Modelling Foundations}{16}{chapter.2}%
+\contentsline {section}{\numberline {2.1}Densities, conditional densities, and pushforward}{16}{section.2.1}%
+\contentsline {section}{\numberline {2.2}Score functions}{17}{section.2.2}%
+\contentsline {section}{\numberline {2.3}Why the score suffices for sampling: Langevin dynamics}{18}{section.2.3}%
+\contentsline {section}{\numberline {2.4}Kullback--Leibler divergence and maximum likelihood}{19}{section.2.4}%
+\contentsline {section}{\numberline {2.5}Generative modelling as distribution transport}{22}{section.2.5}%
+\contentsline {part}{II\hspace {1em}Geometry}{24}{part.2}%
+\contentsline {chapter}{\numberline {3}Manifolds, Groups, and Rigid Motion}{25}{chapter.3}%
+\contentsline {section}{\numberline {3.1}Manifolds and tangent spaces}{25}{section.3.1}%
+\contentsline {paragraph}{Motivation.}{25}{section*.4}%
+\contentsline {paragraph}{Intuition.}{25}{section*.5}%
+\contentsline {subsection}{\numberline {3.1.1}Why a tangent space at all, and why one per point}{26}{subsection.3.1.1}%
+\contentsline {paragraph}{The same idea, three times.}{26}{section*.6}%
+\contentsline {subsection}{\numberline {3.1.2}Measuring: Riemannian metrics and geodesics}{27}{subsection.3.1.2}%
+\contentsline {subsection}{\numberline {3.1.3}Replacing $x+v$ and $y-x$: the exponential and logarithmic maps}{27}{subsection.3.1.3}%
+\contentsline {section}{\numberline {3.2}Groups and Lie groups}{29}{section.3.2}%
+\contentsline {paragraph}{Motivation.}{29}{section*.7}%
+\contentsline {section}{\numberline {3.3}The rotation group $SO(3)$}{29}{section.3.3}%
+\contentsline {subsection}{\numberline {3.3.1}Definition and dimension}{29}{subsection.3.3.1}%
+\contentsline {subsection}{\numberline {3.3.2}The Lie algebra $\so (3)$ and the hat/vee maps}{30}{subsection.3.3.2}%
+\contentsline {subsection}{\numberline {3.3.3}The exponential map: Rodrigues' formula}{31}{subsection.3.3.3}%
+\contentsline {paragraph}{Motivation.}{31}{section*.8}%
+\contentsline {subsection}{\numberline {3.3.4}The logarithmic map, and its numerically dangerous points}{32}{subsection.3.3.4}%
+\contentsline {paragraph}{Motivation.}{32}{section*.9}%
+\contentsline {subsection}{\numberline {3.3.5}$SO(3)$ as a metric space, and Brownian motion's invariant measure}{34}{subsection.3.3.5}%
+\contentsline {section}{\numberline {3.4}Left and right trivialisation, resolved for this document}{35}{section.3.4}%
+\contentsline {section}{\numberline {3.5}The pose group $SE(3)$ and the product manifold $SE(3)^N$}{37}{section.3.5}%
+\contentsline {paragraph}{Metric choice.}{37}{section*.10}%
+\contentsline {section}{\numberline {3.6}The torsion space $\mathbb T^k$}{38}{section.3.6}%
+\contentsline {chapter}{\numberline {4}Steerable Representations: Spherical Harmonics, Wigner Matrices, and Clebsch--Gordan Coefficients}{40}{chapter.4}%
+\contentsline {section}{\numberline {4.1}The problem this chapter exists to solve}{40}{section.4.1}%
+\contentsline {subsection}{\numberline {4.1.1}Rotating the whole system changes nothing physical}{40}{subsection.4.1.1}%
+\contentsline {subsection}{\numberline {4.1.2}Two different kinds of ``unchanged''}{41}{subsection.4.1.2}%
+\contentsline {paragraph}{Some quantities should not change at all.}{41}{section*.11}%
+\contentsline {paragraph}{Other quantities must change, in lockstep.}{41}{section*.12}%
+\contentsline {subsection}{\numberline {4.1.3}Why an ordinary network does not do this by itself}{41}{subsection.4.1.3}%
+\contentsline {subsection}{\numberline {4.1.4}Why data augmentation is not a substitute}{42}{subsection.4.1.4}%
+\contentsline {section}{\numberline {4.2}Group actions: how a group moves things}{43}{section.4.2}%
+\contentsline {paragraph}{The problem.}{43}{section*.13}%
+\contentsline {section}{\numberline {4.3}Invariance and equivariance, formally}{44}{section.4.3}%
+\contentsline {section}{\numberline {4.4}Why representation theory, and not something simpler}{46}{section.4.4}%
+\contentsline {section}{\numberline {4.5}Representations of $SO(3)$}{47}{section.4.5}%
+\contentsline {paragraph}{Motivation.}{47}{section*.14}%
+\contentsline {section}{\numberline {4.6}Spherical harmonics}{48}{section.4.6}%
+\contentsline {paragraph}{Motivation.}{48}{section*.15}%
+\contentsline {paragraph}{Intuition: from the circle to the sphere.}{48}{section*.16}%
+\contentsline {subsection}{\numberline {4.6.1}Explicit low-degree formulas, and the connection to familiar operations}{50}{subsection.4.6.1}%
+\contentsline {section}{\numberline {4.7}Wigner-$D$ matrices}{50}{section.4.7}%
+\contentsline {section}{\numberline {4.8}The anatomy of a steerable feature}{51}{section.4.8}%
+\contentsline {subsection}{\numberline {4.8.1}One feature, four indices}{51}{subsection.4.8.1}%
+\contentsline {subsection}{\numberline {4.8.2}Why 16 channels of $\ell =1$ is not a 48-dimensional vector}{52}{subsection.4.8.2}%
+\contentsline {subsection}{\numberline {4.8.3}What the channel index is for}{53}{subsection.4.8.3}%
+\contentsline {paragraph}{Where the CNN analogy holds, and where it breaks.}{53}{section*.17}%
+\contentsline {subsection}{\numberline {4.8.4}A concrete feature specification}{53}{subsection.4.8.4}%
+\contentsline {section}{\numberline {4.9}Tensor products and Clebsch--Gordan coefficients}{54}{section.4.9}%
+\contentsline {paragraph}{Motivation.}{54}{section*.18}%
+\contentsline {subsection}{\numberline {4.9.1}Starting from two ordinary vectors}{54}{subsection.4.9.1}%
+\contentsline {paragraph}{Two products we already know.}{54}{section*.19}%
+\contentsline {paragraph}{The question that forces tensor products.}{55}{section*.20}%
+\contentsline {subsection}{\numberline {4.9.2}The outer product and how it rotates}{55}{subsection.4.9.2}%
+\contentsline {subsection}{\numberline {4.9.3}Decomposing $1\otimes 1$ completely}{56}{subsection.4.9.3}%
+\contentsline {paragraph}{Step 1: split any matrix into three pieces.}{56}{section*.21}%
+\contentsline {paragraph}{Step 2: count dimensions.}{56}{section*.22}%
+\contentsline {paragraph}{Step 3: each piece is closed under $T\DOTSB \mapstochar \rightarrow QTQ^\top $.}{56}{section*.23}%
+\contentsline {paragraph}{Step 4: identify each piece as a known irrep.}{57}{section*.24}%
+\contentsline {paragraph}{Conclusion.}{58}{section*.25}%
+\contentsline {subsection}{\numberline {4.9.4}The selection rule as a type system}{59}{subsection.4.9.4}%
+\contentsline {subsection}{\numberline {4.9.5}Clebsch--Gordan coefficients are a change of basis}{59}{subsection.4.9.5}%
+\contentsline {paragraph}{Two bases for one space.}{59}{section*.26}%
+\contentsline {paragraph}{The coefficients are the transition matrix.}{60}{section*.27}%
+\contentsline {subsection}{\numberline {4.9.6}Reading \eqref {eq:cg-scratch} index by index}{60}{subsection.4.9.6}%
+\contentsline {subsection}{\numberline {4.9.7}Why the result is equivariant}{62}{subsection.4.9.7}%
+\contentsline {subsection}{\numberline {4.9.8}From the mathematical product to a network layer}{63}{subsection.4.9.8}%
+\contentsline {paragraph}{Adding channels.}{63}{section*.28}%
+\contentsline {subsection}{\numberline {4.9.9}Where this meets geometry: the edge direction}{65}{subsection.4.9.9}%
+\contentsline {section}{\numberline {4.10}Consequences for equivariant linear maps and nonlinearities}{66}{section.4.10}%
+\contentsline {subsection}{\numberline {4.10.1}The question}{66}{subsection.4.10.1}%
+\contentsline {paragraph}{The intuition first.}{66}{section*.29}%
+\contentsline {subsection}{\numberline {4.10.2}The condition a linear layer must satisfy}{66}{subsection.4.10.2}%
+\contentsline {subsection}{\numberline {4.10.3}Three cases, worked by hand}{67}{subsection.4.10.3}%
+\contentsline {paragraph}{Case 1: scalar $\to $ scalar.}{67}{section*.30}%
+\contentsline {paragraph}{Case 2: vector $\to $ vector.}{67}{section*.31}%
+\contentsline {paragraph}{Case 3: scalar $\to $ vector.}{67}{section*.32}%
+\contentsline {subsection}{\numberline {4.10.4}Schur's lemma}{68}{subsection.4.10.4}%
+\contentsline {subsection}{\numberline {4.10.5}What the layer actually looks like}{69}{subsection.4.10.5}%
+\contentsline {subsection}{\numberline {4.10.6}Bias terms}{70}{subsection.4.10.6}%
+\contentsline {subsection}{\numberline {4.10.7}Why linear layers are not enough}{70}{subsection.4.10.7}%
+\contentsline {subsection}{\numberline {4.10.8}Nonlinearity 1: scalars are unrestricted}{71}{subsection.4.10.8}%
+\contentsline {subsection}{\numberline {4.10.9}Nonlinearity 2: norm nonlinearities}{71}{subsection.4.10.9}%
+\contentsline {subsection}{\numberline {4.10.10}Nonlinearity 3: gating}{72}{subsection.4.10.10}%
+\contentsline {paragraph}{The mechanism, in one line.}{72}{section*.33}%
+\contentsline {paragraph}{As a network block.}{72}{section*.34}%
+\contentsline {paragraph}{Why this is strictly more expressive than a norm nonlinearity.}{72}{section*.35}%
+\contentsline {subsection}{\numberline {4.10.11}The three admissible operations, and what each is for}{73}{subsection.4.10.11}%
+\contentsline {subsection}{\numberline {4.10.12}A small block, end to end}{73}{subsection.4.10.12}%
+\contentsline {paragraph}{Input.}{73}{section*.36}%
+\contentsline {paragraph}{Equivariant linear.}{73}{section*.37}%
+\contentsline {paragraph}{Gate.}{73}{section*.38}%
+\contentsline {paragraph}{Output.}{73}{section*.39}%
+\contentsline {paragraph}{What is still missing.}{74}{section*.40}%
+\contentsline {subsection}{\numberline {4.10.13}Summary in one formula}{74}{subsection.4.10.13}%
+\contentsline {part}{III\hspace {1em}Diffusion Models}{76}{part.3}%
+\contentsline {chapter}{\numberline {5}Diffusion Models in $\mathbb R^d$}{77}{chapter.5}%
+\contentsline {section}{\numberline {5.1}Denoising score matching}{77}{section.5.1}%
+\contentsline {section}{\numberline {5.2}The SDE perspective, and why a single noise level is not enough}{78}{section.5.2}%
+\contentsline {subsection}{\numberline {5.2.1}Score, weighting, and the training objective in continuous time}{79}{subsection.5.2.1}%
+\contentsline {subsection}{\numberline {5.2.2}The reverse-time SDE}{80}{subsection.5.2.2}%
+\contentsline {section}{\numberline {5.3}The probability flow ODE, and the bridge to flow matching}{80}{section.5.3}%
+\contentsline {chapter}{\numberline {6}Diffusion Models on $SO(3)$}{82}{chapter.6}%
+\contentsline {section}{\numberline {6.1}Brownian motion on a Riemannian manifold}{82}{section.6.1}%
+\contentsline {paragraph}{Motivation.}{82}{section*.41}%
+\contentsline {section}{\numberline {6.2}The heat kernel on $SO(3)$: $\mathrm {IGSO}(3)$}{83}{section.6.2}%
+\contentsline {paragraph}{Motivation.}{83}{section*.42}%
+\contentsline {subsection}{\numberline {6.2.1}The score of the $\mathrm {IGSO}(3)$ kernel}{84}{subsection.6.2.1}%
+\contentsline {subsection}{\numberline {6.2.2}Numerical implementation: truncation, tabulation, and caching}{85}{subsection.6.2.2}%
+\contentsline {section}{\numberline {6.3}Riemannian denoising score matching and the reverse-time SDE on $SO(3)$}{86}{section.6.3}%
+\contentsline {part}{IV\hspace {1em}Architecture}{88}{part.4}%
+\contentsline {chapter}{\numberline {7}From Sets to Geometry: Attention, Message Passing, and the Equivariance Obstruction}{89}{chapter.7}%
+\contentsline {section}{\numberline {7.1}The network's signature}{89}{section.7.1}%
+\contentsline {section}{\numberline {7.2}Two structural requirements}{89}{section.7.2}%
+\contentsline {section}{\numberline {7.3}Attention, and the permutation-equivariance half of the problem}{91}{section.7.3}%
+\contentsline {section}{\numberline {7.4}Geometric graphs and message passing}{91}{section.7.4}%
+\contentsline {subsection}{\numberline {7.4.1}An ordinary GNN, with no geometry at all}{91}{subsection.7.4.1}%
+\contentsline {subsection}{\numberline {7.4.2}The question: where is the 3D structure?}{92}{subsection.7.4.2}%
+\contentsline {subsection}{\numberline {7.4.3}Why absolute positions are the wrong input}{92}{subsection.7.4.3}%
+\contentsline {paragraph}{The fix, and why it works.}{93}{section*.43}%
+\contentsline {subsection}{\numberline {7.4.4}Splitting an edge into radius and direction}{93}{subsection.7.4.4}%
+\contentsline {subsection}{\numberline {7.4.5}The radial half: from a distance to a feature vector}{94}{subsection.7.4.5}%
+\contentsline {subsection}{\numberline {7.4.6}The cutoff}{95}{subsection.7.4.6}%
+\contentsline {subsection}{\numberline {7.4.7}The angular half: why spherical harmonics}{95}{subsection.7.4.7}%
+\contentsline {paragraph}{What the different degrees carry.}{96}{section*.44}%
+\contentsline {subsection}{\numberline {7.4.8}Recombining radius and direction}{96}{subsection.7.4.8}%
+\contentsline {section}{\numberline {7.5}The obstruction: invariant features cannot output a vector}{97}{section.7.5}%
+\contentsline {section}{\numberline {7.6}A minimal repair, and why it is not enough}{98}{section.7.6}%
+\contentsline {section}{\numberline {7.7}The steerable message}{99}{section.7.7}%
+\contentsline {subsection}{\numberline {7.7.1}The equation}{99}{subsection.7.7.1}%
+\contentsline {paragraph}{$h^{(\ell _1)}_{j}$ --- what the neighbour knows.}{99}{section*.45}%
+\contentsline {paragraph}{$Y^{\ell _2}(\hat x_{ij})$ --- where the neighbour is.}{99}{section*.46}%
+\contentsline {paragraph}{$\otimes _{\mathrm {cg}}$ --- the only legal way to multiply them.}{100}{section*.47}%
+\contentsline {paragraph}{$w^{(\ell _1,\ell _2,\ell )}(d_{ij})$ --- how much, at this distance.}{100}{section*.48}%
+\contentsline {paragraph}{$m^{(\ell )}_{ij}$ --- the result.}{100}{section*.49}%
+\contentsline {subsection}{\numberline {7.7.2}Two cases worth doing by hand}{100}{subsection.7.7.2}%
+\contentsline {subsection}{\numberline {7.7.3}Aggregation over neighbours}{101}{subsection.7.7.3}%
+\contentsline {subsection}{\numberline {7.7.4}Self-interaction and residual connections}{102}{subsection.7.7.4}%
+\contentsline {subsection}{\numberline {7.7.5}The pipeline, end to end}{103}{subsection.7.7.5}%
+\contentsline {subsection}{\numberline {7.7.6}A small worked example}{103}{subsection.7.7.6}%
+\contentsline {paragraph}{Which coupling paths exist?}{103}{section*.50}%
+\contentsline {paragraph}{Messages.}{104}{section*.51}%
+\contentsline {paragraph}{Aggregation and update.}{104}{section*.52}%
+\contentsline {paragraph}{Sanity check.}{104}{section*.53}%
+\contentsline {subsection}{\numberline {7.7.7}What is fixed and what is learned}{104}{subsection.7.7.7}%
+\contentsline {subsection}{\numberline {7.7.8}Why this deserves the name ``steerable''}{104}{subsection.7.7.8}%
+\contentsline {subsection}{\numberline {7.7.9}The question this leaves open}{105}{subsection.7.7.9}%
+\contentsline {chapter}{\numberline {8}Equiformer and EquiformerV2}{106}{chapter.8}%
+\contentsline {section}{\numberline {8.1}From scalar messages to steerable messages}{106}{section.8.1}%
+\contentsline {paragraph}{Motivation.}{106}{section*.54}%
+\contentsline {section}{\numberline {8.2}Embedding geometry: spherical harmonics on edges}{107}{section.8.2}%
+\contentsline {paragraph}{Motivation.}{107}{section*.55}%
+\contentsline {section}{\numberline {8.3}The eSCN reduction: aligning every edge to its own frame}{107}{section.8.3}%
+\contentsline {paragraph}{Motivation, and the problem eSCN solves.}{107}{section*.56}%
+\contentsline {section}{\numberline {8.4}Why EquiformerV2 exists: the cost of full $SO(3)$ coupling}{108}{section.8.4}%
+\contentsline {subsection}{\numberline {8.4.1}Counting the work in one message}{108}{subsection.8.4.1}%
+\contentsline {subsection}{\numberline {8.4.2}The idea: use a frame in which the edge is trivial}{109}{subsection.8.4.2}%
+\contentsline {section}{\numberline {8.5}$SO(2)$-equivariant convolution: the actual EquiformerV2 message}{109}{section.8.5}%
+\contentsline {paragraph}{What an $SO(2)$-equivariant linear map looks like.}{109}{section*.57}%
+\contentsline {section}{\numberline {8.6}Equivariant nonlinearity: gating and the separable $S^2$ activation}{110}{section.8.6}%
+\contentsline {paragraph}{Why an ordinary nonlinearity breaks equivariance.}{110}{section*.58}%
+\contentsline {subsection}{\numberline {8.6.1}Resolving the apparent contradiction}{111}{subsection.8.6.1}%
+\contentsline {paragraph}{Two different spaces.}{112}{section*.59}%
+\contentsline {paragraph}{Why pointwise on the sphere is exactly equivariant.}{112}{section*.60}%
+\contentsline {paragraph}{Why the discretised version is only approximate.}{112}{section*.61}%
+\contentsline {subsection}{\numberline {8.6.2}What ``separable'' means here}{113}{subsection.8.6.2}%
+\contentsline {section}{\numberline {8.7}Normalisation in EquiformerV2}{114}{section.8.7}%
+\contentsline {section}{\numberline {8.8}Equivariant linear layers and normalisation}{114}{section.8.8}%
+\contentsline {section}{\numberline {8.9}Equivariant attention weights}{115}{section.8.9}%
+\contentsline {subsection}{\numberline {8.9.1}Ordinary attention, recalled}{115}{subsection.8.9.1}%
+\contentsline {paragraph}{The constraint attention weights must satisfy.}{116}{section*.62}%
+\contentsline {subsection}{\numberline {8.9.2}Where the invariant comes from: the $m=0$ channels}{116}{subsection.8.9.2}%
+\contentsline {subsection}{\numberline {8.9.3}Assembling the full attention block}{118}{subsection.8.9.3}%
+\contentsline {section}{\numberline {8.10}Node embedding: turning chemistry into a steerable feature}{118}{section.8.10}%
+\contentsline {section}{\numberline {8.11}Reading out the vector field}{119}{section.8.11}%
+\contentsline {section}{\numberline {8.12}EquiformerV1 vs.\ EquiformerV2: what actually changed, and what this codebase actually ships}{120}{section.8.12}%
+\contentsline {section}{\numberline {8.13}Summary: architecture, hyperparameters, and parameter count}{120}{section.8.13}%
+\contentsline {part}{V\hspace {1em}SigmaDock}{122}{part.5}%
+\contentsline {chapter}{\numberline {9}SigmaDock: Full Reconstruction}{123}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Choosing the state space}{123}{section.9.1}%
+\contentsline {section}{\numberline {9.2}The conformational manifold: what rigidity costs}{125}{section.9.2}%
+\contentsline {section}{\numberline {9.3}FR3D: reducing fragment count}{126}{section.9.3}%
+\contentsline {subsection}{\numberline {9.3.1}Rotatable-bond detection, as actually implemented}{126}{subsection.9.3.1}%
+\contentsline {subsection}{\numberline {9.3.2}Dummy atoms and fragment boundaries}{126}{subsection.9.3.2}%
+\contentsline {section}{\numberline {9.4}Triangulation: an invariant, soft geometric prior at fragment boundaries}{127}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Symmetry: gauge invariance and stochastic $SE(3)$-equivariance}{128}{section.9.5}%
+\contentsline {section}{\numberline {9.6}The forward (noising) process}{129}{section.9.6}%
+\contentsline {section}{\numberline {9.7}Input graph, featurisation, and backbone}{130}{section.9.7}%
+\contentsline {subsection}{\numberline {9.7.1}Fragment reconstruction: the map $\varphi $}{130}{subsection.9.7.1}%
+\contentsline {section}{\numberline {9.8}The Newton--Euler prediction head}{131}{section.9.8}%
+\contentsline {subsection}{\numberline {9.8.1}From network output to a physical analogy}{131}{subsection.9.8.1}%
+\contentsline {subsection}{\numberline {9.8.2}Net force, torque, and inertia: exact classical mechanics}{132}{subsection.9.8.2}%
+\contentsline {subsection}{\numberline {9.8.3}Newton--Maruyama: one discretised step of rigid-body dynamics}{133}{subsection.9.8.3}%
+\contentsline {subsection}{\numberline {9.8.4}Dressing the raw output into a score: the two branches}{133}{subsection.9.8.4}%
+\contentsline {section}{\numberline {9.9}The training loss}{134}{section.9.9}%
+\contentsline {section}{\numberline {9.10}Sampling}{135}{section.9.10}%
+\contentsline {section}{\numberline {9.11}Ranking generated poses}{136}{section.9.11}%
+\contentsline {part}{VI\hspace {1em}Flow Matching}{137}{part.6}%
+\contentsline {chapter}{\numberline {10}Continuous Normalizing Flows and Flow Matching in $\mathbb R^d$}{138}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Continuous normalizing flows}{138}{section.10.1}%
+\contentsline {subsection}{\numberline {10.1.1}The continuity equation}{139}{subsection.10.1.1}%
+\contentsline {subsection}{\numberline {10.1.2}CNF likelihood}{140}{subsection.10.1.2}%
+\contentsline {section}{\numberline {10.2}Conditional flow matching}{140}{section.10.2}%
+\contentsline {subsection}{\numberline {10.2.1}The linear (conditional optimal transport) path}{142}{subsection.10.2.1}%
+\contentsline {section}{\numberline {10.3}Sampling: integrating the learned ODE}{143}{section.10.3}%
+\contentsline {chapter}{\numberline {11}Riemannian Flow Matching}{144}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Vector fields and flows on a manifold}{144}{section.11.1}%
+\contentsline {section}{\numberline {11.2}The geodesic conditional path}{145}{section.11.2}%
+\contentsline {section}{\numberline {11.3}Flow matching on $SO(3)$}{145}{section.11.3}%
+\contentsline {section}{\numberline {11.4}Flow matching on the pose manifold $SE(3)^N$}{147}{section.11.4}%
+\contentsline {part}{VII\hspace {1em}SigmaFlow}{148}{part.7}%
+\contentsline {chapter}{\numberline {12}SigmaFlow: Full Reconstruction}{149}{chapter.12}%
+\contentsline {section}{\numberline {12.1}What changes, and what does not}{149}{section.12.1}%
+\contentsline {section}{\numberline {12.2}A time-convention warning, confirmed at the source level}{150}{section.12.2}%
+\contentsline {section}{\numberline {12.3}Translation flow matching, exactly as implemented}{150}{section.12.3}%
+\contentsline {section}{\numberline {12.4}Rotation flow matching, exactly as implemented}{151}{section.12.4}%
+\contentsline {section}{\numberline {12.5}No output dressing: the entire diffusion-specific scalar machinery is gone}{152}{section.12.5}%
+\contentsline {section}{\numberline {12.6}The loss function}{153}{section.12.6}%
+\contentsline {section}{\numberline {12.7}The full training step}{153}{section.12.7}%
+\contentsline {section}{\numberline {12.8}Sampling}{155}{section.12.8}%
+\contentsline {section}{\numberline {12.9}Likelihood and confidence: what is implemented, and what is not}{155}{section.12.9}%
+\contentsline {section}{\numberline {12.10}A tested, and rejected, loss variant}{156}{section.12.10}%
+\contentsline {part}{VIII\hspace {1em}Synthesis}{157}{part.8}%
+\contentsline {chapter}{\numberline {13}Implementation Details, Numerical Stability, and Consistency Checks}{158}{chapter.13}%
+\contentsline {section}{\numberline {13.1}Every clamp, epsilon, and numerical safeguard in one table}{158}{section.13.1}%
+\contentsline {section}{\numberline {13.2}Masking, batching, and scatter conventions}{159}{section.13.2}%
+\contentsline {section}{\numberline {13.3}Floating-point precision}{160}{section.13.3}%
+\contentsline {section}{\numberline {13.4}Dimensional and consistency checks}{160}{section.13.4}%
+\contentsline {section}{\numberline {13.5}Summary of open items}{161}{section.13.5}%
+\contentsline {chapter}{Closing Remarks}{162}{chapter*.63}%
