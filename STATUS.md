@@ -14,7 +14,128 @@ User dort weitermachen will.
 
 ---
 
-# ⏭️ HIER WEITERMACHEN (Stand 2026-08-13)
+# ⏭️ HIER WEITERMACHEN (Stand 2026-08-15)
+
+## Aktuelle Arbeitsphase: **Theory Summary `Texte/theory.tex`**
+
+Seit einigen Sessions läuft **kein** Implementierungsstrang mehr, sondern der
+Ausbau des Theory Summary. Der ARC-Strang ruht (keine Jobs starten, alles
+GPU-Pflichtige gilt als `PENDING ARC VALIDATION`).
+
+### 🔑 Prioritätenordnung, vom User am 2026-08-15 ausdrücklich festgelegt
+
+```
+Theory first  →  Architecture understanding  →  Implementation mapping
+```
+
+Das Dokument ist **primär ein Lehrbuch**, nicht Code-Dokumentation. Maßstab
+für jeden Abschnitt:
+
+> Könnte ein mathematisch starker MSc-Student, der dieses Gebiet vorher nicht
+> gelernt hat, danach die Hauptideen selbst erklären und die zentralen
+> Gleichungen rekonstruieren?
+
+Und: **Der Leser darf das Repository nicht brauchen.** Code illustriert
+Theorie, ist aber nie ihre Voraussetzung. Wenn ein Abschnitt zu
+implementation-heavy wird, trennen in *Main theory* und *Implementation note:
+SigmaDock/SigmaFlow*.
+
+**Kein Seitenlimit.** 220–300 Seiten sind ausdrücklich in Ordnung, solange es
+kein Padding ist. Lieber 20 Seiten, die einen schweren Übergang verständlich
+machen, als 2 Seiten elegante Mathematik für Experten.
+
+**Papers aktiv nutzen** (`papers/`, nicht `paper/`), nicht aus dem Gedächtnis
+schreiben. Vorhanden:
+- Holderrieth & Erives — *An Introduction to Flow Matching and Diffusion
+  Models* (84 S.) ← didaktische Leitreferenz
+- Song et al. 2021 — *Score-Based Generative Modeling through SDEs*
+- Chen & Lipman 2024 — *Flow Matching on General Geometries*
+- Bortoli et al. 2022 — *Riemannian Score-Based Generative Modelling*
+- Yim et al. 2023 — SE(3) diffusion / SE(3) flow matching (2 Paper)
+- Prat et al. 2026 — SigmaDock
+
+**Nicht vorhanden** (bei Bedarf beschaffen): DDPM, SMLD, originales
+Flow-Matching-Paper (Lipman et al.), Equiformer/EquiformerV2.
+
+### ✅ Phase 1 abgeschlossen (2026-08-15): Diffusion didaktisch ausgebaut
+
+Commit `cd16b4c`. 181 → **196 Seiten**. Details im Session-Log unten.
+
+### ⏭️ NÄCHSTER SCHRITT: Phase 2 — Flow Matching didaktisch ausbauen
+
+```
+probability path → continuity equation → vector field
+                 → conditional path → CFM → relation to diffusion
+```
+
+Vom User vorgegebene Punkte (aus der Anforderungsliste §26–§38):
+1. **Nicht** mit dem Loss beginnen. Erst: Source `p_0` nach Target `p_1`
+   transportieren, Probability Path wählen, dann Vector Field suchen.
+2. Continuity equation als Fundament, mit Massenerhaltung erst in 1D.
+   *(Teilweise schon in `chap:sde-toolbox` §Fokker–Planck vorbereitet —
+   dort steht die 1D-Herleitung bereits. Nicht duplizieren, referenzieren.)*
+3. Duale Sicht: ein Sample folgt `Ẋ = u_t(X)`, die Population folgt der
+   Continuity Equation — parallel zu SDE-Pfad vs. Fokker–Planck.
+4. Warum überhaupt Flow Matching: marginales `u_t` ist intraktabel, CFM macht
+   daraus supervised regression. Dieser Übergang muss motiviert werden.
+5. Conditional probability paths langsam; `p_t(x) = ∫ p_t(x|x_1) p_data(x_1)`.
+6. Conditional vector field analytisch herleiten (linearer Gauß-Pfad).
+7. **Marginalisierungssatz nicht nur zitieren:** `u_t(x) = E[u_t(x|X_1)|X_t=x]`,
+   dann squared-error-Regression → optimaler Regressor = marginales Feld.
+   Conditional-Expectation-Projektion langsam erklären.
+8. Ein vollständig durchgerechneter linearer Pfad.
+9. **Diffusion als Probability Path im selben Framework** — laut User der
+   wichtigste konzeptionelle Brückenschlag.
+10. Score Matching vs. Flow Matching nebeneinander.
+11. Für Gauß-Pfade: `u_t(x) = a_t x + b_t ∇log p_t(x)`, Koeffizienten
+    vollständig herleiten (nicht aus Erinnerung). Vgl. Proposition 1 im
+    Intro-Paper.
+12. **Parameterizations-Abschnitt**: ε, score, x_0, v, u — wann linear
+    ineinander überführbar. Mit ausdrücklicher Warnung vor der
+    Namenskollision „velocity prediction" (DDPM/Stable Diffusion) ≠
+    Flow-Matching-Velocity.
+13. Sampling erst NACH der Theorie.
+
+### Phase 3 danach: Geometrie/Riemannian FM erneut vertiefen
+
+Die vom User gewünschte Kette, jeder Pfeil motiviert:
+```
+R^n → warum euklidisch nicht reicht → Manifold → Tangent Space →
+Vector Field → Riemannian Metric → Längen/Winkel → Geodesics →
+Exp → Log → Lie Groups → Lie Algebra → SO(3) → hat/vee →
+Exp/Log auf SO(3) → Trivialisierung → ODEs auf SO(3) → Riemannian FM
+```
+Besonders gewünscht:
+- Tangentialraum **erst intuitiv**: warum ein neuer Vektorraum an jedem
+  Punkt, was schiefgeht beim Addieren von Punkt + Vektor, Kurvenbild,
+  warum `γ̇(0)` ein Tangentialvektor ist — auf S¹, S², SO(3).
+- Exp/Log als Ersatz für `x+v` und `y−x`, erst S¹/S², dann SO(3).
+- Lie-Gruppen als Verbindung Algebra/Geometrie: warum SO(3) beides ist, und
+  warum man Tangentialinformation per Multiplikation transportieren kann.
+  **Erst daraus** Trivialisierung entwickeln.
+- body/spatial zuerst als allgemeine Mathematik, **danach** Implementation
+  Note zur Konjugationswirkung.
+- Product manifolds als Brücke zu SigmaFlow.
+
+### Offene Lücke, die ich selbst benannt habe
+
+**Fokker–Planck ist motiviert, aber nicht bewiesen.** Der ½-Faktor ist über
+das Faltungs-/Taylor-Argument erklärt, der Transportterm über
+Massenerhaltung. Ein sauberer Beweis bräuchte Itôs Lemma, das nach
+User-Vorgabe §47/§48 weggelassen wurde. Ca. 4 Seiten, falls gewünscht.
+
+### Mehr Worked Examples (User-Wunsch §46, laufend)
+
+- Geometrie: S¹, S², Rotation um z-Achse, Exp/Log einer 90°-Rotation
+- Diffusion: 1D-Gauß ✅, diskreter Random Walk ✅, VP-SDE in 1D ✅,
+  Score einer Gauß ✅
+- Flow Matching: zwei Punkte in 1D, Gauß-Source → fester Datenpunkt,
+  einfacher 2D-Transport
+- Riemannian FM: S¹-Geodäte, SO(2)-Analogie, dann SO(3)
+
+---
+
+# 📁 HISTORISCH (Stand 2026-08-13) — Implementierungsstrang, ruht
 
 ## 🔴 BUG GEFUNDEN (2026-08-13): `sdf_regex` der Experimentdatei wird beim Sampling IMMER verworfen
 
@@ -5120,3 +5241,196 @@ aufgeschobenen Namensaufräumrunden.
   ausführen/testen) — "okay" wird nicht blind akzeptiert. Bugs werden mit
   Erklärung des zugrundeliegenden Python/PyTorch-Konzepts zurückgemeldet,
   nicht nur als Korrektur.
+
+---
+
+# 📚 Theory-Summary-Strang (Sessions bis 2026-08-15)
+
+Chronologisch, neueste zuletzt. Alle Zahlen sind gemessen, nicht geschätzt.
+
+## Runde: Output-Head-Audit (Commit `fe61d7a`, 166 → 174 S.)
+
+**Strukturbefund, der die Fragestellung korrigierte.** `EquiformerV2.forward`
+hat genau **einen** geometrischen Output: `forces [N,3]`, ein 3-Vektor je
+Atom aus dem ℓ=1-Block via `narrow(1,1,3)`. Translation und Rotation sind
+**keine Heads**, sondern werden außerhalb des Netzes durch klassische
+Starrkörpermechanik abgeleitet. **Es gibt keinen Torsion-Head** —
+`torsion`/`dihedral` kommen in `diff/` null mal vor; Torsionsfreiheit steckt
+in der Fragmentierung.
+
+**Zentraler Befund — die Gruppenwirkung ist Konjugation, nicht Linksmult.**
+`R_t` ist eine Delta-Rotation gegen `pos_0`; `pos_0` ist Netzinput und dreht
+mit; `R_1` ist hart die Identität. Aus `_apply_transformations` gemessen:
+
+| Substitution | erzeugt Q·pos_t |
+|---|---|
+| `R_t → Q R_t` | 1.06 ✗ |
+| `R_t → Q R_t Qᵀ` | **3.7e-16** ✓ |
+
+Folge: `pred_u_t_R` **ist** body-frame im Sinn `Ṙ = R ω̂` (fixiert durch
+`euler_step`: `R_t @ exp(v dt)`), aber **nicht invariant**:
+
+| Hypothese | Residuum |
+|---|---|
+| invariant | 1.20 ✗ |
+| `u → Q u Qᵀ` | **2.3e-15** ✓ |
+
+Ziel transformiert identisch (8.3e-15) → Loss invariant. **Frame Fix korrekt.**
+
+> **Merksatz, im Dokument als Caution:** „body-frame" fixiert die Beziehung zu
+> `Ṙ`, **nicht** das Transformationsgesetz — das hängt auch daran, wie die
+> Gruppe auf `R` wirkt. Eine frühere Dokumentaussage („body-frame Output
+> bleibt unverändert") war dadurch falsch und wurde korrigiert.
+
+Volle Kette (float64, 12 Haar-Rotationen), alles 1e-15: `total_force` 4.5e-15,
+`torque` 1.3e-15, Trägheit `I→QIQᵀ` 8.6e-16, `delta_W` 2.4e-15,
+`omega` 2.6e-15.
+
+**Widerlegt:** die yzx-Permutationshypothese (1.49). Grund, der eine offene
+Frage schloss: `init_edge_rot_mat` richtet auf `e_2` aus, und in der
+e3nn-Ordnung (y,z,x) ist der zweite Slot genau m=0. Die beiden seltsam
+wirkenden Konventionen heben sich auf.
+
+**Nebenbefund, `PENDING ARC VALIDATION`:** Die S²-Aktivierung sitzt zwischen
+`_rotate` (Z.250) und `_rotate_inv` (Z.324), also **im Kantenframe**, und ihr
+Gitter ist nicht invariant unter Drehung um die Kantenachse.
+`init_edge_rot_mat` zieht diese Achse per `torch.rand_like` bei jedem Forward
+neu. Bei Produktionsgröße (128 Kanäle, 6 Blöcke, 15 M Parameter):
+
+| | S² (Default) | Gate |
+|---|---|---|
+| Nicht-Determinismus f(x) vs f(x) | **1.06e-01** | 1.4e-15 |
+| Äquivarianz f(Qx) vs Q f(x) | **9.4e-02** | 5.3e-15 |
+
+Der Forward ist im eval-Modus nicht deterministisch, ~10 % relativ. **Gemessen
+bei zufälliger Initialisierung** — ob Training das unterdrückt, ist offen und
+braucht einen Checkpoint. Betrifft SigmaDock und SigmaFlow gleich, erklärt
+also **keinen Unterschied** zwischen ihnen. Nicht vorschnell als Erklärung für
+Performance-Unterschiede verwenden (User-Vorgabe).
+
+## Runde: Engine-Swap-Audit (Commit `826d2c5`, 174 → 181 S.)
+
+Dreischichtige Trennung: **A** geometrischer Backbone, **B** mechanische
+Reduktion, **C** generative Semantik.
+
+**Layer A ist byte-identisch.** `diff` über alle 17 Dateien in `net/`
+inklusive `model.py`: **0 abweichende Zeilen**. Parameterzahl damit
+konstruktionsbedingt identisch. Außerhalb: `oracle.py` 5 Zeilen (nur
+Kommentar), `data.py` 13 (nur Fehlerausgabe + `None`-Check),
+`chem/processing.py` 0, `diff/so3_utils.py` **2 Zeilen (ein Clamp)**.
+
+**Layer B** formelgleich. Zwei Abweichungen vom Lehrbuch in *beiden* Modellen:
+Einheitsmassen (`m_i = 1`) und zwei Regularisierungen.
+
+**Layer C** vollständig ersetzt, konsistent:
+- **SigmaDock lernt nicht den Score**, sondern den varianznormierten:
+  `pred = F·(1/σ)`, `λ = σ²`, kürzt sich zu `L = ‖F − σ·s_true‖²`.
+- SigmaFlow hat kein λ — korrekt.
+- Beide trainieren **zwei** aktive Terme: SigmaDocks `T0`/`R0` haben
+  Default-Gewicht 0.0.
+- Zeitkonvention gespiegelt (SigmaDock t=0 Daten, SigmaFlow t=1 Daten), beide
+  füttern demselben Encoder das rohe `t` — kein σ, kein log σ. Sauber.
+
+Numerisch (float64): `u_t` ist wirklich `ẋ_t` ≤ 7e-11; `u_t^R` ist wirklich
+`R_tᵀṘ_t` ≤ 3e-10; Endpunkte exakt; **Euler trifft den Endpunkt bei jeder
+Schrittweite** ≤ 3e-16 → der Integrator implementiert genau `x + dt·v` bzw.
+`R @ exp(dt·v)`, **kein geerbter σ-Faktor hat den Port überlebt**.
+
+**Zwei Confounder (für die Thesis wichtig):**
+1. **Rotations-Quellverteilung stimmt nicht überein.** IGSO(3) bei σ_max=1.5
+   hat mittleren Winkel **115.0°**, Haar **126.5°**, Totalvariation **0.130**.
+   Translation dagegen praktisch identisch (VP-Terminalvarianz 0.99996).
+2. **Gewichte 1.0 : 0.5 übernommen, ihre Rechtfertigung nicht.** In SigmaDock
+   saßen sie auf λ = σ²; in SigmaFlow multiplizieren sie zwei rohe MSEs in
+   verschiedenen Einheiten. Gemessen `E‖u_R‖²_F = 10.6` (datenunabhängig),
+   `E‖u_trans‖²` je nach COM-Streuung 3.8–15.1.
+
+**Weiterer Befund — die Log-Abbildung ist nicht exakt.** Das FM-Rotationsziel
+*ist* `log(R_0ᵀR_1)`. Über 40 000 Haar-Rotationen in float64: Median 5e-7,
+99 % 2.8e-3, Max 2e-2. Zwei Ursachen:
+- `Omega()` multipliziert die Spur mit `(1 − 1e-6)` vor dem `arccos` →
+  verzerrt **jeden** Winkel; bei 90° exakt 5.00e-07 rad.
+- π-Zweig schaltet erst bei `|θ−π| < 1e-2` zu; dazwischen (178–179.4°) wird
+  `θ/(2 sin θ)` benutzt → bei 179°: 4.3e-3.
+
+Der Kommentar in `so3_flow_matcher.py`, der Clamp sei *„fixed"*, ist zu stark.
+**Einordnung: erklärt den Rotationsausfall NICHT** (138° vs 132° Zufall ist
+O(1), das hier ist relativ 2e-7 typisch).
+
+`sigma_min` endgültig tot: `SO3_FlowMatcher` nimmt das Argument nicht
+entgegen. Terminologie korrigiert: `forces` ist ein Name, keine Physik —
+korrekt ist *atomweises ℓ=1-äquivariantes Vektorfeld*.
+
+**Urteil: „Mostly, with the following confounders."**
+
+## Runde: Diffusion didaktisch neu aufgebaut (Commit `cd16b4c`, 181 → 196 S.)
+
+Erste Runde unter der neuen Theory-first-Priorität. **Kein
+Implementierungsdetail angefasst.**
+
+Neues Kapitel **„From Random Walks to Stochastic Differential Equations"**,
+vor `chap:diffusion` eingefügt (`\label{chap:sde-toolbox}`):
+- Diskrete Rauschkette als Ausgangspunkt.
+- **Warum √Δt**: vollständige Skalenrechnung `Var(S_n) = σ²T·Δt^(2α−1)`, nur
+  α = ½ überlebt. Tabelle aller drei Fälle, numerisch bestätigt.
+- Brownsche Bewegung aus den drei Eigenschaften der Teilsummen hergeleitet.
+- Nirgends differenzierbar in zwei Zeilen → Caution: `dW_t` ist kein
+  Differential; SDE = Integralgleichung.
+- Itô-Integral auf benötigtem Niveau (linker Randpunkt, Itô-Isometrie mit
+  Beweis). **Keine** Martingaltheorie.
+- Euler–Maruyama in **beiden** Richtungen gelesen.
+- OU-Prozess vollständig durchgerechnet.
+- Drift vs. Diffusion, mit Auflösung des Scheinwiderspruchs (kohärente vs.
+  inkohärente Summation).
+- Pfad vs. Marginal als eigener Abschnitt.
+- Fokker–Planck motiviert (1D-Massenerhaltung, dann Laplace-Term; ½ aus dem
+  Taylorkoeffizienten einer Faltung).
+- **DDPM → VP-SDE** und **SMLD → VE-SDE** vollständig hergeleitet.
+
+Drei Lücken im bestehenden Kapitel geschlossen:
+- `sec:why-score-appears`: Gegenbeispiel `dX = dW` (unter Zeitumkehr dieselbe
+  Gleichung, streut weiter) → Umkehr kann nicht pfadweise sein → der Score ist
+  die weggeworfene Information. Mit Vorzeichenprobe.
+- `sec:pf-ode-motivation`: Staubwolken-Bild; Faktor ½ aus
+  `Δp = ∇·(p ∇log p)`.
+- `sec:score-intuition`: Score als geometrisches Objekt vor jedem Algorithmus,
+  1D-Gauß mit drei Ablesungen. Die dritte (explodiert für σ→0) erklärt direkt
+  SigmaDocks 1/σ-Skalierung.
+- `sec:sde-vs-pfode-table`: Vergleichstabelle + Caution „deterministisch ist
+  nicht besser, sondern ein anderer Handel".
+
+## Audit-Skripte (`audits/`, alle lokal, ohne GPU/Checkpoint)
+
+| Skript | Zweck |
+|---|---|
+| `frame_audit.py` | Frame jedes Outputs + Gruppenwirkung auf `R_t` |
+| `s2_gauge_audit.py` | S²-Äquivarianzbruch bei Produktionsgröße |
+| `engine_swap_audit.py` | FM-Ziele, Quellverteilungen, Loss-Skalen, Log-Map |
+| `sde_limit_check.py` | √Δt, DDPM→VP, SMLD→VE, Euler–Maruyama |
+
+**Zwei Methodikfallen, beide selbst hineingetappt und behoben** — bei neuen
+Skripten beachten:
+1. `zero_init_last` muss auf `False`. Der Default `True` nullt die letzte
+   Schicht → Output exakt 0 → jeder Äquivarianztest leer erfüllt.
+2. **Monte Carlo verdeckt Konvergenzordnungen.** Bei 40 000 Samples ist der
+   Stichprobenfehler 5e-3; die behauptete 1/N-Konvergenz war unsichtbar. Wo
+   die Marginale gaußisch sind: geschlossen rechnen, nicht simulieren.
+
+Weitere Stolpersteine: `timestep_embedder.py` pinnt hart `timesteps.float()`
+(Zeitpfad bleibt float32, speist nur ℓ=0 → für Äquivarianz irrelevant);
+`model.py` legt Puffer mit `torch.zeros(...)` ohne dtype an → global
+`torch.set_default_dtype(torch.float64)` setzen statt Code ändern.
+
+## Laufende Regeln für den Theory-Strang
+
+- **Nach jeder größeren LaTeX-Änderung kompilieren**, nicht erst am Ende.
+  `cd Texte && pdflatex -interaction=nonstopmode theory.tex` (3×), dann auf
+  `^!` und undefinierte Referenzen prüfen.
+- Keinem Kommentar, Variablennamen oder bestehenden Dokumentsatz ungeprüft
+  glauben. Bei Widerspruch Paper/Kommentar/Code entscheidet **der Code**.
+- Trennen: *Mathematical requirement* / *What SigmaDock actually implements* /
+  *Numerical verification*.
+- Nicht vorschnell „bricht Äquivarianz" sagen — erst analysieren, wo genau die
+  Approximation entsteht (die `m_max`-Trunkierung war exakt äquivariant, ich
+  hatte sie fälschlich als approximativ geführt).
+- `SigmaDock/` und `SigmaFlow_Minimal/` sind eingefroren.
