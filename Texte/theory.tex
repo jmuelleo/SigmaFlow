@@ -3075,6 +3075,205 @@ which EquiformerV2 reduces full $SO(3)$-equivariant processing to a
 computationally cheaper $SO(2)$-equivariant one.
 \end{codebox}
 
+\section{The anatomy of a steerable feature}
+\label{sec:feature-anatomy}
+
+We now have the list of available feature \emph{types} ($\ell=0,1,2,\dots$)
+and, for each, the matrix $D^\ell(Q)$ that says how it rotates. What we do
+not yet have is a picture of what a feature actually looks like inside a
+network. This section supplies it, because every shape in
+\Cref{chap:equiformer} and every tensor in the code is an instance of it.
+
+\subsection{One feature, four indices}
+
+The central object is
+\[
+\boxed{\;h^{(\ell)}_{i,c,m}\;}
+\]
+a single real number carrying four indices. Each index means something
+different, and --- this is the point --- \emph{they behave completely
+differently under rotation}. Taking them one at a time:
+
+\begin{center}
+\begin{tabular}{cllp{5.2cm}}
+\toprule
+Index & Range & Meaning & Behaviour under a rotation $Q$ \\
+\midrule
+$i$ & $1,\dots,N$ & node (atom) & \textbf{unchanged}: rotating the molecule does not renumber atoms \\
+$\ell$ & $0,1,\dots,L$ & irrep type & \textbf{unchanged}: a type-$1$ feature stays type-$1$ \\
+$c$ & $1,\dots,C_\ell$ & channel & \textbf{unchanged}: channels never mix under rotation \\
+$m$ & $-\ell,\dots,+\ell$ & component within the irrep & \textbf{mixed}: this is the only index a rotation touches \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Everything about equivariant architectures follows from the last row. A
+rotation acts on exactly one of the four axes. Concretely, for fixed $i$,
+$\ell$ and $c$, the $(2\ell+1)$ numbers
+\[
+h^{(\ell)}_{i,c}\;:=\;\bigl(h^{(\ell)}_{i,c,-\ell},\dots,h^{(\ell)}_{i,c,+\ell}\bigr)^\top\in\RR^{2\ell+1}
+\]
+form one \emph{irreducible block}, and it transforms as
+\begin{equation}
+\label{eq:feature-transform-blockwise}
+h^{(\ell)}_{i,c}\;\longmapsto\;D^\ell(Q)\,h^{(\ell)}_{i,c}
+\qquad\text{for every } i \text{ and every } c \text{ separately.}
+\end{equation}
+The same matrix $D^\ell(Q)$ is applied to every channel, independently. No
+information passes between channels, between nodes, or between degrees when
+the molecule is rotated.
+
+\subsection{Why 16 channels of $\ell=1$ is not a 48-dimensional vector}
+
+This is the distinction worth being pedantic about, because both objects
+contain the same count of real numbers and they are nonetheless
+mathematically different.
+
+Suppose $C_1=16$ channels of type $\ell=1$. The total number of stored reals
+is $16\times(2\cdot1+1)=48$. Now compare two candidate transformation rules
+for that block of $48$ numbers:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+\textbf{A generic $48$-vector} & \textbf{$16$ channels of $\ell=1$} \\
+\midrule
+transforms by \emph{some} $48\times48$ matrix & transforms by $I_{16}\otimes D^1(Q)$ \\
+$48^2=2304$ free entries & determined by the single $3\times3$ matrix $Q$ \\
+any two of the $48$ slots may mix & only slots within one channel mix \\
+no notion of ``direction'' & each channel \emph{is} a direction in $\RR^3$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The block-diagonal form is worth writing out. Stack the channels into one
+column $h^{(1)}_i\in\RR^{48}$ in the order
+$(c=1,m=-1),(c=1,m=0),(c=1,m=+1),(c=2,m=-1),\dots$. Then
+\begin{equation}
+\label{eq:feature-transform-kron}
+h^{(1)}_i \;\longmapsto\; \bigl(I_{16}\otimes D^1(Q)\bigr)h^{(1)}_i
+=
+\begin{pmatrix}
+D^1(Q) & & \\
+ & \ddots & \\
+ & & D^1(Q)
+\end{pmatrix}
+h^{(1)}_i ,
+\end{equation}
+$16$ identical $3\times3$ blocks down the diagonal and zeros elsewhere. The
+notation $I_{C}\otimes D^\ell(Q)$ is just a compact name for this
+block-diagonal matrix: the Kronecker product $A\otimes B$ replaces each
+entry $a_{jk}$ of $A$ by the block $a_{jk}B$, so $I_{16}\otimes D^1(Q)$ is
+$16$ copies of $D^1(Q)$ on the diagonal. Read it as: ``do nothing to the
+channel index, apply $D^1(Q)$ to the $m$ index''.
+
+\begin{caution}[The ordering convention is a real choice]
+\label{caution:feature-ordering}
+Whether the $48$ numbers are laid out channel-major
+($c$ slowest, $m$ fastest, as above, giving $I_C\otimes D^\ell$) or
+$m$-major ($m$ slowest, $c$ fastest, giving $D^\ell\otimes I_C$) is an
+implementation decision, not mathematics. Both describe the same
+transformation; the matrices differ by a permutation. Getting it wrong
+produces a tensor of the right \emph{shape} that is silently wrong, which is
+why \Cref{chap:equiformer} records the actual memory layout used by
+EquiformerV2 rather than assuming one. Nothing in \emph{this} chapter
+depends on the choice.
+\end{caution}
+
+\subsection{What the channel index is for}
+
+A natural objection: ``if $\ell=1$ means `a vector', why do we need $16$ of
+them? A point in space only has one direction to it.''
+
+The answer is that a channel is not a coordinate; it is a \emph{learned
+feature that happens to be directional}. Consider what a single atom might
+usefully want to represent:
+
+\begin{itemize}[nosep]
+\item the direction towards the densest nearby region of protein,
+\item the direction along which its ring system extends,
+\item the direction in which a hydrogen-bond donor points,
+\item the direction it is currently being pushed by the flow field.
+\end{itemize}
+
+Each of these is a separate piece of information, and each is directional
+--- so each needs its own $\ell=1$ channel. Sixteen channels means the atom
+carries sixteen independent directional facts about itself. They are all
+$3$-vectors, they all rotate the same way, and they mean different things.
+
+\paragraph{Where the CNN analogy holds, and where it breaks.} In a
+convolutional network, ``$16$ channels'' likewise means $16$ independent
+learned quantities per spatial location, and a $1\times1$ convolution mixes
+them freely. That much carries over: a linear layer here may also mix the
+$16$ channels freely, with a learned $16\times16$ (or $C_{\text{out}}\times16$)
+matrix.
+
+The analogy breaks in one specific way. In a CNN the channel index is the
+\emph{only} feature index, so a linear layer may mix everything with
+everything. Here there is a second index, $m$, and mixing across it is
+forbidden --- a layer that combined $h_{c=1,m=0}$ with $h_{c=2,m=+1}$ using
+arbitrary weights would not commute with $I_C\otimes D^\ell(Q)$ and would
+destroy equivariance. So:
+
+\begin{quote}
+\textbf{Mix channels freely; never mix $m$ by hand.} Whatever happens to the
+$m$ index must be done by an operation that representation theory certifies
+--- which, as \Cref{sec:cg-derivation} shows, essentially means the
+Clebsch--Gordan product.
+\end{quote}
+
+That sentence is the informal content of Schur's lemma
+(\Cref{prop:schur-scratch}), which we prove in
+\Cref{sec:equivariant-layers} once the tensor-product machinery is in place.
+
+\subsection{A concrete feature specification}
+
+Architectures specify their feature content as a list of
+(multiplicity, degree) pairs, written in \texttt{e3nn} notation as e.g.
+\[
+\texttt{"32x0e + 16x1o + 8x2e"} .
+\]
+Read: $32$ channels of $\ell=0$, $16$ of $\ell=1$, $8$ of $\ell=2$. (The
+trailing \texttt{e}/\texttt{o} is \emph{parity}, relevant for $O(3)$ rather
+than $SO(3)$; we discuss it only where it matters, in
+\Cref{rem:parity-scratch}, and it plays no role in this chapter.) The total
+stored numbers per node are
+\[
+32\times1 \;+\; 16\times3 \;+\; 8\times5 \;=\; 32+48+40 \;=\; 120 ,
+\]
+and under a rotation these $120$ numbers transform by the block-diagonal
+matrix
+\[
+\underbrace{I_{32}\otimes D^0(Q)}_{32\times32,\ =\,I_{32}}
+\ \oplus\
+\underbrace{I_{16}\otimes D^1(Q)}_{48\times48}
+\ \oplus\
+\underbrace{I_{8}\otimes D^2(Q)}_{40\times40} .
+\]
+Note that the $32$ scalar channels are genuinely untouched ($D^0(Q)=1$),
+which is the precise sense in which $\ell=0$ features are the invariant
+ones.
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+Two things you will need when reading code.
+
+First, \emph{shapes}. A node-feature tensor in EquiformerV2 is not
+\shape{N, F} for a flat feature count $F$; it is indexed by node, channel
+and $m$, with the degrees stacked. When \Cref{chap:equiformer} reports a
+shape like \texttt{[N, (L+1)}$^2$\texttt{, C]}, the middle axis is the
+$m$-index of \emph{all} degrees concatenated --- because
+$\sum_{\ell=0}^{L}(2\ell+1)=(L+1)^2$. Recognising which axis is $m$ and
+which is $c$ is the difference between reading the code and guessing at it.
+
+Second, \emph{where the output comes from}. SigmaFlow's network must emit
+$\omega,v\in\RR^3$ per fragment. Those are $\ell=1$ objects. So the final
+readout takes $\ell=1$ channels and reduces them to one channel --- it
+cannot manufacture them from $\ell=0$ scalars, and it cannot read them off
+$\ell=2$ features without a Clebsch--Gordan step. The architecture's
+\texttt{lmax} must therefore be at least $1$, and the reason is this
+paragraph, not a hyperparameter sweep.
+\end{tcolorbox}
+
 \section{Tensor products and Clebsch--Gordan coefficients}
 \label{sec:cg-derivation}
 
@@ -3087,12 +3286,291 @@ of possibly different, positive degree, an arbitrary bilinear combination
 will \emph{not} in general transform correctly under rotation; we need the
 \emph{specific} bilinear combinations that do.
 
+\subsection{Starting from two ordinary vectors}
+\label{sec:tp-from-vectors}
+
+Before any $\ell$'s, take the most familiar case: two ordinary $3$-vectors
+$u,v\in\RR^3$ attached to an atom. Under a global rotation they transform as
+$u\mapsto Qu$ and $v\mapsto Qv$. We want to build something new out of them.
+The question is what is available.
+
+\paragraph{Two products we already know.} There are two standard ways to
+multiply vectors in $\RR^3$, and both turn out to be equivariant --- for
+reasons we can check in one line each.
+
+\emph{Dot product.} $u^\top v\in\RR$, a single number. Under rotation,
+\[
+(Qu)^\top(Qv) \;=\; u^\top Q^\top Q v \;=\; u^\top v ,
+\]
+using $Q^\top Q=I$. The output does not change: this is an
+\textbf{invariant}, i.e.\ an $\ell=0$ output. One number.
+
+\emph{Cross product.} $u\times v\in\RR^3$. Under rotation, by
+\Cref{prop:so3-isometry},
+\[
+(Qu)\times(Qv) \;=\; Q(u\times v) .
+\]
+The output rotates like a vector: an $\ell=1$ output. Three numbers.
+
+\paragraph{The question that forces tensor products.} We have made $1$
+number and $3$ numbers out of a pair of vectors. But a pair of vectors is
+$3+3=6$ input numbers, and \emph{all products} $u_iv_j$ number $3\times3=9$.
+Neither the dot product nor the cross product uses all nine; together they
+account for $1+3=4$. So:
+
+\begin{quote}
+\textbf{Where are the other five?}
+\end{quote}
+
+Answering that question is the whole content of this section, and the answer
+--- an object with $5$ components, which is $2\ell+1$ for $\ell=2$ --- is
+where higher-degree features come from. They are not an exotic addition to
+the theory; they are the part of an ordinary product of two vectors that
+dot and cross throw away.
+
+\subsection{The outer product and how it rotates}
+
+\begin{definition}[Outer product]
+\label{def:outer-product}
+For $u,v\in\RR^3$, their \emph{outer product} is the $3\times3$ matrix
+\[
+T \;=\; u\otimes v \;:=\; uv^\top ,
+\qquad T_{jk}=u_jv_k .
+\]
+As a list of numbers it has $9$ components: every product of one component
+of $u$ with one component of $v$. It retains strictly more information than
+$u^\top v$ or $u\times v$ --- indeed, it retains everything about the pair
+that is bilinear.
+\end{definition}
+
+\begin{proposition}[Transformation of the outer product]
+\label{prop:outer-transform}
+If $u\mapsto Qu$ and $v\mapsto Qv$, then
+\[
+T \;=\; uv^\top \;\longmapsto\; (Qu)(Qv)^\top \;=\; Q\,uv^\top\,Q^\top \;=\; QTQ^\top .
+\]
+\end{proposition}
+
+\begin{proof}
+$(Qu)(Qv)^\top = Qu\,v^\top Q^\top$, since $(Qv)^\top=v^\top Q^\top$.
+\end{proof}
+
+So the outer product carries the rotation on \emph{both sides}:
+$T\mapsto QTQ^\top$. Written with indices, using the summation convention,
+$T'_{jk}=Q_{ja}Q_{kb}T_{ab}$ --- two copies of $Q$, one per index. Viewing
+$T$ instead as a single column of $9$ numbers, this reads
+\[
+\mathrm{vec}(T)\;\longmapsto\;(Q\otimes Q)\,\mathrm{vec}(T) ,
+\]
+where $Q\otimes Q$ is the $9\times9$ Kronecker product. That $9\times9$
+matrix is what \Cref{def:tensor-product-rep} below calls the tensor product
+representation $D^1\otimes D^1$.
+
+\begin{caution}[Three different ``products'', kept apart]
+\label{caution:three-products}
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Operation & Output & Dimension & Rotation rule \\
+\midrule
+$u^\top v$ (dot) & scalar & $1$ & unchanged \\
+$u\times v$ (cross) & vector & $3$ & $\mapsto Q(u\times v)$ \\
+$u\otimes v$ (outer/tensor) & matrix & $9$ & $\mapsto Q(uv^\top)Q^\top$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The tensor product is the only one of the three that loses nothing; the
+other two are what you get after discarding part of it. That is the sense in
+which the tensor product is the \emph{primitive} operation and dot/cross are
+derived.
+\end{caution}
+
 \begin{definition}[Tensor product representation]
 \label{def:tensor-product-rep}
 Given representations $D^{\ell_1}$ on $V_{\ell_1}$ and $D^{\ell_2}$ on
 $V_{\ell_2}$, the \emph{tensor product representation} acts on
 $V_{\ell_1}\otimes V_{\ell_2}$ by $(D^{\ell_1}\otimes D^{\ell_2})(Q)(u\otimes v) = D^{\ell_1}(Q)u\otimes D^{\ell_2}(Q)v$.
+Its dimension is $(2\ell_1+1)(2\ell_2+1)$.
 \end{definition}
+
+\begin{proof}[Why this is a representation]
+The homomorphism property is inherited factor-wise:
+$(D^{\ell_1}\otimes D^{\ell_2})(Q_1Q_2)(u\otimes v)
+= D^{\ell_1}(Q_1Q_2)u\otimes D^{\ell_2}(Q_1Q_2)v
+= D^{\ell_1}(Q_1)D^{\ell_1}(Q_2)u\otimes D^{\ell_2}(Q_1)D^{\ell_2}(Q_2)v$,
+which is $(D^{\ell_1}\otimes D^{\ell_2})(Q_1)$ applied to
+$(D^{\ell_1}\otimes D^{\ell_2})(Q_2)(u\otimes v)$.
+\end{proof}
+
+\subsection{Decomposing \texorpdfstring{$1\otimes1$}{1x1} completely}
+\label{sec:one-tensor-one}
+
+We now answer the ``where are the other five?'' question in full. The tool
+is a decomposition of $3\times3$ matrices that is pure linear algebra, and
+which turns out to be exactly the representation-theoretic decomposition.
+
+\paragraph{Step 1: split any matrix into three pieces.} For \emph{any}
+$T\in\RR^{3\times3}$ write
+\begin{equation}
+\label{eq:matrix-split}
+T
+\;=\;
+\underbrace{\frac{\tr T}{3}I}_{\textstyle S}
+\;+\;
+\underbrace{\frac{T-T^\top}{2}}_{\textstyle A}
+\;+\;
+\underbrace{\Bigl(\frac{T+T^\top}{2}-\frac{\tr T}{3}I\Bigr)}_{\textstyle Z} .
+\end{equation}
+That this sums back to $T$ is immediate: the two halves
+$\frac{T-T^\top}2+\frac{T+T^\top}2$ already give $T$, and the
+$\frac{\tr T}3I$ terms cancel. The three pieces are the \emph{isotropic}
+part, the \emph{antisymmetric} part, and the \emph{symmetric traceless}
+part.
+
+\paragraph{Step 2: count dimensions.}
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+Piece & Constraint & Free parameters & Count \\
+\midrule
+$S=\lambda I$ & one scalar $\lambda$ & $\lambda$ & $1$ \\
+$A$, antisymmetric & $A^\top=-A$ & strict upper triangle & $3$ \\
+$Z$, symmetric traceless & $Z^\top=Z$, $\tr Z=0$ & $\tfrac{3\cdot4}{2}-1$ & $5$ \\
+\midrule
+& & & $\mathbf{9}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The symmetric $3\times3$ matrices form a space of dimension
+$\binom{3+1}{2}=6$; imposing the single linear condition $\tr Z=0$ removes
+one, leaving $6-1=5$. And $1+3+5=9=\dim(\RR^{3\times3})$: the split
+\eqref{eq:matrix-split} is a direct-sum decomposition of the whole space,
+with no overlap and nothing missing.
+
+\paragraph{Step 3: each piece is closed under $T\mapsto QTQ^\top$.} This is
+the crucial step --- it is what makes the split \emph{representation-theoretic}
+rather than merely algebraic.
+
+\begin{proposition}[The three pieces are invariant subspaces]
+\label{prop:three-pieces-invariant}
+Let $T\mapsto T'=QTQ^\top$ for $Q\in SO(3)$. Then
+\begin{enumerate}[nosep,label=(\roman*)]
+\item $\tr T' = \tr T$; hence the isotropic part maps to the isotropic part,
+and its single parameter is unchanged.
+\item If $A^\top=-A$ then $(QAQ^\top)^\top = -QAQ^\top$: antisymmetric
+matrices map to antisymmetric matrices.
+\item If $Z^\top=Z$ and $\tr Z=0$ then $QZQ^\top$ is again symmetric and
+traceless.
+\end{enumerate}
+\end{proposition}
+
+\begin{proof}
+(i) $\tr(QTQ^\top)=\tr(TQ^\top Q)=\tr T$ by cyclicity of the trace and
+$Q^\top Q=I$. (ii) $(QAQ^\top)^\top = Q A^\top Q^\top = -QAQ^\top$. (iii)
+symmetry is the same computation with $+$; tracelessness is (i).
+\end{proof}
+
+So the $9$-dimensional space splits into three subspaces of dimensions
+$1,3,5$, each of which the rotation action maps into itself. By
+\Cref{def:irrep-scratch}, this says the $9$-dimensional representation is
+\emph{reducible} --- and it exhibits the pieces explicitly.
+
+\paragraph{Step 4: identify each piece as a known irrep.}
+
+\emph{The isotropic part is $\ell=0$.} Its content is the single number
+$\tr T$, and by (i) that number is unchanged by rotation. An invariant
+one-dimensional feature is precisely the trivial representation
+(\Cref{ex:ell01}), i.e.\ $\ell=0$. For $T=uv^\top$ we have
+$\tr T=\sum_j u_jv_j = u^\top v$: \textbf{the isotropic part is the dot
+product}, recovered exactly.
+
+\emph{The antisymmetric part is $\ell=1$.} A $3\times3$ antisymmetric matrix
+is determined by three numbers, and \Cref{def:hatvee-scratch} gives the
+canonical identification: $A=\widehat a$ for a unique $a=A^\vee\in\RR^3$. The
+question is whether $a$ transforms as a vector. It does, and the reason is
+the conjugation identity already proved in \Cref{sec:so3-liealgebra}:
+\[
+Q\,\widehat a\,Q^\top \;=\; \widehat{Qa}
+\qquad\Longrightarrow\qquad
+\bigl(QAQ^\top\bigr)^\vee \;=\; Q\,A^\vee .
+\]
+That is exactly the $\ell=1$ transformation rule $a\mapsto Qa$. So the
+antisymmetric part \emph{is} a vector in disguise, and the disguise is the
+hat map.
+
+For $T=uv^\top$ we can be fully explicit. With our hat/vee convention
+(\Cref{def:hatvee-scratch}),
+\begin{equation}
+\label{eq:antisym-cross}
+\bigl(T-T^\top\bigr)^\vee \;=\; -\,(u\times v) ,
+\qquad\text{so}\qquad
+A^\vee=\Bigl(\frac{T-T^\top}{2}\Bigr)^\vee = -\tfrac12\,(u\times v) .
+\end{equation}
+\textbf{The antisymmetric part is the cross product}, up to the factor
+$-\tfrac12$.
+
+\begin{caution}[The sign in \eqref{eq:antisym-cross} is convention-dependent]
+\label{caution:antisym-sign}
+The minus sign is not a typo and not universal: it is forced by the vee
+convention of \Cref{def:hatvee-scratch}, under which
+$\widehat\omega v=\omega\times v$. Checking one component settles it: with
+$T=uv^\top$, the $(3,2)$ entry of $T-T^\top$ is $u_3v_2-u_2v_3=-(u\times v)_1$,
+and $(\cdot)^\vee$ reads that entry off as the first component. Texts that
+define $T=vu^\top$, or that use the opposite vee sign, obtain $+\tfrac12$.
+The \emph{content} --- that the antisymmetric part is the cross product up
+to a nonzero constant --- is convention-independent; only the constant is
+not. Since every use in this document passes through a learned weight
+(\Cref{sec:tp-layer}), the constant is absorbed and never matters
+numerically; it matters only if one tries to compare formulas across
+sources.
+\end{caution}
+
+\emph{The symmetric traceless part is $\ell=2$.} This is the five-dimensional
+piece we were missing. Three arguments identify it:
+\begin{enumerate}[nosep,label=(\alph*)]
+\item Its dimension is $5=2\cdot2+1$, matching $\ell=2$ and no other irrep.
+\item It is invariant under the action (\Cref{prop:three-pieces-invariant}(iii)),
+so it is \emph{some} representation of dimension $5$.
+\item By \Cref{thm:so3-irrep-classification}, every representation is a sum
+of irreps; the only ways to build dimension $5$ from
+$\{1,3,5,7,\dots\}$ are $5$, or $3+1+1$, or $1{\times}5$. One checks it is
+not further reducible --- equivalently, it contains no rotation-invariant
+direction --- so it is the single irrep $V_2$.
+\end{enumerate}
+Intuitively, a symmetric traceless matrix encodes an \emph{axis with a
+magnitude but no arrow}: its eigenvectors give preferred directions, but
+$Z$ and the ``flipped'' configuration are not distinguished the way a vector
+distinguishes $a$ from $-a$. This is exactly the kind of object needed to
+express ``the neighbours lie in a plane'' or ``this bond is aligned with
+that ring'' --- statements about orientation that are not statements about a
+direction. Physically, the moment-of-inertia tensor and the quadrupole
+moment are $\ell=2$ objects for the same reason.
+
+\paragraph{Conclusion.} Putting the four steps together,
+\begin{equation}
+\label{eq:one-tensor-one}
+\boxed{\;
+\underbrace{V_1\otimes V_1}_{\dim 9}
+\;\cong\;
+\underbrace{V_0}_{\dim 1}\ \oplus\ \underbrace{V_1}_{\dim 3}\ \oplus\ \underbrace{V_2}_{\dim 5}
+\;}
+\qquad\text{i.e.}\qquad
+1\otimes1 = 0\oplus1\oplus2 ,
+\end{equation}
+and the three summands are, concretely, the dot product, the cross product,
+and the symmetric traceless part. The five ``missing'' numbers from
+\Cref{sec:tp-from-vectors} are the $\ell=2$ component.
+
+\begin{remark}[This is what ``reducible'' means, made concrete]
+\label{rem:reducible-concrete}
+\Cref{def:irrep-scratch} defined irreducibility abstractly: no proper
+nonzero invariant subspace. We have now \emph{exhibited} three such
+subspaces inside $V_1\otimes V_1$. The tensor product representation is
+therefore reducible, and the Clebsch--Gordan decomposition is nothing more
+mysterious than the systematic version of the split
+\eqref{eq:matrix-split}: it names the invariant subspaces and supplies the
+change of basis onto them. Everything below is this example, generalised.
+\end{remark}
 
 This is again a representation of $SO(3)$ (immediate check of the
 homomorphism property), but --- for $\ell_1,\ell_2\ge1$ --- it is generally
@@ -3137,6 +3615,113 @@ $2\ell_2+1$) and simplifying; for $\ell_1=\ell_2=1$ this gives
 $1+3+5=9=3\times3$, confirming the example above.
 \end{proof}
 
+\subsection{The selection rule as a type system}
+\label{sec:selection-rule}
+
+\Cref{thm:cg-decomposition} deserves to be read not as a formula but as a
+\emph{rule about what is allowed}. It says: if you combine a feature of type
+$\ell_1$ with a feature of type $\ell_2$, the result can contain components
+of type $\ell$ only for
+\[
+|\ell_1-\ell_2| \;\le\; \ell \;\le\; \ell_1+\ell_2 ,
+\]
+and each such $\ell$ appears exactly once. Every other type is simply
+unavailable: there is no rotation-respecting bilinear map producing it.
+
+\begin{center}
+\begin{tabular}{llll}
+\toprule
+$\ell_1\otimes\ell_2$ & allowed $\ell$ & dimension check & note \\
+\midrule
+$0\otimes0$ & $0$ & $1\cdot1=1$ & scalar times scalar \\
+$0\otimes\ell$ & $\ell$ only & $1\cdot(2\ell+1)=2\ell+1$ & scaling by an invariant \\
+$1\otimes1$ & $0,1,2$ & $3\cdot3=1+3+5=9$ & \Cref{sec:one-tensor-one} \\
+$1\otimes2$ & $1,2,3$ & $3\cdot5=3+5+7=15$ & \\
+$2\otimes2$ & $0,1,2,3,4$ & $5\cdot5=1+3+5+7+9=25$ & \\
+$1\otimes3$ & $2,3,4$ & $3\cdot7=5+7+9=21$ & note $\ell=0,1$ \emph{not} allowed \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The row $1\otimes3$ is instructive: the lower limit $|\ell_1-\ell_2|=2$
+excludes $\ell=0$ and $\ell=1$ entirely. You cannot make a scalar out of a
+vector and an $\ell=3$ feature. Not ``it is hard''; there is no such
+bilinear map.
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title=A useful way to think about it]
+Representation theory here behaves like a \textbf{type system} for
+geometric features. Each feature carries a type $\ell$; the tensor product
+is the only multiplication; and the selection rule is the typing rule
+stating which output types a given pair of input types can produce. A layer
+that claims to produce an $\ell$ outside the allowed range is not
+inaccurate --- it is ill-typed, and cannot be equivariant.
+
+Two consequences worth noting. \emph{Composability}: because each allowed
+$\ell$ appears exactly once, there is no ambiguity about ``which'' $\ell=1$
+output is meant. \emph{Reachability}: starting from $\ell=0$ and $\ell=1$
+features only, repeated tensor products can reach every $\ell$ --- e.g.\
+$1\otimes1\ni2$, then $1\otimes2\ni3$, and so on --- which is why an
+architecture with a finite \texttt{lmax} is a genuine modelling choice
+rather than a mathematical necessity.
+\end{tcolorbox}
+
+\subsection{Clebsch--Gordan coefficients are a change of basis}
+\label{sec:cg-change-of-basis}
+
+We have established \emph{that} $V_{\ell_1}\otimes V_{\ell_2}$ splits. What
+remains is to write the splitting down in coordinates, and that is all the
+Clebsch--Gordan coefficients are. There is nothing else in them.
+
+\paragraph{Two bases for one space.} The space
+$V_{\ell_1}\otimes V_{\ell_2}$ has dimension $(2\ell_1+1)(2\ell_2+1)$, and we
+have two natural bases for it.
+
+\emph{The product basis.} Take a basis $\{e^{\ell_1}_{m_1}\}$ of
+$V_{\ell_1}$ and $\{e^{\ell_2}_{m_2}\}$ of $V_{\ell_2}$ and form all pairs:
+\[
+e^{\ell_1}_{m_1}\otimes e^{\ell_2}_{m_2},
+\qquad m_1=-\ell_1,\dots,\ell_1,\quad m_2=-\ell_2,\dots,\ell_2 .
+\]
+This is the basis in which the raw product is easy to compute --- coordinates
+are just the products $u_{m_1}v_{m_2}$ --- but in which the decomposition is
+invisible.
+
+\emph{The irreducible (coupled) basis.} Alternatively, take a basis adapted
+to the decomposition \Cref{thm:cg-decomposition}: for each allowed $\ell$, a
+basis $\{f^{\ell}_{m}\}$, $m=-\ell,\dots,\ell$, of the corresponding
+subspace. Counting, $\sum_\ell(2\ell+1)=(2\ell_1+1)(2\ell_2+1)$: the same
+dimension, as it must be. This is the basis in which the decomposition is
+manifest but the product is not.
+
+\paragraph{The coefficients are the transition matrix.} Two bases of one
+finite-dimensional space are related by an invertible change-of-basis
+matrix. Its entries are the Clebsch--Gordan coefficients:
+\[
+f^{\ell}_{m}
+\;=\;
+\sum_{m_1,m_2} C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}\;
+e^{\ell_1}_{m_1}\otimes e^{\ell_2}_{m_2} .
+\]
+That is the entire conceptual content. They are not a physical constant, not
+something learned, and not something the network chooses: they are the
+numerical entries of a change of basis, fixed once $SO(3)$ and the basis
+conventions are fixed.
+
+\begin{remark}[We have already computed one, by hand]
+\label{rem:cg-already-done}
+The split \eqref{eq:matrix-split} \emph{is} a change of basis from the
+product basis of $V_1\otimes V_1$ (the nine entries $T_{jk}=u_jv_k$) to a
+basis adapted to $V_0\oplus V_1\oplus V_2$ (one trace coordinate, three
+antisymmetric coordinates, five symmetric-traceless coordinates). The
+Clebsch--Gordan coefficients for $\ell_1=\ell_2=1$ are precisely the
+$9\times9$ matrix implementing that split, written in the $m$-basis rather
+than the Cartesian $jk$-basis.
+
+So the reader who followed \Cref{sec:one-tensor-one} has already done a
+Clebsch--Gordan decomposition; the general theory adds systematic
+bookkeeping and a convention for the $m$-labels, not a new idea.
+\end{remark}
+
 \begin{definition}[Clebsch--Gordan coefficients and tensor product]
 \label{def:cg-scratch}
 The isomorphism of \Cref{thm:cg-decomposition}, written out in coordinates,
@@ -3156,22 +3741,199 @@ C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}\;u^{\ell_1}_{m_1}v^{\ell_2}_{m_2},
 \end{equation}
 \end{definition}
 
+\subsection{Reading \eqref{eq:cg-scratch} index by index}
+\label{sec:cg-index-by-index}
+
+The formula is short and every symbol in it matters. Unpacked:
+
+\begin{center}
+\begin{tabular}{llp{6.4cm}}
+\toprule
+Symbol & Lives in & Meaning \\
+\midrule
+$u^{\ell_1}_{m_1}$ & $\RR$ & one component of the first input; the input as a whole is $u^{\ell_1}\in\RR^{2\ell_1+1}$ \\
+$y^{\ell_2}_{m_2}$ & $\RR$ & one component of the second input, $y^{\ell_2}\in\RR^{2\ell_2+1}$ \\
+$m_1$ & $\{-\ell_1,\dots,\ell_1\}$ & summed over: $2\ell_1+1$ values \\
+$m_2$ & $\{-\ell_2,\dots,\ell_2\}$ & summed over: $2\ell_2+1$ values \\
+$\ell$ & one allowed value & \textbf{fixed}, not summed: we compute one output type at a time \\
+$m$ & $\{-\ell,\dots,\ell\}$ & \textbf{free}: the formula is evaluated once per $m$ \\
+$C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}$ & $\RR$ & a fixed number, known in advance \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+So the computation is: \emph{for each} of the $2\ell+1$ output slots $m$,
+sum over all $(2\ell_1+1)(2\ell_2+1)$ input pairs, weighting each product
+$u_{m_1}y_{m_2}$ by the corresponding coefficient. In shapes,
+\[
+\underbrace{u^{\ell_1}}_{[\,2\ell_1+1\,]}
+\ ,\quad
+\underbrace{y^{\ell_2}}_{[\,2\ell_2+1\,]}
+\qquad\xrightarrow{\ \ C^{(\ell)}\ \text{of shape } [\,2\ell+1,\ 2\ell_1+1,\ 2\ell_2+1\,]\ \ }\qquad
+\underbrace{z^{\ell}}_{[\,2\ell+1\,]} .
+\]
+It is a bilinear contraction: linear in $u$ for fixed $y$, linear in $y$ for
+fixed $u$, and the coefficient array is a fixed three-index tensor.
+
+Two points that are easy to misread. First, $\ell$ does not appear on the
+right-hand side of \eqref{eq:cg-scratch} except inside $C$ --- choosing a
+different allowed $\ell$ means choosing a different coefficient array and
+producing a differently-sized output from the \emph{same} inputs. Second,
+most of the coefficients are zero: $C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}$
+vanishes unless $m=m_1+m_2$, so the double sum really has at most
+$\min(2\ell_1,2\ell_2)+1$ nonzero terms, not $(2\ell_1+1)(2\ell_2+1)$. That
+sparsity is what makes the operation affordable, and it is the structure
+EquiformerV2 exploits further (\Cref{sec:so2-conv}).
+
+\begin{example}[The simplest case: $0\otimes\ell\to\ell$]
+\label{ex:cg-scalar}
+Let $\ell_1=0$, so $u^{0}$ is a single number $c$ and $m_1=0$ only. The
+selection rule permits $\ell=\ell_2$ alone. The coefficients reduce to
+$C^{(\ell_2,m)}_{(0,0)(\ell_2,m_2)}=\delta_{m m_2}$, and
+\eqref{eq:cg-scratch} collapses to
+\[
+z^{\ell_2}_m = \sum_{m_2}\delta_{mm_2}\,c\,y^{\ell_2}_{m_2} = c\,y^{\ell_2}_m ,
+\qquad\text{i.e.}\qquad z^{\ell_2}=c\,y^{\ell_2} .
+\]
+Multiplying a steerable feature by an invariant scalar. Equivariance is
+obvious here --- $D^{\ell_2}(Q)(cy)=c\,D^{\ell_2}(Q)y$ --- and this is worth
+noticing because it is the mechanism by which \emph{every} learned scalar
+weight in the network acts on higher-degree features.
+\end{example}
+
+\begin{example}[The invariant output of $1\otimes1$, and why it is the dot product]
+\label{ex:cg-dot}
+Take $\ell_1=\ell_2=1$ and $\ell=0$. The output has $2\cdot0+1=1$ component,
+and $m=0$ forces $m_2=-m_1$ by the $m=m_1+m_2$ rule, so the double sum has
+only three surviving terms:
+\[
+z^{0}_0
+=
+C^{(0,0)}_{(1,-1)(1,1)}u_{-1}y_{1}
++C^{(0,0)}_{(1,0)(1,0)}u_{0}y_{0}
++C^{(0,0)}_{(1,1)(1,-1)}u_{1}y_{-1} .
+\]
+In the standard convention the three coefficients are
+$\tfrac1{\sqrt3}(1,-1,1)$ up to an overall sign; in the \emph{real} basis
+used by \texttt{e3nn}, where $Y^1$ is proportional to the Cartesian
+components, the same object becomes simply
+\[
+z^0 \;\propto\; u^\top y ,
+\]
+the ordinary dot product. This is not a coincidence to be memorised: by
+\Cref{sec:one-tensor-one} the $\ell=0$ piece of $u\otimes y$ \emph{is} the
+trace of $uy^\top$, which \emph{is} $u^\top y$. The Clebsch--Gordan
+coefficients are the coordinates of that identification.
+
+The proportionality constant depends on the normalisation convention
+(\Cref{caution:cg-conventions}) and is not worth tracking, because in a
+network the result is immediately multiplied by a learned weight.
+\end{example}
+
+\begin{caution}[Normalisation, sign, and basis conventions]
+\label{caution:cg-conventions}
+Three independent conventions affect the numerical values of the
+coefficients, and sources differ on all three:
+\begin{enumerate}[nosep,label=(\roman*)]
+\item \textbf{Real versus complex basis.} Physics texts almost always use
+complex spherical harmonics and complex $C$'s (Condon--Shortley phase);
+\texttt{e3nn}, Equiformer and hence SigmaDock use a \emph{real}
+orthonormal basis. The two are related by a fixed unitary change of basis
+per $\ell$. The decomposition \eqref{eq:one-tensor-one} --- which $\ell$
+appear, and with what multiplicity --- is identical either way; only the
+numbers differ.
+\item \textbf{Normalisation.} One may normalise so that the coupled basis is
+orthonormal, or so that the tensor product preserves feature variance
+(\texttt{e3nn} offers several \texttt{normalization} modes). This rescales
+each $\ell$-block by a constant.
+\item \textbf{Overall sign per $(\ell_1,\ell_2,\ell)$ triple.} Fixed
+arbitrarily by a phase convention.
+\end{enumerate}
+\textbf{None of these affects anything in this document}, for a reason worth
+stating plainly: every Clebsch--Gordan product in the architecture is
+immediately followed by a learned linear weight
+(\Cref{sec:tp-layer}), which absorbs any per-$(\ell_1,\ell_2,\ell)$ constant.
+Conventions matter when comparing formulas across papers, and when writing a
+custom kernel; they do not matter for understanding what the layer computes.
+\end{caution}
+
+\subsection{Why the result is equivariant}
+\label{sec:cg-equivariance-proof}
+
+We now prove the property that justifies the whole construction. First the
+vocabulary.
+
+\begin{definition}[Intertwiner]
+\label{def:intertwiner}
+Let $D_V$ and $D_W$ be representations of $G$ on $V$ and $W$. A linear map
+$\Phi:V\to W$ is an \emph{intertwiner} (or \emph{equivariant linear map}) if
+\[
+\Phi\bigl(D_V(Q)\,x\bigr) \;=\; D_W(Q)\,\Phi(x)
+\qquad\text{for all } Q\in G,\ x\in V ,
+\]
+equivalently $\Phi\circ D_V(Q) = D_W(Q)\circ\Phi$ as linear maps.
+\end{definition}
+
+An intertwiner is exactly \Cref{def:equivariance-scratch} specialised to a
+\emph{linear} map between two spaces each carrying a representation. The
+name says what it does: it interleaves the two group actions so that they
+agree.
+
 \begin{proposition}[The Clebsch--Gordan product is equivariant]
 \label{prop:cg-equivariant}
-For $Q\in SO(3)$: $\bigl(D^{\ell_1}(Q)u\bigr)\otimes_{\mathrm{cg}}\bigl(D^{\ell_2}(Q)v\bigr) = D^\ell(Q)\bigl(u\otimes_{\mathrm{cg}}v\bigr)$
+Write $\Phi_\ell:V_{\ell_1}\otimes V_{\ell_2}\to V_\ell$ for the linear map
+defined by the coefficients, i.e.\
+$\Phi_\ell(u\otimes y)^{}_m=\sum_{m_1,m_2}C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}u_{m_1}y_{m_2}$.
+Then $\Phi_\ell$ is an intertwiner between the tensor product
+representation and $D^\ell$, and consequently, for all $Q\in SO(3)$,
+\[
+\bigl(D^{\ell_1}(Q)u\bigr)\otimes_{\mathrm{cg}}\bigl(D^{\ell_2}(Q)y\bigr)
+\;=\;
+D^\ell(Q)\bigl(u\otimes_{\mathrm{cg}}y\bigr)
+\]
 in each degree-$\ell$ component.
 \end{proposition}
 
 \begin{proof}
-This is precisely the statement that
-\eqref{eq:cg-scratch} realises an intertwiner (an equivariant linear map)
-$V_{\ell_1}\otimes V_{\ell_2}\to V_\ell$: by construction (\Cref{def:cg-scratch}),
-the Clebsch--Gordan coefficients are exactly the coordinates of the
-isomorphism from \Cref{thm:cg-decomposition}, and that isomorphism, being
-built from the representation-preserving decomposition itself, commutes
-with the group action by definition of what it means for the direct sum
-decomposition to consist of \emph{sub}representations.
+By \Cref{thm:cg-decomposition} there is an isomorphism of representations
+\[
+\Psi:\;V_{\ell_1}\otimes V_{\ell_2}\ \xrightarrow{\ \cong\ }\ \bigoplus_{\ell'}V_{\ell'} ,
+\]
+meaning $\Psi$ is a linear bijection satisfying
+$\Psi\circ(D^{\ell_1}\otimes D^{\ell_2})(Q) = \bigl(\bigoplus_{\ell'}D^{\ell'}(Q)\bigr)\circ\Psi$
+for every $Q$ --- this identity \emph{is} what ``isomorphism of
+representations'' means, and it is the content of the decomposition, not an
+extra assumption.
+
+Let $\pi_\ell:\bigoplus_{\ell'}V_{\ell'}\to V_\ell$ be the projection onto
+the $\ell$-summand. A projection onto a summand commutes with a
+block-diagonal action by construction:
+$\pi_\ell\circ\bigl(\bigoplus_{\ell'}D^{\ell'}(Q)\bigr) = D^\ell(Q)\circ\pi_\ell$.
+Now $\Phi_\ell=\pi_\ell\circ\Psi$ by \Cref{def:cg-scratch} (the coefficients
+are exactly the matrix entries of this composite in the chosen bases), so
+for any $w\in V_{\ell_1}\otimes V_{\ell_2}$,
+\[
+\Phi_\ell\bigl((D^{\ell_1}\otimes D^{\ell_2})(Q)\,w\bigr)
+=\pi_\ell\Psi\bigl((D^{\ell_1}\otimes D^{\ell_2})(Q)w\bigr)
+=\pi_\ell\Bigl(\bigl(\textstyle\bigoplus_{\ell'}D^{\ell'}(Q)\bigr)\Psi w\Bigr)
+= D^\ell(Q)\,\pi_\ell\Psi w
+= D^\ell(Q)\,\Phi_\ell(w) .
+\]
+Finally specialise to $w=u\otimes y$ and use
+$(D^{\ell_1}\otimes D^{\ell_2})(Q)(u\otimes y) = D^{\ell_1}(Q)u\otimes D^{\ell_2}(Q)y$
+(\Cref{def:tensor-product-rep}).
 \end{proof}
+
+\begin{remark}[Sanity check on the example we computed by hand]
+\label{rem:cg-equivariance-check}
+For $\ell_1=\ell_2=1$ the proposition specialises to three statements we
+have already verified directly in \Cref{sec:one-tensor-one}:
+$\ell=0$ gives $(Qu)^\top(Qy)=u^\top y$;
+$\ell=1$ gives $(Qu)\times(Qy)=Q(u\times y)$;
+$\ell=2$ gives that $Z\mapsto QZQ^\top$ preserves the symmetric traceless
+space (\Cref{prop:three-pieces-invariant}(iii)). So the general proof and
+the concrete example agree, as they must.
+\end{remark}
 
 \Cref{prop:cg-equivariant} is the single fact that makes
 \eqref{eq:cg-scratch} the ``$\times$'' of equivariant deep learning: it is
@@ -3184,6 +3946,180 @@ precomputed constants --- the \emph{unique} (up to scale, by Schur's lemma,
 respecting the rotation action, and it is therefore the only mechanism by
 which two steerable features can be combined into a third without breaking
 equivariance.
+
+\subsection{From the mathematical product to a network layer}
+\label{sec:tp-layer}
+
+Everything so far is representation theory: given \emph{one} feature of type
+$\ell_1$ and \emph{one} of type $\ell_2$, there is an essentially unique
+equivariant way to produce a type-$\ell$ output. A neural network layer is
+more than that, and it is worth being precise about which parts are fixed by
+mathematics and which are learned. There are three distinct objects, often
+all called ``tensor product'':
+
+\begin{center}
+\begin{tabular}{p{3.4cm}p{5.2cm}p{4.4cm}}
+\toprule
+Object & What it is & Free parameters \\
+\midrule
+Tensor product $u\otimes y$ & the raw bilinear object, $(2\ell_1+1)(2\ell_2+1)$ numbers & none \\
+CG projection $\otimes_{\mathrm{cg}}$ & projection onto one allowed $\ell$, \eqref{eq:cg-scratch} & none --- fixed by symmetry \\
+Tensor product \emph{layer} & the above, applied across channels, with learned mixing & the weights $W$ below \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Adding channels.} Suppose the first input has $C_1$ channels of
+type $\ell_1$, written $x^{(\ell_1)}_{c_1,m_1}$, and the second has $C_2$
+channels of type $\ell_2$. For a chosen output type $\ell$ and $C_{\text{out}}$
+output channels, the layer computes
+\begin{equation}
+\label{eq:tp-layer}
+z^{(\ell)}_{c,m}
+\;=\;
+\sum_{c_1=1}^{C_1}\sum_{c_2=1}^{C_2}
+W^{(\ell_1,\ell_2,\ell)}_{c,c_1,c_2}
+\underbrace{\sum_{m_1,m_2}
+C^{(\ell,m)}_{(\ell_1,m_1)(\ell_2,m_2)}\,
+x^{(\ell_1)}_{c_1,m_1}\,y^{(\ell_2)}_{c_2,m_2}}_{\text{the CG product of channel pair }(c_1,c_2)} .
+\end{equation}
+Read from the inside out: for every pair of input channels, compute the
+Clebsch--Gordan product (a $(2\ell+1)$-vector); then take a learned linear
+combination of those $C_1C_2$ vectors to produce each of the
+$C_{\text{out}}$ output channels.
+
+Note carefully where the two index groups sit. The learned weight
+$W_{c,c_1,c_2}$ carries \textbf{no $m$-index}. It cannot: an $m$-dependent
+weight would mix components within an irrep by hand, which
+\Cref{sec:feature-anatomy} already flagged as forbidden and which
+\Cref{prop:schur-scratch} will forbid formally. Conversely the coefficients
+$C$ carry \textbf{no channel index}: they are the same for every channel
+pair. The two index sets are disjoint, and that separation is exactly what
+makes \eqref{eq:tp-layer} equivariant.
+
+\begin{proposition}[The tensor product layer is equivariant]
+\label{prop:tp-layer-equivariant}
+For any weights $W$, the map defined by \eqref{eq:tp-layer} satisfies
+$z^{(\ell)}_{c}\mapsto D^\ell(Q)z^{(\ell)}_{c}$ whenever
+$x^{(\ell_1)}_{c_1}\mapsto D^{\ell_1}(Q)x^{(\ell_1)}_{c_1}$ and
+$y^{(\ell_2)}_{c_2}\mapsto D^{\ell_2}(Q)y^{(\ell_2)}_{c_2}$ for all channels.
+\end{proposition}
+
+\begin{proof}
+Fix $c$. By \Cref{prop:cg-equivariant} each inner bracket transforms by
+$D^\ell(Q)$. The outer sum is a fixed linear combination with
+$m$-independent coefficients, and $D^\ell(Q)$ is linear, so it passes
+through the sum:
+$\sum_{c_1c_2}W_{c,c_1,c_2}\,D^\ell(Q)(\cdots) = D^\ell(Q)\sum_{c_1c_2}W_{c,c_1,c_2}(\cdots)$.
+Note the proof works for \emph{arbitrary} $W$ --- equivariance is
+structural, not a property the training has to preserve.
+\end{proof}
+
+\Cref{prop:tp-layer-equivariant} is worth pausing on: it says the network is
+equivariant \emph{at initialisation, for every weight setting, exactly}.
+Training cannot break it, numerical noise cannot erode it, and no
+augmentation is needed to encourage it. That is the payoff for all the
+machinery.
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title=Geometry is fixed; channels are learned]
+The single most useful summary of this section:
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Fixed by symmetry & Learned from data \\
+\midrule
+which $\ell$ may appear ($|\ell_1-\ell_2|\le\ell\le\ell_1+\ell_2$) & how strongly each allowed $\ell$ contributes \\
+how the $m$-components couple (the $C$'s) & how channels mix (the $W$'s) \\
+that the result is equivariant & what the features mean \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The network never learns \emph{how to rotate}. It learns \emph{what to
+compute}, within a space of operations all of which rotate correctly by
+construction.
+
+One nuance to carry forward: this clean split is exact for the plain
+tensor-product layer above. EquiformerV2 reorganises the computation
+(\Cref{sec:so2-conv}) for efficiency, and in doing so the learned weights
+appear in a different place --- but the principle survives, and
+\Cref{chap:equiformer} says exactly how.
+\end{tcolorbox}
+
+\subsection{Where this meets geometry: the edge direction}
+\label{sec:tp-meets-geometry}
+
+We can now see why this machinery is the right tool for a molecular graph,
+which is the point of the whole chapter.
+
+Consider computing a message from atom $j$ to atom $i$. Two ingredients are
+available:
+\begin{itemize}[nosep]
+\item the neighbour's current feature $h_j^{(\ell_1)}$ --- \emph{chemistry}:
+what kind of atom, in what environment, with what learned properties;
+\item the edge direction $\hat r_{ij}=r_{ij}/\|r_{ij}\|\in S^2$ ---
+\emph{geometry}: where the neighbour is.
+\end{itemize}
+
+The direction is not yet a steerable feature, but \Cref{sec:spherical-harmonics-derivation}
+made it one: $Y^{\ell_2}(\hat r_{ij})\in\RR^{2\ell_2+1}$ transforms by
+$D^{\ell_2}(Q)$ (\Cref{eq:sph-equivariance-scratch}). So both ingredients are
+steerable features, and the Clebsch--Gordan product is precisely the
+operation that combines them:
+\[
+h_j^{(\ell_1)}\ \otimes_{\mathrm{cg}}\ Y^{\ell_2}(\hat r_{ij})
+\ \longrightarrow\
+\text{message components of every allowed type }\ell .
+\]
+Chemistry meets geometry, and the result is guaranteed to rotate correctly.
+
+Schematically, the pipeline that \Cref{chap:equiformer} will build is:
+\[
+\begin{array}{ccc}
+h_j^{(\ell_1)},\ r_{ij} & \Longrightarrow & \text{split } r_{ij}\text{ into } \|r_{ij}\| \text{ and } \hat r_{ij}\\[4pt]
+& \Downarrow & \\[2pt]
+\multicolumn{3}{c}{Y^{\ell_2}(\hat r_{ij})\ \text{(angular, steerable)}
+\qquad\text{and}\qquad
+\mathrm{RBF}(\|r_{ij}\|)\ \text{(radial, invariant)}}\\[4pt]
+& \Downarrow & \\[2pt]
+\multicolumn{3}{c}{\text{CG product, with weights modulated by the radial features}}\\[4pt]
+& \Downarrow & \\[2pt]
+\multicolumn{3}{c}{\text{equivariant message } m_{ij}^{(\ell)}}
+\end{array}
+\]
+Why the radius and the direction are handled separately --- and why that
+separation is forced rather than convenient --- is the subject of
+\Cref{sec:edge-embedding-scratch}. For now the essential point is that the
+box in the middle is \eqref{eq:tp-layer}, and we have just built it.
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+\textbf{Feature shapes.} \eqref{eq:tp-layer} is the operation whose tensor
+shapes you will meet in the code. Recognising which axis is $c$ and which is
+$m$ (\Cref{caution:feature-ordering}) is the difference between reading
+\file{so2\_ops.py} and guessing.
+
+\textbf{Why tensor products at all.} They are the \emph{only} mechanism by
+which the network's chemical features learn about the geometry of the
+pocket. Without them the architecture could pass around scalars and
+distances, and \Cref{prop:invariance-obstruction-scratch} shows that is
+provably insufficient to determine a pose.
+
+\textbf{Why Clebsch--Gordan specifically.} Because the output type is not a
+design choice the network could get wrong: it is determined by symmetry.
+This is what makes the equivariance of SigmaDock and SigmaFlow a
+\emph{theorem} about the architecture rather than a hope about the training.
+
+\textbf{Why none of this changes when diffusion becomes flow matching.}
+Everything in this chapter concerns the \emph{backbone} --- how features are
+represented and combined. The generative engine decides what the network is
+asked to predict (a score, or a velocity) and how samples are produced (an
+SDE, or an ODE). It does not touch $\ell$, $m$, the Clebsch--Gordan
+coefficients, or \eqref{eq:tp-layer}. That separation is precisely what
+makes SigmaFlow a controlled single-variable change relative to SigmaDock,
+and it is why this chapter is shared, unmodified, by both halves of the
+document.
+\end{tcolorbox}
 
 \begin{example}[Familiar special cases]
 \label{ex:cg-special-cases}
@@ -4660,6 +5596,7 @@ edge has a different direction and hence a different aligned frame.
 \end{codebox}
 
 \section{$SO(2)$-equivariant convolution: the actual EquiformerV2 message}
+\label{sec:so2-conv}
 \label{sec:so2-conv}
 
 \paragraph{What an $SO(2)$-equivariant linear map looks like.} By the same
