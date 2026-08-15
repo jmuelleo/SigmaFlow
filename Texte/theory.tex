@@ -1192,23 +1192,173 @@ $\dim S^1=1$, even though $S^1$ itself is not a vector space (e.g.\
 $(1,0)+(1,0)=(2,0)\notin S^1$).
 \end{example}
 
-\begin{definition}[Riemannian metric, geodesic; restated]
+\subsection{Why a tangent space at all, and why one per point}
+\label{sec:why-tangent}
+
+Before the formal machinery accumulates, it is worth being explicit about the
+problem being solved, because the answer determines the shape of everything
+that follows.
+
+\textbf{The problem.} In $\RR^n$ a single vector space does two jobs at once:
+it holds the \emph{points} we care about, and it holds the \emph{directions}
+we move in. That coincidence is what makes $x+v$ meaningful. On a curved
+space the two jobs come apart. A point of $S^2$ is a unit vector in $\RR^3$;
+a ``direction to move'' at that point is also a vector in $\RR^3$, but it is
+a \emph{different kind} of object, and adding it to the point takes you off
+the sphere.
+
+\textbf{Why not just use one global set of directions?} On $S^2$, ``north''
+is a perfectly good direction at the equator, but it is meaningless at the
+north pole. There is no way to choose, continuously and non-vanishingly, one
+direction at every point of the sphere --- this is the hairy-ball theorem.
+So a single global space of directions does not exist; we are forced to
+attach a \emph{separate} space of directions to each point. That family of
+spaces is the tangent bundle, and each member is a tangent space.
+
+\textbf{What a tangent vector \emph{is}.} The cleanest mental model, and the
+one \Cref{def:tangent-scratch} formalises, is: a tangent vector at $x$ is the
+\emph{initial velocity of a curve through $x$}. This is worth dwelling on,
+because it explains why tangent vectors can be added even though points
+cannot. Two curves through $x$ have two velocities; the sum of those
+velocities is again realisable as the velocity of some third curve through
+$x$. Nothing about this construction requires the \emph{points} to be
+addable. Velocities live in a linear space; positions do not.
+
+\paragraph{The same idea, three times.}
+\begin{itemize}
+\item \textbf{$\RR^n$.} $T_x\RR^n\cong\RR^n$ for every $x$, and all these
+copies are canonically the same space. This is exactly the degenerate case in
+which the distinction between points and directions is invisible --- which is
+why Euclidean intuition transfers so badly.
+\item \textbf{$S^2\subset\RR^3$.} $T_xS^2=\{v\in\RR^3: v\cdot x=0\}$, the
+plane through the origin perpendicular to $x$. Two dimensions, matching
+$\dim S^2=2$. Different $x$ give genuinely different planes: there is no
+canonical way to compare a tangent vector at the north pole with one at the
+equator.
+\item \textbf{$SO(3)$.} A point is a rotation matrix $R$; a tangent vector at
+$R$ turns out to be a matrix of the form $R\widehat\omega$ with
+$\omega\in\RR^3$ --- three dimensions, matching $\dim SO(3)=3$.
+\Cref{sec:so3-scratch} derives this. The extra structure that $SO(3)$ has and
+$S^2$ lacks --- a group operation --- will let us identify all these tangent
+spaces with one another, which is the content of
+\Cref{def:left-translation}.
+\end{itemize}
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+A ligand pose contains, per rigid fragment, a rotation $R\in SO(3)$. The
+network must output ``how this fragment should turn'' --- a direction of
+motion, not a new rotation. That direction is a tangent vector at $R$, and
+it is a $3$-vector, while the point $R$ is a $3\times3$ matrix with six
+constraints. Confusing the two is not a stylistic error: adding a
+$3\times3$ update matrix to $R$ produces something that is not a rotation,
+and the pose it encodes is then not a rigid motion. Every appearance of
+$\exp$ and $\log$ in \file{so3\_flow\_matcher.py} exists to keep points and
+directions in their respective places.
+\end{tcolorbox}
+
+\subsection{Measuring: Riemannian metrics and geodesics}
+
+Tangent spaces let us talk about directions. To talk about \emph{lengths},
+\emph{angles}, and hence about the shortest path between two points, we need
+one more ingredient: an inner product on each tangent space.
+
+\begin{definition}[Riemannian metric]
 \label{def:metric-scratch}
 A \emph{Riemannian metric} on $\mathcal M$ is a smoothly varying family of
 inner products $g_x:T_x\mathcal M\times T_x\mathcal M\to\RR$
 ($x\in\mathcal M$), inducing the norm $\|v\|_g=\sqrt{g_x(v,v)}$. The length
 of a smooth curve $\gamma:[0,1]\to\mathcal M$ is
-$L(\gamma)=\int_0^1\|\dot\gamma(\tau)\|_{g}\,d\tau$, and a \emph{geodesic} is
-a curve that locally minimises this length, traversed at constant speed.
+$L(\gamma)=\int_0^1\|\dot\gamma(\tau)\|_{g}\,d\tau$.
 \end{definition}
 
-\begin{definition}[Exponential and logarithmic map; restated]
-\label{def:explog-scratch}
-For $x\in\mathcal M$, the \emph{exponential map} $\exp_x:T_x\mathcal M\to\mathcal M$
-sends $v$ to $\gamma_v(1)$, where $\gamma_v$ is the unique geodesic with
-$\gamma_v(0)=x$, $\dot\gamma_v(0)=v$. Its local inverse, defined near $x$, is
-the \emph{logarithmic map} $\log_x$.
+Note what the metric is \emph{not}: it is not a distance function on
+$\mathcal M$. It is a way of measuring tangent vectors, one point at a time.
+A distance between points is then \emph{derived} from it, as the infimum of
+$L(\gamma)$ over curves joining them.
+
+\begin{definition}[Geodesic]
+\label{def:geodesic-scratch}
+A \emph{geodesic} is a curve with zero acceleration in the sense of the
+metric: $\nabla_{\dot\gamma}\dot\gamma=0$, where $\nabla$ is the Levi-Civita
+connection of $g$. Equivalently and more usefully for us: a geodesic is a
+curve that is \emph{locally} length-minimising and is traversed at constant
+speed $\|\dot\gamma\|_g=\mathrm{const}$.
 \end{definition}
+
+\begin{caution}[Geodesics are only \emph{locally} shortest]
+\label{caution:geodesic-local}
+``Geodesic'' and ``shortest path'' are not synonyms, and the difference is
+not academic for us. On $S^2$, the great circle through two points is a
+geodesic in \emph{both} directions around the sphere, but only the shorter
+arc is length-minimising. On $SO(3)$ the same phenomenon occurs, with the
+transition at a rotation angle of $\pi$: continuing a geodesic past a
+half-turn keeps zero acceleration but stops being the shortest route.
+
+This is exactly why $\log$ on $SO(3)$ is conventionally taken to return the
+rotation vector of \emph{smallest} angle, $\|\omega\|\le\pi$
+(\Cref{thm:rodrigues-scratch}), and it is the geometric reason behind the
+numerical fragility near $\pi$ that \Cref{chap:numerics} documents: at
+exactly $\pi$ there are two shortest geodesics, and the choice between them
+is discontinuous.
+\end{caution}
+
+\subsection{Replacing \texorpdfstring{$x+v$}{x+v} and \texorpdfstring{$y-x$}{y-x}: the exponential and logarithmic maps}
+
+We now have directions and lengths. What we still lack is the single most
+used operation in all of Euclidean numerics: \emph{take a point, take a
+direction, move}. In $\RR^n$ this is $x\mapsto x+v$. On a manifold there is
+no ``$+$''. The replacement is forced by the following observation: in
+$\RR^n$, $x+tv$ is precisely the constant-speed straight line through $x$
+with initial velocity $v$ --- that is, the geodesic. So the right
+generalisation of ``move from $x$ in direction $v$'' is ``follow the geodesic
+through $x$ with initial velocity $v$, for unit time''.
+
+\begin{definition}[Exponential and logarithmic map]
+\label{def:explog-scratch}
+For $x\in\mathcal M$ and $v\in T_x\mathcal M$, let $\gamma_v$ be the unique
+geodesic with $\gamma_v(0)=x$ and $\dot\gamma_v(0)=v$. The
+\emph{exponential map} is
+\[
+\exp_x : T_x\mathcal M \to \mathcal M ,
+\qquad
+\exp_x(v) := \gamma_v(1) .
+\]
+On a neighbourhood $U\ni x$ small enough that $\exp_x$ is a diffeomorphism
+onto its image, its inverse is the \emph{logarithmic map}
+$\log_x:U\to T_x\mathcal M$. The largest radius for which this holds is the
+\emph{injectivity radius} at $x$.
+\end{definition}
+
+\begin{caution}[$\exp_x$ and $\log_x$ are not globally as well behaved as $+$ and $-$]
+\label{caution:explog-scope}
+Three differences from the Euclidean case, each of which shows up later:
+\begin{enumerate}[nosep,label=(\alph*)]
+\item $\exp_x$ need not be injective. On $SO(3)$, rotating by $\theta$ and by
+$\theta+2\pi$ about the same axis give the same element, so infinitely many
+tangent vectors map to the same point.
+\item $\log_x(y)$ is therefore not unique in general; one \emph{chooses} a
+branch, conventionally the shortest. The injectivity radius of $SO(3)$ with
+the standard bi-invariant metric is $\pi$, so this choice is unambiguous
+except exactly at antipodal rotations.
+\item $\exp_x$ need not be surjective on a general manifold (it is on $SO(3)$,
+which is compact and connected).
+\end{enumerate}
+Writing $\exp_x(v)$ ``for $x+v$'' is therefore a good mnemonic and a bad
+theorem. Whenever a statement in this document depends on invertibility, the
+hypothesis is stated.
+\end{caution}
+
+\begin{example}[Everything at once, on the circle]
+Take $\mathcal M=S^1$, $x=(1,0)$, and identify $T_xS^1\cong\RR$ via
+$c\mapsto(0,c)$ as above. The geodesics are constant-speed traversals of the
+circle, so $\exp_x(c)=(\cos c,\sin c)$. Then:
+$\exp_x$ is surjective but not injective ($c$ and $c+2\pi$ agree);
+$\log_x(y)$ is the signed angle from $x$ to $y$, unique if we demand
+$|\log_x(y)|<\pi$; and at $y=-x$ the two choices $\pm\pi$ are equally
+short --- the injectivity radius is $\pi$, and the antipode is where the
+convention has to break a tie. Every one of these features recurs verbatim on
+$SO(3)$, with ``angle'' replaced by ``rotation angle''.
+\end{example}
 
 The pair $(\exp_x,\log_x)$ is, throughout this document, the mechanism that
 replaces ordinary vector addition and subtraction: $\exp_x(v)$ plays the
@@ -1219,6 +1369,25 @@ tangent-space perturbation onto the manifold; flow matching
 (\Cref{chap:flow-matching}) will use $\log_x$ to construct a
 geodesic interpolant between two points and $\exp_x$ to integrate the
 learned velocity field one step at a time.
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+The correspondence is exact and worth memorising, because it is what the
+sampler literally executes:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Euclidean translation channel & Rotational channel \\
+\midrule
+$x_{t+dt} = x_t + dt\,v$ & $R_{t+dt} = \exp_{R_t}(dt\,v) = R_t\exp(dt\,\widehat v)$ \\
+target $u = x_1-x_0$ & target $u = \log_{R_0}(R_1) = \log(R_0^\top R_1)^\vee$ \\
+interpolant $(1-t)x_0+tx_1$ & interpolant $R_0\exp\bigl(t\log(R_0^\top R_1)\bigr)$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+The right-hand column is \file{so3\_flow\_matcher.py}; the left-hand column
+is \file{r3\_flow\_matcher.py}. \Cref{chap:sigmaflow} verifies each line
+against the source.
+\end{tcolorbox}
 
 \section{Groups and Lie groups}
 \label{sec:groups-scratch}
@@ -1585,15 +1754,20 @@ Taylor-expand $\theta/(2\sin\theta) = \tfrac12\bigl(1-\theta^2/6+O(\theta^4)\big
 
 \begin{proposition}[Behaviour of $\log$ near $\theta=\pi$]
 \label{prop:log-nearpi}
-As $\theta\to\pi$, $R\to I+2nn^\top-2I$ for the rotation axis $n$ (up to
-sign), so $\tfrac12(R+I)\to nn^\top$; consequently $|n_i|$ can be recovered,
-up to the sign ambiguity $n\leftrightarrow-n$ (which does not affect
-$\widehat n$, since $\widehat n=\widehat{-n}$ composed with $\theta\to-\theta$
-represents the same rotation and the formula below is used together with
-$\theta=\pi$), as $|n_i|=\sqrt{\bigl(\tfrac12(R+I)\bigr)_{ii}}$, with signs
-fixed by comparing off-diagonal entries of $\tfrac12(R+I)=nn^\top$ against
-$n_in_j$.
+As $\theta\to\pi$, $R\to 2nn^\top-I$ for the rotation axis $n$, so
+$\tfrac12(R+I)\to nn^\top$; consequently $|n_i|=\sqrt{\bigl(\tfrac12(R+I)\bigr)_{ii}}$,
+with relative signs fixed by comparing the off-diagonal entries of
+$\tfrac12(R+I)=nn^\top$ against $n_in_j$. The overall sign of $n$ is
+\emph{genuinely undetermined}: at $\theta=\pi$ exactly,
+\[
+\exp(\pi\widehat n) \;=\; 2nn^\top-I \;=\; 2(-n)(-n)^\top-I \;=\; \exp\bigl(\pi\widehat{(-n)}\bigr) ,
+\]
+so $\pi n$ and $-\pi n$ are two distinct tangent vectors mapping to the same
+rotation. Both are legitimate values of $\log(R)$, and both have the same
+length $\pi$; the map $\log$ is therefore two-valued exactly on the set of
+half-turns, which is the antipodal set of \Cref{caution:explog-scope}(b).
 \end{proposition}
+
 
 \begin{proof}
 At $\theta=\pi$: $\sin\theta=0,\ \cos\theta=-1$, so Rodrigues' formula gives
@@ -1603,6 +1777,16 @@ along $\pm n$. Reading off $|n_i|$ from the diagonal and signs from the
 off-diagonal entries is then direct linear algebra on the outer product
 $nn^\top$.
 \end{proof}
+
+\begin{caution}[Do not read this as $\widehat n=\widehat{-n}$]
+\label{caution:log-pi-sign}
+It is tempting to compress the last statement to ``the sign does not matter
+because $\widehat n=\widehat{-n}$''. That equation is \emph{false}: the hat
+map is linear, so $\widehat{-n}=-\widehat n$. What is true is the weaker and
+more specific statement above --- that the two \emph{exponentials} coincide
+\emph{at $\theta=\pi$}. Away from $\pi$ the sign of $n$ matters and cannot be
+chosen freely.
+\end{caution}
 
 \begin{codebox}
 \textbf{Mathematical object:} $\log:SO(3)\to\so(3)$ near a generic rotation;
@@ -1641,10 +1825,28 @@ through the smooth score function of \Cref{sec:diff-so3}, degrading
 gracefully under a slightly wrong clamp. For flow matching it is not
 harmless: the geodesic interpolant of \Cref{sec:fm-so3-scratch} needs
 $\log$ to be an \emph{exact} inverse of $\exp$ (an exact round trip
-$\exp(\log(R))=R$), which the $172^\circ$ clamp breaks for roughly the
-$\bigl(180-172\bigr)/180\approx4.4\%$ of uniformly sampled rotation pairs
-whose relative angle exceeds it (in each direction, so of order $9\%$ combined
---- matching the figure reported in this project's own development history).
+$\exp(\log(R))=R$), which the clamp breaks for every pair whose relative
+angle leaves $[8.1^\circ,171.9^\circ]$.
+
+How often is that? \emph{Not} $(180-172)/180\approx4.4\%$: the relative angle
+between two independent Haar-random rotations is not uniform on $[0,\pi]$ but
+has density $p(\theta)=(1-\cos\theta)/\pi$ (\Cref{prop:haar-so3}), which puts
+most of its mass at large angles. Integrating,
+\[
+\PP(\theta>171.9^\circ)=\frac{\pi-\bigl(\theta_0-\sin\theta_0\bigr)}{\pi}\bigg|_{\theta_0=171.9^\circ}
+\approx 9.0\%,
+\qquad
+\PP(\theta<8.1^\circ)\approx 0.015\% .
+\]
+So the damage is essentially one-sided: about \textbf{one rotation pair in
+eleven} is silently truncated at the upper end, while the lower end is
+irrelevant. (A $400{,}000$-sample Monte Carlo check reproduces $9.01\%$ and
+$0.018\%$, and en route confirms the median relative angle $132.4^\circ$ and
+mean $126.6^\circ$ quoted elsewhere in this document.) The frequently-quoted
+``$\approx9\%$'' is therefore the right order of magnitude, but the
+uniform-angle reasoning that appears to produce it is wrong twice over --- an
+incorrect density and a spurious doubling --- and would give the wrong answer
+for any other clamp value.
 SigmaFlow's \file{so3\_utils.py} narrows the clamp to
 $[-1+10^{-7},\,1-10^{-7}]$, i.e.\ $\theta\in[0.026^\circ,179.97^\circ]$,
 purely for \pyfunc{arccos}'s numerical domain, and documents the reason for
