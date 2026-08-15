@@ -6921,17 +6921,17 @@ Clebsch--Gordan coefficient table.
 \begin{proposition}[Rotating an edge onto a fixed axis reduces $SO(3)$ to $SO(2)$]
 \label{prop:esc-reduction}
 Let $\hat x_{ij}\in S^2$ be an edge direction, and let $Q_{ij}\in SO(3)$ be
-\emph{any} rotation with $Q_{ij}\hat x_{ij}=e_1$ (the first standard basis
+\emph{any} rotation with $Q_{ij}\hat x_{ij}=e_2$ (the \emph{second} standard basis
 vector; such $Q_{ij}$ always exists, and is unique up to an arbitrary
-further rotation about $e_1$ itself, since $\{Q:Qe_1=e_1\}\cong SO(2)$).
+further rotation about $e_2$ itself, since $\{Q:Qe_2=e_2\}\cong SO(2)$).
 Working in the rotated frame (applying $D^\ell(Q_{ij})$ to every steerable
 feature, per \Cref{eq:sph-equivariance-scratch}), the edge direction itself
-becomes the \emph{fixed} vector $e_1$, and \emph{every} subsequent
+becomes the \emph{fixed} vector $e_2$, and \emph{every} subsequent
 operation that only needs to be equivariant with respect to rotations
 fixing the edge direction --- rather than all of $SO(3)$ --- may
 therefore use the much smaller symmetry group $SO(2)$ (rotations about
-$e_1$) instead of the full $SO(3)$, since $\hat x_{ij}$ itself no longer
-transforms (it is a fixed constant, $e_1$, in this frame) and only the
+$e_2$) instead of the full $SO(3)$, since $\hat x_{ij}$ itself no longer
+transforms (it is a fixed constant, $e_2$, in this frame) and only the
 \emph{other} steerable quantities (the rotated node features) need to
 respect the residual $SO(2)$ symmetry about the now-fixed axis.
 \end{proposition}
@@ -6940,11 +6940,11 @@ respect the residual $SO(2)$ symmetry about the now-fixed axis.
 This is a change-of-frame argument, not a new mathematical fact requiring
 proof beyond \Cref{eq:sph-equivariance-scratch} itself: given any
 $SO(3)$-equivariant operation $F$ acting on (steerable feature, edge
-direction) pairs, define $\widetilde F(h,e_1) := D^\ell(Q_{ij})F\bigl(D^\ell(Q_{ij})^{-1}h,\hat x_{ij}\bigr)$;
+direction) pairs, define $\widetilde F(h,e_2) := D^\ell(Q_{ij})F\bigl(D^\ell(Q_{ij})^{-1}h,\hat x_{ij}\bigr)$;
 by construction $\widetilde F$ agrees with $F$ after transporting through
 the fixed rotation $Q_{ij}$, and since its second argument is now always
-the fixed vector $e_1$, $\widetilde F$ need only respect rotations fixing
-$e_1$ (the residual $SO(2)$) to guarantee $F$ itself was $SO(3)$-equivariant
+the fixed vector $e_2$, $\widetilde F$ need only respect rotations fixing
+$e_2$ (the residual $SO(2)$) to guarantee $F$ itself was $SO(3)$-equivariant
 --- the constraint on the \emph{first} argument's transformation law has
 been reduced from a full $SO(3)$ representation to an $SO(2)$
 representation, at the cost of applying $D^\ell(Q_{ij})$ and its inverse
@@ -7030,7 +7030,7 @@ first-principles-only reading of \Cref{chap:steerable} might suggest as the
 message formula, and it is worth being explicit that the \emph{executed
 code does not form this Clebsch--Gordan product at all}: after the
 edge-frame rotation of \Cref{sec:equiformer-frame}, the edge direction is
-the fixed vector $e_1$, so mixing a node's steerable feature with the
+the fixed vector $e_2$, so mixing a node's steerable feature with the
 (now-fixed, hence not needing to be explicitly multiplied in via CG
 coefficients) edge direction reduces, by
 \Cref{prop:esc-reduction}, to an $SO(2)$-equivariant linear operation on
@@ -7173,6 +7173,47 @@ confirmed beyond its name and role.
 \section{Equivariant attention weights}
 \label{sec:equiformer-attention}
 
+\subsection{Ordinary attention, recalled}
+\label{sec:attention-recap}
+
+Start from the standard Transformer, with no geometry. Given token features
+$h_1,\dots,h_n\in\RR^d$, three learned matrices produce
+\[
+q_i = W_Q h_i \ \ (\text{\emph{query}}),
+\qquad
+k_j = W_K h_j \ \ (\text{\emph{key}}),
+\qquad
+v_j = W_V h_j \ \ (\text{\emph{value}}),
+\]
+and the update is
+\begin{equation}
+\label{eq:standard-attention}
+a_{ij} = \operatorname*{softmax}_{j}\Bigl(\tfrac{q_i^\top k_j}{\sqrt d}\Bigr),
+\qquad
+h_i' = \sum_j a_{ij}\,v_j .
+\end{equation}
+The roles, in words: the \emph{query} is what token $i$ is looking for; the
+\emph{key} is what token $j$ advertises; their inner product is a
+\emph{logit} measuring how well they match; the \emph{softmax} turns the
+logits for a fixed $i$ into non-negative weights summing to one; and the
+\emph{value} is the content actually transported. The whole construction is
+a learned, content-dependent weighted average.
+
+Now the question that organises this entire section:
+
+\begin{quote}
+\textbf{Which parts of \eqref{eq:standard-attention} survive when $h$ is a
+steerable feature rather than a plain vector?}
+\end{quote}
+
+The aggregation $\sum_j a_{ij}v_j$ survives verbatim, provided the $v_j$ all
+carry the same degree (\Cref{prop:aggregation-equivariant}). What cannot
+survive unexamined is the logit: $q_i^\top k_j$ is an inner product of two
+feature vectors, and if those vectors carry $\ell\ge1$ components then the
+naive inner product across \emph{all} components mixes $m$-slots in a way
+that must be checked, not assumed. And the weight $a_{ij}$ then multiplies an
+equivariant object, which constrains what kind of number it may be.
+
 \paragraph{The constraint attention weights must satisfy.} We now assemble
 messages and weights into the full attention block, and the first thing to
 determine is what kind of object the attention weight $a_{ij}$
@@ -7211,6 +7252,99 @@ full multi-degree steerable features (which would not, in general, be
 invariant, unless the specific $\ell\to0$ Clebsch--Gordan path of
 \Cref{ex:cg-special-cases} is used deliberately) without first projecting
 onto an invariant quantity.
+
+\subsection{Where the invariant comes from: the \texorpdfstring{$m=0$}{m=0} channels}
+\label{sec:m0-invariance}
+
+\Cref{prop:attention-weights-scalar} says the logit must be invariant. It
+does not say where such an invariant is supposed to come from. The answer
+EquiformerV2 uses is elegant, and it is the reason the edge-alignment trick
+of \Cref{prop:esc-reduction} pays for itself twice.
+
+Recall the setup: the edge has been rotated onto a fixed axis, so the
+residual symmetry is only $SO(2)$ --- rotations about that axis. Now ask:
+\emph{which components of a steerable feature are unchanged by that residual
+rotation?}
+
+\begin{proposition}[The $m=0$ components are the $SO(2)$-invariants]
+\label{prop:m0-invariant}
+Let $\hat n$ be the alignment axis and let $R_{\hat n}(\vartheta)$ denote
+rotation by $\vartheta$ about it. In the real spherical-harmonic basis
+adapted to $\hat n$, the matrix $D^\ell\bigl(R_{\hat n}(\vartheta)\bigr)$ is
+block-diagonal with
+\begin{itemize}[nosep]
+\item a $1\times1$ identity block on the $m=0$ component, and
+\item $2\times2$ rotation blocks
+$\begin{psmallmatrix}\cos m\vartheta&-\sin m\vartheta\\ \sin m\vartheta&\cos m\vartheta\end{psmallmatrix}$
+on each pair $(m,-m)$ with $m\ge1$.
+\end{itemize}
+Consequently the $m=0$ component of every degree $\ell$ is invariant, and
+these are (for $\vartheta$ generic) the only invariants.
+\end{proposition}
+
+This is exactly the statement that $m$ labels the angular momentum
+\emph{about the chosen axis}: $m=0$ means ``no angular dependence about this
+axis'', hence unchanged when you spin around it.
+
+\begin{remark}[Verified against the shipped Wigner matrices]
+\label{rem:m0-verified}
+This is checkable directly with the code's own
+\pyfunc{SO3\_Rotation}. Building $D^\ell$ for a rotation about the
+alignment axis and asking which basis vectors it fixes returns, for
+$L=2$, exactly the flat indices $\{0,2,6\}$ --- which in the
+$(\ell,m)$ ordering $\ell=0,1,2$, $m=-\ell..\ell$ are
+$(0,0)$, $(1,0)$, $(2,0)$: one per degree, precisely the $m=0$ slots.
+
+The same test for a rotation about a \emph{different} axis returns a
+different, non-$m{=}0$ set. So the choice of alignment axis is not
+cosmetic: it is chosen so that the residual $SO(2)$ acts diagonally in the
+stored basis, which is what makes both the $SO(2)$ convolution and the
+attention logit cheap.
+\end{remark}
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title={The two payoffs of edge alignment}]
+Rotating the edge onto a fixed axis buys two different things at once, and
+it is worth separating them:
+
+\textbf{1. Cheaper coupling.} The full Clebsch--Gordan product couples every
+$(m_1,m_2)$ pair. After alignment, the edge harmonic has only its $m=0$
+component non-zero, and the $m=m_1+m_2$ selection rule collapses the double
+sum to a single index. This is the $SO(3)\to SO(2)$ reduction of
+\Cref{sec:so2-conv}.
+
+\textbf{2. A free supply of invariants.} The $m=0$ channels are
+automatically invariant under the residual symmetry
+(\Cref{prop:m0-invariant}), so they can be fed to \emph{any} ordinary neural
+operation --- a \texttt{Linear}, a \texttt{LayerNorm}, a nonlinearity ---
+without further thought. EquiformerV2 exploits this by asking the $SO(2)$
+convolution for a few \emph{extra} $m=0$ output channels beyond what the
+message needs, and using them as the attention logits.
+
+So the attention mechanism is not bolted on: it reuses invariants that the
+efficiency trick had already produced.
+\end{tcolorbox}
+
+\begin{caution}[Equiformer's logit is not a $QK^\top$ dot product]
+\label{caution:not-qk-attention}
+Having recalled \eqref{eq:standard-attention}, it would be natural to expect
+the implementation to form queries and keys and take their inner product.
+It does not. Reading
+\file{net/transformer\_block.py}, the logit is
+\[
+\alpha_{ij,\mathrm{head}}
+=\bigl\langle\, a_{\mathrm{head}},\ \mathrm{SmoothLeakyReLU}\bigl(\LN(z_{ij,\mathrm{head}})\bigr)\,\bigr\rangle,
+\]
+where $z_{ij}$ are the extra $m=0$ channels for that edge and
+$a_{\mathrm{head}}$ is a learned vector, one per head. That is the
+\textbf{GATv2} form (a learned projection of a jointly-computed edge
+representation), not scaled dot-product attention: there is no separate
+$W_Q$ and $W_K$, and no $1/\sqrt d$.
+
+The distinction matters when reading the source and when comparing to the
+Transformer literature; it does not affect the equivariance argument, which
+only requires that the logit be invariant --- and it is, because $z_{ij}$
+consists of $m=0$ channels.
+\end{caution}
 
 \begin{codebox}
 \textbf{Mathematical object:} the attention weight $a_{ij}$ of

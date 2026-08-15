@@ -172,62 +172,64 @@
 \contentsline {paragraph}{Why an ordinary nonlinearity breaks equivariance.}{108}{section*.58}%
 \contentsline {section}{\numberline {8.6}Equivariant linear layers and normalisation}{109}{section.8.6}%
 \contentsline {section}{\numberline {8.7}Equivariant attention weights}{110}{section.8.7}%
+\contentsline {subsection}{\numberline {8.7.1}Ordinary attention, recalled}{110}{subsection.8.7.1}%
 \contentsline {paragraph}{The constraint attention weights must satisfy.}{110}{section*.59}%
-\contentsline {subsection}{\numberline {8.7.1}Assembling the full attention block}{111}{subsection.8.7.1}%
-\contentsline {section}{\numberline {8.8}Node embedding: turning chemistry into a steerable feature}{111}{section.8.8}%
-\contentsline {section}{\numberline {8.9}Reading out the vector field}{112}{section.8.9}%
-\contentsline {section}{\numberline {8.10}EquiformerV1 vs.\ EquiformerV2: what actually changed, and what this codebase actually ships}{112}{section.8.10}%
-\contentsline {section}{\numberline {8.11}Summary: architecture, hyperparameters, and parameter count}{113}{section.8.11}%
-\contentsline {part}{V\hspace {1em}SigmaDock}{115}{part.5}%
-\contentsline {chapter}{\numberline {9}SigmaDock: Full Reconstruction}{116}{chapter.9}%
-\contentsline {section}{\numberline {9.1}Choosing the state space}{116}{section.9.1}%
-\contentsline {section}{\numberline {9.2}The conformational manifold: what rigidity costs}{118}{section.9.2}%
-\contentsline {section}{\numberline {9.3}FR3D: reducing fragment count}{119}{section.9.3}%
-\contentsline {subsection}{\numberline {9.3.1}Rotatable-bond detection, as actually implemented}{119}{subsection.9.3.1}%
-\contentsline {subsection}{\numberline {9.3.2}Dummy atoms and fragment boundaries}{119}{subsection.9.3.2}%
-\contentsline {section}{\numberline {9.4}Triangulation: an invariant, soft geometric prior at fragment boundaries}{120}{section.9.4}%
-\contentsline {section}{\numberline {9.5}Symmetry: gauge invariance and stochastic $SE(3)$-equivariance}{121}{section.9.5}%
-\contentsline {section}{\numberline {9.6}The forward (noising) process}{122}{section.9.6}%
-\contentsline {section}{\numberline {9.7}Input graph, featurisation, and backbone}{123}{section.9.7}%
-\contentsline {subsection}{\numberline {9.7.1}Fragment reconstruction: the map $\varphi $}{123}{subsection.9.7.1}%
-\contentsline {section}{\numberline {9.8}The Newton--Euler prediction head}{124}{section.9.8}%
-\contentsline {subsection}{\numberline {9.8.1}From network output to a physical analogy}{124}{subsection.9.8.1}%
-\contentsline {subsection}{\numberline {9.8.2}Net force, torque, and inertia: exact classical mechanics}{125}{subsection.9.8.2}%
-\contentsline {subsection}{\numberline {9.8.3}Newton--Maruyama: one discretised step of rigid-body dynamics}{126}{subsection.9.8.3}%
-\contentsline {subsection}{\numberline {9.8.4}Dressing the raw output into a score: the two branches}{126}{subsection.9.8.4}%
-\contentsline {section}{\numberline {9.9}The training loss}{127}{section.9.9}%
-\contentsline {section}{\numberline {9.10}Sampling}{128}{section.9.10}%
-\contentsline {section}{\numberline {9.11}Ranking generated poses}{129}{section.9.11}%
-\contentsline {part}{VI\hspace {1em}Flow Matching}{130}{part.6}%
-\contentsline {chapter}{\numberline {10}Continuous Normalizing Flows and Flow Matching in $\mathbb R^d$}{131}{chapter.10}%
-\contentsline {section}{\numberline {10.1}Continuous normalizing flows}{131}{section.10.1}%
-\contentsline {subsection}{\numberline {10.1.1}The continuity equation}{132}{subsection.10.1.1}%
-\contentsline {subsection}{\numberline {10.1.2}CNF likelihood}{133}{subsection.10.1.2}%
-\contentsline {section}{\numberline {10.2}Conditional flow matching}{133}{section.10.2}%
-\contentsline {subsection}{\numberline {10.2.1}The linear (conditional optimal transport) path}{135}{subsection.10.2.1}%
-\contentsline {section}{\numberline {10.3}Sampling: integrating the learned ODE}{136}{section.10.3}%
-\contentsline {chapter}{\numberline {11}Riemannian Flow Matching}{137}{chapter.11}%
-\contentsline {section}{\numberline {11.1}Vector fields and flows on a manifold}{137}{section.11.1}%
-\contentsline {section}{\numberline {11.2}The geodesic conditional path}{138}{section.11.2}%
-\contentsline {section}{\numberline {11.3}Flow matching on $SO(3)$}{138}{section.11.3}%
-\contentsline {section}{\numberline {11.4}Flow matching on the pose manifold $SE(3)^N$}{140}{section.11.4}%
-\contentsline {part}{VII\hspace {1em}SigmaFlow}{141}{part.7}%
-\contentsline {chapter}{\numberline {12}SigmaFlow: Full Reconstruction}{142}{chapter.12}%
-\contentsline {section}{\numberline {12.1}What changes, and what does not}{142}{section.12.1}%
-\contentsline {section}{\numberline {12.2}A time-convention warning, confirmed at the source level}{143}{section.12.2}%
-\contentsline {section}{\numberline {12.3}Translation flow matching, exactly as implemented}{143}{section.12.3}%
-\contentsline {section}{\numberline {12.4}Rotation flow matching, exactly as implemented}{144}{section.12.4}%
-\contentsline {section}{\numberline {12.5}No output dressing: the entire diffusion-specific scalar machinery is gone}{145}{section.12.5}%
-\contentsline {section}{\numberline {12.6}The loss function}{146}{section.12.6}%
-\contentsline {section}{\numberline {12.7}The full training step}{146}{section.12.7}%
-\contentsline {section}{\numberline {12.8}Sampling}{148}{section.12.8}%
-\contentsline {section}{\numberline {12.9}Likelihood and confidence: what is implemented, and what is not}{148}{section.12.9}%
-\contentsline {section}{\numberline {12.10}A tested, and rejected, loss variant}{149}{section.12.10}%
-\contentsline {part}{VIII\hspace {1em}Synthesis}{150}{part.8}%
-\contentsline {chapter}{\numberline {13}Implementation Details, Numerical Stability, and Consistency Checks}{151}{chapter.13}%
-\contentsline {section}{\numberline {13.1}Every clamp, epsilon, and numerical safeguard in one table}{151}{section.13.1}%
-\contentsline {section}{\numberline {13.2}Masking, batching, and scatter conventions}{152}{section.13.2}%
-\contentsline {section}{\numberline {13.3}Floating-point precision}{153}{section.13.3}%
-\contentsline {section}{\numberline {13.4}Dimensional and consistency checks}{153}{section.13.4}%
-\contentsline {section}{\numberline {13.5}Summary of open items}{154}{section.13.5}%
-\contentsline {chapter}{Closing Remarks}{155}{chapter*.60}%
+\contentsline {subsection}{\numberline {8.7.2}Where the invariant comes from: the $m=0$ channels}{111}{subsection.8.7.2}%
+\contentsline {subsection}{\numberline {8.7.3}Assembling the full attention block}{112}{subsection.8.7.3}%
+\contentsline {section}{\numberline {8.8}Node embedding: turning chemistry into a steerable feature}{113}{section.8.8}%
+\contentsline {section}{\numberline {8.9}Reading out the vector field}{114}{section.8.9}%
+\contentsline {section}{\numberline {8.10}EquiformerV1 vs.\ EquiformerV2: what actually changed, and what this codebase actually ships}{114}{section.8.10}%
+\contentsline {section}{\numberline {8.11}Summary: architecture, hyperparameters, and parameter count}{115}{section.8.11}%
+\contentsline {part}{V\hspace {1em}SigmaDock}{116}{part.5}%
+\contentsline {chapter}{\numberline {9}SigmaDock: Full Reconstruction}{117}{chapter.9}%
+\contentsline {section}{\numberline {9.1}Choosing the state space}{117}{section.9.1}%
+\contentsline {section}{\numberline {9.2}The conformational manifold: what rigidity costs}{119}{section.9.2}%
+\contentsline {section}{\numberline {9.3}FR3D: reducing fragment count}{120}{section.9.3}%
+\contentsline {subsection}{\numberline {9.3.1}Rotatable-bond detection, as actually implemented}{120}{subsection.9.3.1}%
+\contentsline {subsection}{\numberline {9.3.2}Dummy atoms and fragment boundaries}{120}{subsection.9.3.2}%
+\contentsline {section}{\numberline {9.4}Triangulation: an invariant, soft geometric prior at fragment boundaries}{121}{section.9.4}%
+\contentsline {section}{\numberline {9.5}Symmetry: gauge invariance and stochastic $SE(3)$-equivariance}{122}{section.9.5}%
+\contentsline {section}{\numberline {9.6}The forward (noising) process}{123}{section.9.6}%
+\contentsline {section}{\numberline {9.7}Input graph, featurisation, and backbone}{124}{section.9.7}%
+\contentsline {subsection}{\numberline {9.7.1}Fragment reconstruction: the map $\varphi $}{124}{subsection.9.7.1}%
+\contentsline {section}{\numberline {9.8}The Newton--Euler prediction head}{125}{section.9.8}%
+\contentsline {subsection}{\numberline {9.8.1}From network output to a physical analogy}{125}{subsection.9.8.1}%
+\contentsline {subsection}{\numberline {9.8.2}Net force, torque, and inertia: exact classical mechanics}{126}{subsection.9.8.2}%
+\contentsline {subsection}{\numberline {9.8.3}Newton--Maruyama: one discretised step of rigid-body dynamics}{127}{subsection.9.8.3}%
+\contentsline {subsection}{\numberline {9.8.4}Dressing the raw output into a score: the two branches}{127}{subsection.9.8.4}%
+\contentsline {section}{\numberline {9.9}The training loss}{128}{section.9.9}%
+\contentsline {section}{\numberline {9.10}Sampling}{129}{section.9.10}%
+\contentsline {section}{\numberline {9.11}Ranking generated poses}{130}{section.9.11}%
+\contentsline {part}{VI\hspace {1em}Flow Matching}{131}{part.6}%
+\contentsline {chapter}{\numberline {10}Continuous Normalizing Flows and Flow Matching in $\mathbb R^d$}{132}{chapter.10}%
+\contentsline {section}{\numberline {10.1}Continuous normalizing flows}{132}{section.10.1}%
+\contentsline {subsection}{\numberline {10.1.1}The continuity equation}{133}{subsection.10.1.1}%
+\contentsline {subsection}{\numberline {10.1.2}CNF likelihood}{134}{subsection.10.1.2}%
+\contentsline {section}{\numberline {10.2}Conditional flow matching}{134}{section.10.2}%
+\contentsline {subsection}{\numberline {10.2.1}The linear (conditional optimal transport) path}{136}{subsection.10.2.1}%
+\contentsline {section}{\numberline {10.3}Sampling: integrating the learned ODE}{137}{section.10.3}%
+\contentsline {chapter}{\numberline {11}Riemannian Flow Matching}{138}{chapter.11}%
+\contentsline {section}{\numberline {11.1}Vector fields and flows on a manifold}{138}{section.11.1}%
+\contentsline {section}{\numberline {11.2}The geodesic conditional path}{139}{section.11.2}%
+\contentsline {section}{\numberline {11.3}Flow matching on $SO(3)$}{139}{section.11.3}%
+\contentsline {section}{\numberline {11.4}Flow matching on the pose manifold $SE(3)^N$}{141}{section.11.4}%
+\contentsline {part}{VII\hspace {1em}SigmaFlow}{142}{part.7}%
+\contentsline {chapter}{\numberline {12}SigmaFlow: Full Reconstruction}{143}{chapter.12}%
+\contentsline {section}{\numberline {12.1}What changes, and what does not}{143}{section.12.1}%
+\contentsline {section}{\numberline {12.2}A time-convention warning, confirmed at the source level}{144}{section.12.2}%
+\contentsline {section}{\numberline {12.3}Translation flow matching, exactly as implemented}{144}{section.12.3}%
+\contentsline {section}{\numberline {12.4}Rotation flow matching, exactly as implemented}{145}{section.12.4}%
+\contentsline {section}{\numberline {12.5}No output dressing: the entire diffusion-specific scalar machinery is gone}{146}{section.12.5}%
+\contentsline {section}{\numberline {12.6}The loss function}{147}{section.12.6}%
+\contentsline {section}{\numberline {12.7}The full training step}{147}{section.12.7}%
+\contentsline {section}{\numberline {12.8}Sampling}{149}{section.12.8}%
+\contentsline {section}{\numberline {12.9}Likelihood and confidence: what is implemented, and what is not}{149}{section.12.9}%
+\contentsline {section}{\numberline {12.10}A tested, and rejected, loss variant}{150}{section.12.10}%
+\contentsline {part}{VIII\hspace {1em}Synthesis}{151}{part.8}%
+\contentsline {chapter}{\numberline {13}Implementation Details, Numerical Stability, and Consistency Checks}{152}{chapter.13}%
+\contentsline {section}{\numberline {13.1}Every clamp, epsilon, and numerical safeguard in one table}{152}{section.13.1}%
+\contentsline {section}{\numberline {13.2}Masking, batching, and scatter conventions}{153}{section.13.2}%
+\contentsline {section}{\numberline {13.3}Floating-point precision}{154}{section.13.3}%
+\contentsline {section}{\numberline {13.4}Dimensional and consistency checks}{154}{section.13.4}%
+\contentsline {section}{\numberline {13.5}Summary of open items}{155}{section.13.5}%
+\contentsline {chapter}{Closing Remarks}{156}{chapter*.60}%
