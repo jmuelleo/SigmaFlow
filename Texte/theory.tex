@@ -2316,7 +2316,7 @@ Binding affinity, energy & unchanged & invariant \\
 RMSD to a reference pose & unchanged & invariant \\
 \midrule
 Atom position $x_i$ & $x_i\mapsto Qx_i$ & equivariant \\
-Relative vector $r_{ij}=x_j-x_i$ & $r_{ij}\mapsto Qr_{ij}$ & equivariant \\
+Relative vector $x_{ij}=x_j-x_i$ & $x_{ij}\mapsto Qx_{ij}$ & equivariant \\
 Force on an atom & $F_i\mapsto QF_i$ & equivariant \\
 Translational velocity output $v$ & $v\mapsto Qv$ & equivariant \\
 Angular velocity output $\omega$ & $\omega\mapsto Q\omega$ & equivariant \\
@@ -2508,7 +2508,7 @@ $\ell=0$ features later.
 The full symmetry of free space is $SE(3)$: rotations \emph{and}
 translations. Translations are handled by a trick so standard it is easy to
 miss: the architecture never sees absolute positions, only \emph{relative}
-vectors $r_{ij}=x_j-x_i$, which satisfy
+vectors $x_{ij}=x_j-x_i$, which satisfy
 $(x_j+a)-(x_i+a)=x_j-x_i$ and are therefore translation-invariant
 automatically. Once positions enter only through differences, translation
 symmetry is exact and free, and the remaining, genuinely difficult symmetry
@@ -4058,17 +4058,17 @@ available:
 \begin{itemize}[nosep]
 \item the neighbour's current feature $h_j^{(\ell_1)}$ --- \emph{chemistry}:
 what kind of atom, in what environment, with what learned properties;
-\item the edge direction $\hat r_{ij}=r_{ij}/\|r_{ij}\|\in S^2$ ---
+\item the edge direction $\hat x_{ij}=x_{ij}/\|x_{ij}\|\in S^2$ ---
 \emph{geometry}: where the neighbour is.
 \end{itemize}
 
 The direction is not yet a steerable feature, but \Cref{sec:spherical-harmonics-derivation}
-made it one: $Y^{\ell_2}(\hat r_{ij})\in\RR^{2\ell_2+1}$ transforms by
+made it one: $Y^{\ell_2}(\hat x_{ij})\in\RR^{2\ell_2+1}$ transforms by
 $D^{\ell_2}(Q)$ (\Cref{eq:sph-equivariance-scratch}). So both ingredients are
 steerable features, and the Clebsch--Gordan product is precisely the
 operation that combines them:
 \[
-h_j^{(\ell_1)}\ \otimes_{\mathrm{cg}}\ Y^{\ell_2}(\hat r_{ij})
+h_j^{(\ell_1)}\ \otimes_{\mathrm{cg}}\ Y^{\ell_2}(\hat x_{ij})
 \ \longrightarrow\
 \text{message components of every allowed type }\ell .
 \]
@@ -4077,11 +4077,11 @@ Chemistry meets geometry, and the result is guaranteed to rotate correctly.
 Schematically, the pipeline that \Cref{chap:equiformer} will build is:
 \[
 \begin{array}{ccc}
-h_j^{(\ell_1)},\ r_{ij} & \Longrightarrow & \text{split } r_{ij}\text{ into } \|r_{ij}\| \text{ and } \hat r_{ij}\\[4pt]
+h_j^{(\ell_1)},\ x_{ij} & \Longrightarrow & \text{split } x_{ij}\text{ into } \|x_{ij}\| \text{ and } \hat x_{ij}\\[4pt]
 & \Downarrow & \\[2pt]
-\multicolumn{3}{c}{Y^{\ell_2}(\hat r_{ij})\ \text{(angular, steerable)}
+\multicolumn{3}{c}{Y^{\ell_2}(\hat x_{ij})\ \text{(angular, steerable)}
 \qquad\text{and}\qquad
-\mathrm{RBF}(\|r_{ij}\|)\ \text{(radial, invariant)}}\\[4pt]
+\mathrm{RBF}(\|x_{ij}\|)\ \text{(radial, invariant)}}\\[4pt]
 & \Downarrow & \\[2pt]
 \multicolumn{3}{c}{\text{CG product, with weights modulated by the radial features}}\\[4pt]
 & \Downarrow & \\[2pt]
@@ -5787,6 +5787,387 @@ the dot product). Geometry must instead enter through
 \section{Geometric graphs and message passing}
 \label{sec:gnn-scratch}
 
+\subsection{An ordinary GNN, with no geometry at all}
+\label{sec:plain-gnn}
+
+Start from the version with no symmetry considerations whatsoever, so that we
+can see exactly what has to be added.
+
+A graph neural network keeps a feature vector $h_i\in\RR^d$ at every node and
+updates it by looking at neighbours. One round of \emph{message passing} is
+two steps:
+\begin{align}
+\label{eq:plain-message}
+m_{ij} &= M\bigl(h_i,\,h_j,\,e_{ij}\bigr)
+&&\text{compute a message along each edge,}\\
+\label{eq:plain-update}
+h_i' &= U\Bigl(h_i,\ \textstyle\sum_{j\in\mathcal N(i)}m_{ij}\Bigr)
+&&\text{aggregate and update.}
+\end{align}
+Here $M$ and $U$ are learned functions (typically MLPs), $e_{ij}$ is an
+optional edge feature, and $\mathcal N(i)$ is the set of neighbours of $i$.
+Stacking $T$ such rounds lets information travel $T$ hops through the graph.
+
+For a molecule the identification is immediate:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Graph object & Molecular meaning \\
+\midrule
+node $i$ & atom \\
+$h_i$ & learned chemical state: element, charge, hybridisation, \dots \\
+edge $(i,j)$ & a pair of atoms considered to interact \\
+$e_{ij}$ & bond type, or nothing \\
+$x_i\in\RR^3$ & the atom's position \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Everything in \eqref{eq:plain-message}--\eqref{eq:plain-update} is standard
+deep learning. No representation theory has appeared, and none is needed ---
+because no geometry has appeared either.
+
+\subsection{The question: where is the 3D structure?}
+\label{sec:where-is-geometry}
+
+Look at what the update actually consumes: $h_i$, $h_j$, $e_{ij}$. Atom
+types and bond types. The positions $x_i$ appear nowhere.
+
+The consequence is severe. Two conformers of the same molecule --- the same
+atoms, the same bonds, folded into completely different shapes --- have
+\emph{identical} graphs in the sense of \eqref{eq:plain-message}. A plain
+GNN cannot tell them apart, in principle, no matter how it is trained. For
+docking this is fatal: the entire task is to distinguish spatial
+arrangements.
+
+So positions must enter. The question is how, and that question is delicate
+for a reason we can now state precisely:
+
+\begin{quote}
+Geometry must enter in a form that carries \emph{real spatial information}
+but does not smuggle in a \emph{choice of coordinate frame}.
+\end{quote}
+
+\subsection{Why absolute positions are the wrong input}
+\label{sec:no-absolute-positions}
+
+The naive fix is to append $x_i$ to $h_i$ and carry on. It fails on the
+first symmetry we listed in \Cref{sec:symmetry-problem}.
+
+Translate the whole system by $a\in\RR^3$, so $x_i\mapsto x_i+a$ for every
+atom. Nothing physical changed --- the molecule is the same molecule, we
+moved the origin. But every input to the network changed, so every output
+changes too. The network would have to learn, from data, that all of $\RR^3$
+worth of translations are irrelevant. That is the augmentation problem of
+\Cref{sec:symmetry-problem} in its purest form, and now over a
+\emph{non-compact} group, where sampling coverage is hopeless.
+
+\paragraph{The fix, and why it works.} Use differences instead of positions:
+\begin{equation}
+\label{eq:edge-vector-def}
+\boxed{\;x_{ij} \;:=\; x_j - x_i \;\in\;\RR^3\;}
+\end{equation}
+
+\begin{proposition}[The edge vector is translation-invariant and rotation-equivariant]
+\label{prop:edge-vector-symmetry}
+Under a global rigid motion $x\mapsto Qx+a$ with $Q\in SO(3)$, $a\in\RR^3$:
+\[
+x_{ij} \;\longmapsto\; (Qx_j+a)-(Qx_i+a) \;=\; Q(x_j-x_i) \;=\; Q\,x_{ij} .
+\]
+\end{proposition}
+
+\begin{proof}
+The two copies of $a$ cancel; $Q$ factors out by linearity.
+\end{proof}
+
+Read the conclusion carefully, because it contains two different statements:
+\begin{itemize}[nosep]
+\item the translation $a$ has \textbf{disappeared} --- $x_{ij}$ is
+translation-\emph{invariant}, and translation symmetry is now exact and free,
+requiring no further work anywhere in the architecture;
+\item the rotation $Q$ has \textbf{survived} --- $x_{ij}$ is
+rotation-\emph{equivariant}, an $\ell=1$ object, and rotation symmetry is
+therefore still a live constraint.
+\end{itemize}
+This asymmetry is why the rest of this document is about $SO(3)$ and barely
+mentions translations again.
+
+\begin{caution}[Edge orientation, fixed once]
+\label{caution:edge-orientation}
+We use $x_{ij}=x_j-x_i$ throughout: the vector \emph{from} $i$ \emph{to}
+$j$, i.e.\ ``where is my neighbour, seen from me''. The message
+$m_{ij}$ correspondingly flows from $j$ into $i$.
+
+The opposite convention $x_j-x_i\rightsquigarrow x_i-x_j$ is equally
+defensible and used by some sources, and the choice is \emph{not} harmless:
+$x_{ji}=-x_{ij}$, and by \Cref{prop:sph-parity} below the spherical
+harmonics satisfy $Y^\ell(-\hat u)=(-1)^\ell Y^\ell(\hat u)$. So reversing
+the edge flips the sign of every \emph{odd}-$\ell$ angular feature while
+leaving even ones alone. A model built with one convention and evaluated
+with the other is not merely mismatched --- it is systematically wrong on
+exactly the $\ell=1$ channels that carry the directional output.
+\end{caution}
+
+\begin{proposition}[Parity of the spherical harmonics]
+\label{prop:sph-parity}
+For $\hat u\in S^2$ and every degree $\ell$,
+$Y^\ell(-\hat u)=(-1)^\ell\,Y^\ell(\hat u)$.
+\end{proposition}
+
+\begin{proof}
+By \Cref{def:sph-harm-def}, $Y^\ell$ is the restriction to
+$S^2$ of a homogeneous polynomial of degree $\ell$, and a homogeneous
+polynomial of degree $\ell$ satisfies $p(-x)=(-1)^\ell p(x)$.
+\end{proof}
+
+\subsection{Splitting an edge into radius and direction}
+\label{sec:radial-angular-split}
+
+We now have one geometric object per edge, $x_{ij}\in\RR^3$. The next move is
+the one that organises the entire architecture: \emph{split it}.
+\begin{equation}
+\label{eq:edge-split}
+x_{ij} \;=\; \underbrace{d_{ij}}_{\text{how far}}\cdot\underbrace{\hat x_{ij}}_{\text{which way}},
+\qquad
+d_{ij}=\|x_{ij}\|\in\RR_{>0},
+\qquad
+\hat x_{ij}=\frac{x_{ij}}{d_{ij}}\in S^2 .
+\end{equation}
+
+Why split at all? Because the two halves have \emph{different symmetry
+types}, and therefore must be processed by different machinery:
+
+\begin{center}
+\begin{tabular}{lllp{4.6cm}}
+\toprule
+Piece & Lives in & Under $Q$ & Consequence \\
+\midrule
+$d_{ij}$ & $\RR_{>0}$ & unchanged & $\ell=0$: ordinary neural operations are legal \\
+$\hat x_{ij}$ & $S^2$ & $\mapsto Q\hat x_{ij}$ & equivariant: needs steerable treatment \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The invariance of the distance is \Cref{prop:so3-isometry}:
+$\|Qx_{ij}\|=\|x_{ij}\|$. That one line is what licenses everything in
+\Cref{sec:radial-features}.
+
+\begin{caution}[The split degenerates at $d_{ij}=0$]
+\label{caution:zero-distance}
+$\hat x_{ij}$ is undefined when $x_i=x_j$. In a molecular graph two distinct
+atoms never coincide, so this is not a modelling problem --- but it is a
+numerical one, because $\hat x_{ij}$ and its derivatives blow up as
+$d_{ij}\to0$, and self-edges $i=j$ would trigger it exactly. Implementations
+therefore exclude self-loops from the radius graph, or add an
+$\varepsilon$ to the denominator. \Cref{chap:numerics} records what
+SigmaDock actually does.
+\end{caution}
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title={The organising principle}]
+Not everything in an equivariant network needs representation theory.
+\emph{Invariant scalars may be processed by ordinary neural operations} ---
+MLPs, ReLU, layer norm, anything. Representation theory is needed only where
+directional information lives.
+
+The radial/angular split is the device that separates the two, so that each
+can be handled with the cheapest sufficient tool. Nearly every design
+decision in \Cref{chap:equiformer} is an instance of this principle.
+\end{tcolorbox}
+
+\subsection{The radial half: from a distance to a feature vector}
+\label{sec:radial-features}
+
+Since $d_{ij}$ is invariant, any function of it is invariant, and we may use
+a plain MLP. So why do molecular models almost always embed the distance
+first, into a vector $\phi(d_{ij})\in\RR^K$, instead of feeding the single
+number $3.71$ directly?
+
+This is an architectural choice, not a requirement. The reasons it is usually
+made:
+
+\begin{enumerate}
+\item \textbf{Locality of response.} A network often needs to react
+differently to $1.4$\,\r A (a covalent bond), $2.8$\,\r A (a hydrogen bond)
+and $5$\,\r A (weak contact). A single scalar input forces an MLP to carve
+these regimes out of one monotone coordinate; a basis of localised bumps
+hands it the regimes directly, and each output weight can specialise.
+\item \textbf{Conditioning.} Raw distances live on a scale of a few
+\r Angstr\"om; basis outputs are $O(1)$ and bounded, which behaves better
+under standard initialisation.
+\item \textbf{Smoothness control.} The basis width sets how fast the model
+\emph{can} vary with distance, acting as an architectural prior against
+fitting sharp, spurious distance dependence.
+\item \textbf{A natural place for the cutoff.} Multiplying the basis by an
+envelope (\Cref{sec:cutoff}) makes every downstream quantity go smoothly to
+zero at the graph boundary.
+\end{enumerate}
+
+\begin{definition}[Radial basis embedding]
+\label{def:rbf}
+A \emph{radial basis} is a map $\phi:\RR_{\ge0}\to\RR^K$,
+$\phi(d)=(\phi_1(d),\dots,\phi_K(d))$. Two common choices:
+\[
+\text{Gaussian:}\quad \phi_k(d)=\exp\bigl(-\gamma\,(d-\mu_k)^2\bigr),
+\qquad
+\text{Bessel:}\quad \phi_k(d)=\sqrt{\tfrac{2}{r_c}}\,\frac{\sin(k\pi d/r_c)}{d},
+\]
+with centres $\mu_1<\dots<\mu_K$ spanning the interaction range, width
+$\gamma$, and cutoff $r_c$.
+\end{definition}
+
+\emph{Shapes.} Input $d_{ij}\in\RR$ (one number per edge); output
+$\phi(d_{ij})\in\RR^K$. For a graph with $E$ edges the batched tensor is
+$[E,K]$.
+
+\emph{Invariance.} Each $\phi_k$ is a function of an invariant, hence
+invariant: $\phi_k(\|Qx_{ij}\|)=\phi_k(\|x_{ij}\|)$. The whole vector
+$\phi(d_{ij})$ is therefore a collection of $K$ independent $\ell=0$
+features, and may be fed to an ordinary MLP,
+$\psi(d_{ij})=\mathrm{MLP}\bigl(\phi(d_{ij})\bigr)$, whose output is again
+invariant.
+
+\begin{example}[Three Gaussian centres]
+\label{ex:rbf-small}
+Take $K=3$, centres $\mu=(1.5,\,3.0,\,4.5)$\,\r A and $\gamma=1$. Then
+\[
+\phi(1.6)\approx(0.99,\,0.13,\,0.0003),
+\qquad
+\phi(3.1)\approx(0.10,\,0.99,\,0.14),
+\qquad
+\phi(4.4)\approx(0.0003,\,0.14,\,0.99).
+\]
+Each distance activates mainly one coordinate, and neighbouring coordinates
+overlap smoothly so that the representation is continuous in $d$. A
+downstream linear layer can now assign an independent weight to ``short'',
+``medium'' and ``long'' contacts --- which is exactly what one would have
+had to \emph{learn} to extract from the raw number.
+\end{example}
+
+\subsection{The cutoff}
+\label{sec:cutoff}
+
+Molecular graphs are built with a radius cutoff,
+$\mathcal E=\{(i,j):d_{ij}<r_c\}$. Three reasons:
+\emph{physics} (interactions decay, and beyond a few \r Angstr\"om the
+influence is negligible), \emph{cost} (a complete graph on $N$ atoms has
+$N^2$ edges; a radius graph has $O(N)$ for fixed density), and \emph{node
+degree} (bounded neighbourhoods keep the aggregation well-scaled).
+
+But a hard cutoff introduces a discontinuity: an atom drifting across $r_c$
+makes its message appear or vanish abruptly. That is undesirable for two
+concrete reasons.
+
+First, the model's output becomes discontinuous in the atom positions. For a
+\emph{generative} model this is worse than cosmetic: the sampler integrates a
+vector field along a trajectory, and a field with jump discontinuities is not
+something an ODE solver can integrate reliably.
+
+Second, gradients are ill-behaved near the boundary.
+
+The remedy is an envelope $\chi:[0,r_c]\to[0,1]$ with $\chi(r_c)=0$ (and
+usually $\chi'(r_c)=0$), multiplied into the radial features:
+$\psi(d)\,\chi(d)$. A common choice is the polynomial envelope
+$\chi(d)=1-6u^5+15u^4-10u^3$ with $u=d/r_c$, which satisfies
+$\chi(0)=1$, $\chi(r_c)=0$ and $\chi'(0)=\chi'(r_c)=0$. The message then
+fades to zero smoothly as a neighbour leaves the cutoff, and nothing jumps.
+
+\subsection{The angular half: why spherical harmonics}
+\label{sec:angular-features}
+
+Now the harder piece: $\hat x_{ij}\in S^2$.
+
+We cannot simply pass the three components of $\hat x_{ij}$ through an MLP
+as if they were scalars --- that is precisely the error
+\Cref{ex:relu-not-equivariant} rules out. We need to turn a direction into
+features whose transformation law we know.
+
+We already have the tool. \Cref{sec:spherical-harmonics-derivation}
+constructed, for each degree $\ell$, a map
+$Y^\ell:S^2\to\RR^{2\ell+1}$ with
+\[
+Y^\ell(Q\hat u) = D^\ell(Q)\,Y^\ell(\hat u)
+\]
+(\Cref{eq:sph-equivariance-scratch}, in this document's fixed convention).
+Applying it to the edge direction gives
+\[
+Y^\ell(\hat x_{ij})\in\RR^{2\ell+1},
+\qquad
+Y^\ell(\hat x_{ij}) \longmapsto D^\ell(Q)\,Y^\ell(\hat x_{ij})
+\ \text{ under a global rotation,}
+\]
+because $\hat x_{ij}\mapsto Q\hat x_{ij}$ by
+\Cref{prop:edge-vector-symmetry}.
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title={The point of spherical harmonics, stated plainly}]
+They are not merely a convenient basis for functions on a sphere. They are
+the map that converts a raw geometric direction --- an object the network
+cannot use --- into features of \emph{exactly the types
+$\ell=0,1,2,\dots$ that the network's algebra is built around}. Before
+$Y^\ell$, the edge direction is data of unknown type. After $Y^\ell$, it is
+a steerable feature that can enter a Clebsch--Gordan product like any other.
+\end{tcolorbox}
+
+\paragraph{What the different degrees carry.} For a \emph{single} direction
+$\hat u$:
+\begin{itemize}[nosep]
+\item $\ell=0$: $Y^0$ is constant. It carries \emph{no} directional
+information at all --- the same value for every edge.
+\item $\ell=1$: $Y^1(\hat u)\propto\hat u$. First-order direction: which way.
+\item $\ell=2$: quadratic in the components. It distinguishes $\hat u$ from
+$-\hat u$ not at all ($(-1)^2=+1$, \Cref{prop:sph-parity}) but resolves
+\emph{axis} information --- alignment with a line rather than a ray.
+\item higher $\ell$: finer angular resolution, in the same sense that higher
+Fourier modes resolve finer detail on a circle.
+\end{itemize}
+
+The useful mental model is angular resolution. Truncating at $L=\ell_{\max}$
+is like low-pass filtering the angular dependence: the network can represent
+angular patterns up to that frequency and no finer. Raising $L$ increases
+expressive power, but the cost grows quickly --- the number of components per
+node is $\sum_{\ell\le L}(2\ell+1)=(L+1)^2$, and the number of
+Clebsch--Gordan paths grows faster still. Whether a larger $L$ helps is an
+empirical question and depends on how much genuine angular structure the task
+has; it is not a free improvement. EquiformerV2's design is in large part a
+response to this cost (\Cref{sec:so2-conv}).
+
+\subsection{Recombining radius and direction}
+\label{sec:recombine-radial-angular}
+
+We now have, per edge, an invariant radial vector $\psi(d_{ij})\in\RR^K$ and
+a family of steerable angular features $Y^\ell(\hat x_{ij})\in\RR^{2\ell+1}$.
+The natural way to put them back together is
+\begin{equation}
+\label{eq:edge-feature-combined}
+e^{(\ell)}_{ij} \;=\; f^{(\ell)}\bigl(d_{ij}\bigr)\;Y^\ell(\hat x_{ij})
+\ \in\ \RR^{2\ell+1},
+\end{equation}
+where $f^{(\ell)}$ is any learned scalar function of the distance (in
+practice a channel of $\mathrm{MLP}(\phi(d_{ij}))$).
+
+Why this is legal: $f^{(\ell)}(d_{ij})$ is an invariant \emph{scalar}, and a
+scalar commutes with $D^\ell(Q)$. So
+\[
+f^{(\ell)}(d_{ij})\,D^\ell(Q)\,Y^\ell(\hat x_{ij})
+= D^\ell(Q)\Bigl(f^{(\ell)}(d_{ij})\,Y^\ell(\hat x_{ij})\Bigr),
+\]
+i.e.\ $e^{(\ell)}_{ij}$ is again a degree-$\ell$ feature. This is the gating
+argument of \Cref{sec:nonlin-gate} reappearing in a geometric costume: an
+invariant modulating an equivariant.
+
+\begin{remark}[The split is not a trick; it is the geometry of $\RR^3$]
+\label{rem:sph-coords-analogy}
+Writing a function of a $3$-vector as ``radial part times angular part'' is
+exactly what separation of variables in spherical coordinates does:
+$f(x)=\sum_{\ell m}f_{\ell m}(r)\,Y^\ell_m(\hat x)$, with the spherical
+harmonics as the angular basis. Equation
+\eqref{eq:edge-feature-combined} is one term of such an expansion with a
+learned radial coefficient. So the architecture is not imposing an arbitrary
+factorisation on the data --- it is using the factorisation that the
+rotation group itself induces on functions of $\RR^3$. We do not develop the
+full harmonic analysis; the point is only that the split is natural rather
+than expedient.
+\end{remark}
+
 \begin{definition}[Geometric graph; restated]
 \label{def:geometric-graph-scratch}
 A \emph{geometric graph} is $\mathcal G=(\mathcal V,\mathcal E,\{h_i\},\{x_i\})$:
@@ -5990,7 +6371,445 @@ What is needed, and what \Cref{chap:steerable} already built, is: features
 of every angular degree $\ell$, not only $0$ and $1$; and a way to combine
 two such features, of \emph{any} degrees, into a third, without leaving the
 class of equivariant objects --- exactly the Clebsch--Gordan tensor product
-\eqref{eq:cg-scratch}. \Cref{chap:equiformer} now assembles this into a
+\eqref{eq:cg-scratch}. We assemble that now.
+
+\section{The steerable message}
+\label{sec:the-steerable-message}
+
+Everything is in place. We have, per edge, an invariant radial part and a
+steerable angular part; per node, steerable features; and, from
+\Cref{sec:cg-derivation}, the one legal way to multiply two steerable
+objects. Assembling them gives the central equation of equivariant message
+passing.
+
+\subsection{The equation}
+
+\begin{equation}
+\label{eq:steerable-message}
+\boxed{\;
+m^{(\ell)}_{ij}
+\;=\;
+\sum_{\ell_1,\ell_2}
+w^{(\ell_1,\ell_2,\ell)}\bigl(d_{ij}\bigr)\;
+\Bigl(h^{(\ell_1)}_{j}\ \otimes_{\mathrm{cg}}\ Y^{\ell_2}\bigl(\hat x_{ij}\bigr)\Bigr)^{\!(\ell)}
+\;}
+\end{equation}
+where the sum runs over pairs $(\ell_1,\ell_2)$ for which $\ell$ is allowed,
+i.e.\ $|\ell_1-\ell_2|\le\ell\le\ell_1+\ell_2$ (\Cref{sec:selection-rule}).
+
+Taken slowly, piece by piece:
+
+\paragraph{$h^{(\ell_1)}_{j}$ --- what the neighbour knows.}
+The current state of atom $j$: a steerable feature of degree $\ell_1$,
+living in $\RR^{2\ell_1+1}$ per channel. It encodes chemistry --- element,
+environment, whatever the previous layers accumulated --- with no reference
+to where $j$ sits relative to $i$.
+
+\paragraph{$Y^{\ell_2}(\hat x_{ij})$ --- where the neighbour is.}
+The edge direction, converted by \Cref{sec:angular-features} into a
+degree-$\ell_2$ feature in $\RR^{2\ell_2+1}$. It encodes geometry, with no
+reference to what kind of atom $j$ is.
+
+\paragraph{$\otimes_{\mathrm{cg}}$ --- the only legal way to multiply them.}
+Chemistry and geometry are features of different degrees; the Clebsch--Gordan
+product is the unique (up to scale) bilinear map combining them
+equivariantly, and the superscript $(\ell)$ selects one allowed output
+degree. This is where the two kinds of information actually meet.
+
+\paragraph{$w^{(\ell_1,\ell_2,\ell)}(d_{ij})$ --- how much, at this distance.}
+A learned scalar, computed from the radial features
+$\phi(d_{ij})$ of \Cref{sec:radial-features} by an ordinary MLP. Two
+questions about it deserve answers.
+
+\emph{Why may it be an ordinary scalar?} Because $d_{ij}$ is invariant
+(\Cref{prop:so3-isometry}), so $w$ is invariant, and an invariant scalar
+multiplying an equivariant feature preserves equivariance
+(\Cref{sec:nonlin-gate}). No representation theory is needed for $w$
+itself.
+
+\emph{Why should it depend on distance at all?} Because the strength of an
+interaction does. A covalent neighbour at $1.4$\,\r A and a loose contact at
+$5$\,\r A should not contribute equally, and the network should be able to
+learn a different distance profile for each coupling path
+$(\ell_1,\ell_2)\to\ell$ --- e.g.\ to let a short-range path dominate the
+$\ell=2$ output while a long-range one dominates $\ell=0$. Making $w$ a
+function of $d_{ij}$, with a separate output channel per path, is what
+grants that freedom.
+
+\paragraph{$m^{(\ell)}_{ij}$ --- the result.}
+A degree-$\ell$ feature in $\RR^{2\ell+1}$, attached to the edge, ready to be
+delivered to node $i$.
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title={What the message says}]
+A plain GNN message says:
+\begin{quote}
+``Atom $j$ has these properties.''
+\end{quote}
+A steerable message says:
+\begin{quote}
+``Atom $j$ has these properties, \emph{and it is over there, this far
+away}.''
+\end{quote}
+The difficulty is entirely in the words ``over there''. A direction cannot
+be appended as three ordinary numbers without breaking rotation
+equivariance. Passing it through $Y^{\ell_2}$ converts it into an object of
+known type, and the Clebsch--Gordan product then couples it to the
+chemistry in the one way that keeps the whole message co-rotating with the
+molecule.
+\end{tcolorbox}
+
+\subsection{Two cases worth doing by hand}
+
+\begin{example}[Scalar node feature: $0\otimes1\to1$]
+\label{ex:message-scalar-node}
+Suppose $j$ carries only a scalar, $h^{(0)}_j\in\RR$, and we use
+$\ell_2=1$. The selection rule allows only $\ell=1$, and by
+\Cref{ex:cg-scalar} the Clebsch--Gordan product with a scalar is ordinary
+multiplication:
+\[
+m^{(1)}_{ij} \;=\; w(d_{ij})\;h^{(0)}_j\;Y^1(\hat x_{ij})
+\;\propto\; \underbrace{w(d_{ij})\,h^{(0)}_j}_{\text{a number}}\;\cdot\;\underbrace{\hat x_{ij}}_{\text{a direction}} .
+\]
+Interpretation: \emph{a scalar at $j$ becomes a vector at $i$, pointing
+along the edge, with magnitude set by the scalar and the distance.} If the
+scalar channel has learned to encode ``how strongly I should push'', the
+message is literally a push in the direction of the neighbour.
+
+This is worth dwelling on because it is the minimal mechanism by which
+directional information is created from non-directional information ---
+which, by \Cref{caution:no-cross-degree-linear}, no linear layer could do.
+The direction did not come from the features; it came from the geometry, and
+the tensor product is what let them meet. It is also, structurally, exactly
+the EGNN readout of \Cref{def:egnn-scratch}: EGNN is the special case of
+\eqref{eq:steerable-message} with $\ell_1=0$, $\ell_2=1$ and nothing else.
+\end{example}
+
+\begin{example}[Vector node feature: $1\otimes1\to0\oplus1\oplus2$]
+\label{ex:message-vector-node}
+Now let $j$ carry a vector feature $h^{(1)}_j\in\RR^3$, still with
+$\ell_2=1$. Now \emph{three} output degrees are available, and by
+\Cref{sec:one-tensor-one} we know exactly what each is:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Output & Concretely & What it detects \\
+\midrule
+$\ell=0$ & $\propto\ h^{(1)}_j\cdot\hat x_{ij}$ & how much $j$'s vector points \emph{along} the edge \\
+$\ell=1$ & $\propto\ h^{(1)}_j\times\hat x_{ij}$ & the component \emph{perpendicular} to the edge \\
+$\ell=2$ & sym.\ traceless part & the \emph{alignment} of $j$'s vector with the edge axis \\
+\bottomrule
+\end{tabular}
+\end{center}
+A single pair of inputs produces three qualitatively different, and
+simultaneously available, geometric readings. The $\ell=0$ output is an
+invariant that node $i$ can feed to any MLP; the $\ell=1$ output is a new
+direction; the $\ell=2$ output is orientation information that neither of
+the others can express.
+
+This is the payoff for \Cref{sec:one-tensor-one}. The decomposition
+$1\otimes1=0\oplus1\oplus2$ was, at the time, an exercise in splitting a
+$3\times3$ matrix. Here it is a statement about what a molecule's geometry
+can tell a network.
+\end{example}
+
+\subsection{Aggregation over neighbours}
+\label{sec:aggregation}
+
+Each edge produces a message; node $i$ must combine them:
+\begin{equation}
+\label{eq:aggregation}
+m^{(\ell)}_{i} \;=\; \sum_{j\in\mathcal N(i)} m^{(\ell)}_{ij} .
+\end{equation}
+
+\begin{proposition}[Sum aggregation is equivariant]
+\label{prop:aggregation-equivariant}
+If each $m^{(\ell)}_{ij}\mapsto D^\ell(Q)\,m^{(\ell)}_{ij}$, then
+$m^{(\ell)}_{i}\mapsto D^\ell(Q)\,m^{(\ell)}_{i}$.
+\end{proposition}
+
+\begin{proof}
+\[
+\sum_{j} D^\ell(Q)\,m^{(\ell)}_{ij}
+\;=\; D^\ell(Q)\sum_{j} m^{(\ell)}_{ij}
+\;=\; D^\ell(Q)\,m^{(\ell)}_{i},
+\]
+by linearity of $D^\ell(Q)$.
+\end{proof}
+
+The proof is one line, but the hypothesis is what matters: \emph{all
+summands must live in the same representation space}. Adding an $\ell=1$
+message to an $\ell=2$ message is not merely bad practice --- the sum has no
+transformation law at all. This is why implementations keep degrees in
+separate buffers and sum within each.
+
+Note also what is \emph{not} required: nothing about $\mathcal N(i)$, its
+size, or the order of summation.
+
+\begin{caution}[Two different symmetries, easily conflated]
+\label{caution:two-symmetries}
+Equation \eqref{eq:aggregation} is doing two independent jobs.
+
+\emph{Spatial symmetry ($SO(3)$).} Handled by
+\Cref{prop:aggregation-equivariant}: the sum commutes with $D^\ell(Q)$
+because $D^\ell(Q)$ is linear.
+
+\emph{Permutation symmetry ($S_n$).} The neighbours of $i$ form a
+\emph{set}; they have no canonical order, and the answer must not depend on
+one. A sum is permutation-invariant because addition is commutative.
+
+These are different groups acting on different things --- rotations act on
+$\RR^3$, permutations act on node labels --- and a construction can respect
+one and violate the other. Concatenating neighbour messages in index order,
+for instance, is perfectly rotation-equivariant and badly
+permutation-dependent. Sum (or mean, or max over invariants) is the standard
+way to secure the second; \Cref{prop:perm-equivariance-scratch} treats it in
+its own right.
+\end{caution}
+
+\subsection{Self-interaction and residual connections}
+\label{sec:self-interaction}
+
+A node should not forget itself. The update combines the aggregated message
+with the node's own state:
+\begin{equation}
+\label{eq:node-update}
+h^{(\ell),\mathrm{new}}_{i} \;=\; W^{(\ell)}_{\mathrm{self}}\,h^{(\ell)}_{i} \;+\; m^{(\ell)}_{i} ,
+\end{equation}
+where $W^{(\ell)}_{\mathrm{self}}$ is an equivariant linear layer
+(\Cref{eq:equivariant-linear-coords}), i.e.\ channel mixing within degree
+$\ell$.
+
+Equivariance is immediate and worth stating as a general principle:
+
+\begin{proposition}[Sums of equivariant maps of the same type are equivariant]
+\label{prop:sum-equivariant-maps}
+If $f,g$ both map into $V_\ell$ and both satisfy
+$f(Q\cdot x)=D^\ell(Q)f(x)$, then so does $f+g$. In particular, with
+$g=\mathrm{id}$, the residual connection $h\mapsto h+f(h)$ is equivariant
+whenever $f$ is and $f$'s output has the same degree as $h$.
+\end{proposition}
+
+\begin{proof}
+$(f+g)(Q\cdot x)=D^\ell(Q)f(x)+D^\ell(Q)g(x)=D^\ell(Q)\bigl((f+g)(x)\bigr)$.
+\end{proof}
+
+The residual case is what makes deep equivariant transformers possible: every
+block may be written $h\mapsto h+\mathrm{Block}(h)$, and
+\Cref{prop:sum-equivariant-maps} guarantees the skip connection costs nothing
+in symmetry --- \emph{provided} the block's output degrees match its input
+degrees, which is why architectures fix an irrep specification and keep it
+constant across blocks.
+
+\begin{remark}[Normalisation: a preview]
+\label{rem:norm-preview}
+Deep networks need normalisation, and the naive version is unavailable here:
+computing a mean and variance across all $m$-components of an $\ell\ge1$
+feature and subtracting the mean would treat the components as
+interchangeable numbers --- the same error as componentwise $\mathrm{ReLU}$.
+Equivariant normalisation must instead act on invariants (e.g.\ rescale each
+irrep block by a function of its norm, leaving direction untouched, in the
+spirit of \Cref{sec:nonlin-norm}). EquiformerV2 has a specific construction;
+we defer it to \Cref{chap:equiformer} rather than sketch it here.
+\end{remark}
+
+\subsection{The pipeline, end to end}
+\label{sec:mp-pipeline}
+
+Collecting everything:
+\[
+\begin{array}{rcl}
+x_i,\,x_j\in\RR^3 & \Longrightarrow & x_{ij}=x_j-x_i\in\RR^3
+\quad\text{(translation-invariant, \Cref{prop:edge-vector-symmetry})}\\[4pt]
+&\Downarrow&\\[2pt]
+\multicolumn{3}{c}{x_{ij}=d_{ij}\,\hat x_{ij}
+\qquad d_{ij}\in\RR_{>0}\ (\ell=0),
+\qquad \hat x_{ij}\in S^2\ (\text{equivariant})}\\[6pt]
+&\Downarrow&\\[2pt]
+\multicolumn{3}{c}{
+\phi(d_{ij})\in\RR^{K}\ \text{(radial, invariant)}
+\qquad
+Y^{\ell_2}(\hat x_{ij})\in\RR^{2\ell_2+1}\ \text{(angular, steerable)}}\\[6pt]
+&\Downarrow&\\[2pt]
+\multicolumn{3}{c}{h^{(\ell_1)}_j\ \otimes_{\mathrm{cg}}\ Y^{\ell_2}(\hat x_{ij})
+\qquad\text{allowed } \ell\in\{|\ell_1-\ell_2|,\dots,\ell_1+\ell_2\}}\\[6pt]
+&\Downarrow&\\[2pt]
+\multicolumn{3}{c}{m^{(\ell)}_{ij}
+= \sum_{\ell_1\ell_2} w^{(\ell_1,\ell_2,\ell)}(d_{ij})\,\bigl(\cdots\bigr)^{(\ell)}
+\in\RR^{2\ell+1}}\\[6pt]
+&\Downarrow&\\[2pt]
+\multicolumn{3}{c}{m^{(\ell)}_i=\sum_{j\in\mathcal N(i)}m^{(\ell)}_{ij}
+\qquad\text{(\Cref{prop:aggregation-equivariant})}}\\[6pt]
+&\Downarrow&\\[2pt]
+\multicolumn{3}{c}{h^{(\ell),\mathrm{new}}_i = W^{(\ell)}_{\mathrm{self}}h^{(\ell)}_i + m^{(\ell)}_i}
+\end{array}
+\]
+
+\subsection{A small worked example}
+\label{sec:mp-worked-example}
+
+Three atoms $i,j,k$; features $1$ channel of $\ell=0$ and $1$ channel of
+$\ell=1$ per node; $L=\ell_{\max}=1$; $K=3$ radial basis functions.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Object & Shape (per edge / node) & Type \\
+\midrule
+$x_i$ & $[3]$ & position (not a feature) \\
+$x_{ij}=x_j-x_i$ & $[3]$ & $\ell=1$ \\
+$d_{ij}=\|x_{ij}\|$ & $[1]$ & $\ell=0$ \\
+$\hat x_{ij}$ & $[3]$ & on $S^2$ \\
+$\phi(d_{ij})$ & $[3]$ & $\ell=0$ (three basis values) \\
+$Y^0(\hat x_{ij})$ & $[1]$ & $\ell=0$ (constant) \\
+$Y^1(\hat x_{ij})$ & $[3]$ & $\ell=1$ \\
+$h^{(0)}_j$ & $[1,1]$ ($c\times m$) & $\ell=0$ \\
+$h^{(1)}_j$ & $[1,3]$ & $\ell=1$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Which coupling paths exist?} With inputs of degree
+$\ell_1\in\{0,1\}$, edge harmonics of degree $\ell_2\in\{0,1\}$, and outputs
+truncated at $\ell\le1$:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+$(\ell_1,\ell_2)$ & allowed $\ell$ & kept ($\ell\le1$) \\
+\midrule
+$(0,0)$ & $0$ & $0$ \\
+$(0,1)$ & $1$ & $1$ \\
+$(1,0)$ & $1$ & $1$ \\
+$(1,1)$ & $0,1,2$ & $0,1$ \ \ (the $\ell=2$ path is discarded by the truncation) \\
+\bottomrule
+\end{tabular}
+\end{center}
+So five surviving paths, each with its own learned radial weight
+$w^{(\ell_1,\ell_2,\ell)}(d_{ij})$ --- five scalar functions of distance, i.e.\
+a radial MLP $\RR^3\to\RR^5$.
+
+\paragraph{Messages.} For edge $i\!\leftarrow\!j$:
+\[
+m^{(0)}_{ij}=w_{(0,0,0)}\,h^{(0)}_j Y^0 + w_{(1,1,0)}\bigl(h^{(1)}_j\cdot\hat x_{ij}\bigr)
+\in\RR^{1},
+\]
+\[
+m^{(1)}_{ij}=w_{(0,1,1)}\,h^{(0)}_j\,Y^1(\hat x_{ij})
++ w_{(1,0,1)}\,h^{(1)}_j
++ w_{(1,1,1)}\bigl(h^{(1)}_j\times\hat x_{ij}\bigr)
+\in\RR^{3},
+\]
+suppressing normalisation constants. Every term on the right of the first
+line is a scalar; every term on the second is a $3$-vector. Nothing else
+could appear.
+
+\paragraph{Aggregation and update.} $m^{(\ell)}_i=m^{(\ell)}_{ij}+m^{(\ell)}_{ik}$,
+then \eqref{eq:node-update}. Output shapes are unchanged: $[1,1]$ and
+$[1,3]$ per node, ready for the next block.
+
+\paragraph{Sanity check.} Rotate all three positions by $Q$ and translate by
+$a$. Then $d_{ij}$, $\phi$, and all $w$'s are unchanged; $\hat x_{ij}\mapsto Q\hat x_{ij}$;
+$Y^1\mapsto QY^1$; so $m^{(0)}_i$ is unchanged and $m^{(1)}_i\mapsto Qm^{(1)}_i$
+--- exactly as required. (Simulating this numerically on three random atoms
+reproduces the identity to machine precision, $\sim10^{-16}$; it is a
+worthwhile five-line check when implementing.)
+
+\subsection{What is fixed and what is learned}
+\label{sec:mp-fixed-learned}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Fixed by geometry and symmetry & Learned from data \\
+\midrule
+$x_{ij}=x_j-x_i$ & the radial MLP producing $w(d)$ \\
+$d_{ij}$, $\hat x_{ij}$ & channel-mixing matrices $A^{(\ell)}$ \\
+the spherical harmonics $Y^\ell$ & self-interaction weights \\
+which coupling paths exist & how strongly each path is used \\
+the Clebsch--Gordan coefficients & gate pre-activations \\
+all transformation laws & (later) attention weights \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Note where the boundary falls. The network never learns \emph{which}
+couplings are permitted --- symmetry decides that --- but it does learn how
+much to use each permitted one, and at what distances. That is a much
+smaller, much better-posed learning problem than ``figure out
+three-dimensional geometry from data''.
+
+\subsection{Why this deserves the name ``steerable''}
+\label{sec:why-steerable}
+
+The word is not decoration. A feature is \emph{steerable} when its behaviour
+under the group is known in advance and given by an explicit matrix: rotate
+the input, and the feature transforms by $D^\ell(Q)$ --- one can ``steer'' it
+without recomputing it from scratch. Every quantity in
+\eqref{eq:steerable-message} is of this kind, and every operation used
+(spherical harmonics, Clebsch--Gordan product, scalar multiplication by an
+invariant, summation, equivariant linear layers) maps steerable inputs to
+steerable outputs with a known law.
+
+That closure property is what makes the equivariance of the whole network a
+\emph{theorem} obtained by induction over layers, rather than a property to
+be measured after training.
+
+\subsection{The question this leaves open}
+\label{sec:towards-attention}
+
+Look again at \eqref{eq:aggregation}. Every neighbour contributes with the
+same structural weight; the only way a neighbour can matter more is through
+$w(d_{ij})$, which sees \emph{distance alone}. Two neighbours at the same
+distance are treated identically regardless of what they are or what the
+rest of the environment looks like.
+
+But chemistry is not like that. A hydrogen-bond donor at $3$\,\r A and a
+hydrophobic carbon at $3$\,\r A should not contribute equally, and how much
+each matters may depend on the rest of the pocket.
+
+\begin{quote}
+\textbf{What if the model could learn, per edge and in context, how much
+each neighbour should contribute?}
+\end{quote}
+
+That is attention, and it is where \Cref{chap:equiformer} begins. Note the
+constraint it must satisfy, already derivable from what we have: an
+attention weight multiplies an equivariant message, so by
+\Cref{sec:nonlin-gate} it must be an \emph{invariant} scalar. Everything
+in Equiformer's attention mechanism follows from getting an expressive,
+context-dependent, invariant number out of a pair of steerable features.
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title={Why this matters for SigmaFlow}]
+\textbf{Relative geometry.} Docking depends on where the ligand sits
+\emph{relative} to the pocket, never on the global frame. Building the
+architecture on $x_{ij}$ rather than $x_i$ makes translation symmetry exact
+and free, and reduces the whole symmetry problem to $SO(3)$.
+
+\textbf{The radial/angular split.} Distance and direction have different
+symmetry types, so they get different machinery: an ordinary MLP for the
+invariant half, spherical harmonics for the equivariant half. Recognising
+this split is what makes \file{gaussian\_rbf.py} and \file{so3.py} look like
+two halves of one idea rather than two unrelated files.
+
+\textbf{Tensor-product messages.} They are how chemical features learn about
+geometry at all. \Cref{prop:invariance-obstruction-scratch} proves a
+scalar-only network cannot output a pose; \eqref{eq:steerable-message} is
+the repair.
+
+\textbf{Aggregation.} Each atom integrates geometrically structured
+information from its neighbourhood, with spatial equivariance and
+permutation invariance secured by different arguments
+(\Cref{caution:two-symmetries}) --- both of which must hold.
+
+\textbf{Independent of the generative engine.} Nothing in this section
+mentions scores, velocities, noise schedules or ODEs. It is entirely about
+how a network may represent and propagate geometric information. Swapping
+SigmaDock's diffusion for SigmaFlow's flow matching changes what the final
+$\ell=1$ readout \emph{means} and how it is trained --- not one line of the
+message construction above. That is the precise sense in which the backbone
+is shared.
+\end{tcolorbox}
+
+\Cref{chap:equiformer} now assembles this into a
 complete, code-verified architecture.
 
 \clearpage
