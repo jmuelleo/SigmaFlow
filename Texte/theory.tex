@@ -641,12 +641,29 @@ as expected from elementary Gaussian scaling.
 
 \begin{definition}[Score]
 \label{def:score}
-The \emph{score} of a density $p$ with $p(x)>0$ on its support is
+Let $p$ be a density on $\RR^d$ that is strictly positive and differentiable
+on an open set $U\subseteq\RR^d$. For $x\in U$, the \emph{score} of $p$ at
+$x$ is
 \[
-\nabla_x \log p(x) \;\in\;\RR^d,
+\nabla_x \log p(x) \;=\; \frac{\nabla_x p(x)}{p(x)} \;\in\;\RR^d,
 \]
 the gradient (with respect to $x$) of the log-density.
 \end{definition}
+
+\begin{caution}[Where the score is defined]
+\label{caution:score-domain}
+The score is a \emph{vector field on $U$}, not a global object: it is
+undefined wherever $p$ vanishes or fails to be differentiable. This is not
+pedantry. Every Gaussian used in \Cref{chap:diffusion} is positive on all of
+$\RR^d$, so the issue never arises there; but $p_{\mathrm{data}}$ for
+molecular poses is supported on a lower-dimensional set (bond lengths are
+essentially fixed), so $\nabla_x\log p_{\mathrm{data}}$ does not exist in the
+sense above. This is precisely why diffusion models learn
+$\nabla_x\log p_\sigma$ for the \emph{smoothed} densities $p_\sigma$
+($\sigma>0$), which are positive everywhere, and never the score of
+$p_{\mathrm{data}}$ itself --- see the discussion following
+\Cref{thm:dsm-equivalence}.
+\end{caution}
 
 The score is the direction in which $\log p$, and hence $p$ itself,
 increases fastest; equivalently it is the vector field that would define
@@ -715,19 +732,33 @@ with a precise reference, as a classical result.
 
 \begin{theorem}[Langevin dynamics; invariance of the target density]
 \label{thm:langevin}
-Let $p(x)\propto e^{-U(x)}$ for a potential $U$ with $\nabla U$ Lipschitz and
-$\int e^{-U}<\infty$ (sufficient regularity to guarantee existence,
-uniqueness and ergodicity of the SDE below; see, e.g., Pavliotis,
-\emph{Stochastic Processes and Applications}, 2014, Ch.~4). Then the
-\emph{overdamped Langevin SDE}
+Let $U\in C^1(\RR^d)$ with $\nabla U$ Lipschitz and $Z=\int e^{-U}<\infty$, and
+set $p = e^{-U}/Z$. Then the \emph{overdamped Langevin SDE}
 \[
 dX_\tau = -\nabla U(X_\tau)\,d\tau + \sqrt2\,dW_\tau
 \]
-has $p$ as its unique stationary distribution: if $X_0\sim p$ then $X_\tau\sim p$
-for all $\tau\ge0$, and $\mathrm{Law}(X_\tau)\to p$ as $\tau\to\infty$ from
-any initial distribution with support contained in that of $p$, under mild
-additional conditions.
+has a unique strong solution, and $p$ is a \emph{stationary} distribution:
+if $X_0\sim p$ then $X_\tau\sim p$ for all $\tau\ge0$. Because the diffusion
+coefficient is non-degenerate, $p$ is moreover the \emph{only} stationary
+probability distribution. Convergence
+$\mathrm{Law}(X_\tau)\to p$ as $\tau\to\infty$ from an arbitrary initial
+distribution requires an \emph{additional} confinement (Lyapunov) condition,
+e.g.\ $\langle\nabla U(x),x\rangle\ge a\|x\|^2-b$ for some $a>0$ outside a
+compact set; see Pavliotis, \emph{Stochastic Processes and Applications},
+2014, Ch.~4, and Roberts--Tweedie (1996).
 \end{theorem}
+
+\begin{caution}[Stationarity, uniqueness and convergence are three claims]
+\label{caution:langevin-three-claims}
+They need different hypotheses and it is easy to conflate them. Lipschitz
+$\nabla U$ gives \emph{existence and uniqueness of the solution};
+$\int e^{-U}<\infty$ plus the Fokker--Planck computation gives
+\emph{stationarity of $p$}; non-degeneracy of the noise gives
+\emph{uniqueness of the stationary distribution}; only the confinement
+condition gives \emph{convergence from an arbitrary start}, and it also
+controls the rate. Nothing below depends on the rate, but the reader should
+not carry away the impression that integrability alone yields ergodicity.
+\end{caution}
 
 We do not reprove \Cref{thm:langevin} (it is a statement about the
 stationary distribution of a diffusion process via its Fokker--Planck
@@ -748,13 +779,31 @@ has $p_{\mathrm{data}}$ as its stationary distribution. Discretising
 x^{(k+1)} = x^{(k)} + \epsilon\,\nabla_x\log p_{\mathrm{data}}\bigl(x^{(k)}\bigr) + \sqrt{2\epsilon}\,z^{(k)},
 \qquad z^{(k)}\overset{\mathrm{iid}}\sim\mathcal N(0,I_d),
 \end{equation}
-which, run for enough steps $k$ from an arbitrary $x^{(0)}$, produces (an
-approximate) sample from $p_{\mathrm{data}}$ using \emph{only} the score,
+which, run for enough steps $k$ from an arbitrary $x^{(0)}$, produces an
+\emph{approximate} sample from $p_{\mathrm{data}}$ using \emph{only} the score,
 never the density itself. This is the precise sense in which ``the score
 suffices for sampling'', and it is why score-based diffusion models train a
 score network rather than a density network:
 \Cref{sec:score-matching-intro} shows how to fit that network without ever
 observing $p_{\mathrm{data}}$ in closed form.
+
+\begin{caution}[``Approximate'' means biased, not merely unconverged]
+\label{caution:ula-bias}
+The word \emph{approximate} in the previous sentence is doing real work, and
+it is worth being explicit about what it does and does not mean. For any
+fixed step size $\epsilon>0$, the Markov chain \eqref{eq:ula} has a
+stationary distribution $p^{(\epsilon)}$ that is \emph{not} $p_{\mathrm{data}}$;
+the discretisation error is $O(\epsilon)$ and does \emph{not} shrink as
+$k\to\infty$. Running more steps removes the error from the initial
+condition, not the error from discretisation. Removing the latter requires
+either $\epsilon\to0$ (slowly, jointly with $k\to\infty$) or a
+Metropolis--Hastings accept/reject correction, which turns ULA into MALA ---
+but that correction needs pointwise evaluation of $p_{\mathrm{data}}$ up to a
+constant, which is exactly what we do not have. The bias is therefore
+intrinsic to the score-only setting, not an implementation shortcoming. This
+is one reason diffusion samplers in practice do not run Langevin dynamics at
+a single noise level, but anneal $\sigma$ (\Cref{chap:diffusion}).
+\end{caution}
 
 \section{Kullback--Leibler divergence and maximum likelihood}
 \label{sec:kl-mle}
@@ -764,27 +813,176 @@ training objective is actually minimising.
 
 \begin{definition}[Kullback--Leibler divergence]
 \label{def:kl}
-For densities $p,q$ on the same space with $p$ absolutely continuous with
-respect to $q$,
+Let $p$ and $q$ be densities on $\RR^d$ with respect to Lebesgue measure.
+The \emph{Kullback--Leibler divergence from $q$ to $p$} is
 \[
-\KL(p\,\|\,q) = \int p(x)\log\frac{p(x)}{q(x)}\,dx = \EE_{x\sim p}\Bigl[\log\frac{p(x)}{q(x)}\Bigr] .
+\KL(p\,\|\,q)
+\;=\; \int_{\{p>0\}} p(x)\log\frac{p(x)}{q(x)}\,dx
+\;=\; \EE_{x\sim p}\Bigl[\log\frac{p(x)}{q(x)}\Bigr]
+\;\in\;[0,+\infty] ,
 \]
+with the conventions $0\log\tfrac{0}{0}=0$ and $a\log\tfrac{a}{0}=+\infty$ for
+$a>0$. In particular:
+\begin{itemize}[nosep]
+\item the expectation is taken under $\mathbf{p}$, the \emph{first} argument;
+\item $\KL(p\|q)=+\infty$ whenever $p$ puts mass where $q$ does not, i.e.\
+whenever $p$ is \emph{not} absolutely continuous with respect to $q$;
+\item $\KL$ is always defined (possibly $+\infty$); it is finite only if
+$q(x)=0\Rightarrow p(x)=0$ for Lebesgue-almost every $x$, and even then not
+automatically (the integral can still diverge).
+\end{itemize}
+The same formula with $\int\!\cdots dx$ replaced by $\sum_x$ defines $\KL$ for
+probability mass functions on a countable set.
 \end{definition}
 
-\begin{proposition}[Basic properties of KL]
+\begin{caution}[Absolute continuity is a conclusion, not a hypothesis]
+\label{caution:kl-abs-cont}
+It is tempting to \emph{assume} $p\ll q$ so that the integrand is always
+finite. That would hide the single most consequential feature of $\KL$: it
+is $+\infty$ exactly when the second argument assigns zero probability to
+something the first argument considers possible. Concretely, if a model
+$q=p_\theta$ has support strictly smaller than $p_{\mathrm{data}}$, then
+$\KL(p_{\mathrm{data}}\|p_\theta)=+\infty$ no matter how good the model looks
+elsewhere. This infinite penalty is the mechanism behind the
+mass-covering/mode-seeking dichotomy of \Cref{rem:forward-reverse-kl}, and it
+is why models are trained on \emph{smoothed} targets whose support is all of
+$\RR^d$ (\Cref{caution:score-domain}).
+\end{caution}
+
+\begin{remark}[$\KL$ does not depend on the reference measure --- differential entropy does]
+\label{rem:kl-invariance}
+This point is easy to miss in $\RR^d$ and becomes important from
+\Cref{chap:groups} onward, where we work on $SO(3)$ and there is no canonical
+``$dx$''.
+
+$\KL$ is a functional of the two \emph{measures} $P,Q$, not of the densities
+used to express them: if $p=dP/d\mu$ and $q=dQ/d\mu$ for \emph{any} common
+reference measure $\mu$ dominating both, the value of
+$\int p\log(p/q)\,d\mu$ is the same. Changing $\mu$ rescales $p$ and $q$ by
+the same factor, which cancels inside the ratio $p/q$. Equivalently, $\KL$ is
+invariant under any diffeomorphic reparametrisation $x\mapsto\phi(x)$ applied
+to both arguments: the Jacobian factors from
+\Cref{thm:change-of-variables} cancel.
+
+The quantity $-\EE_p[\log p]$ (\emph{differential entropy}) has \emph{no} such
+invariance: it changes by $\EE[\log|\det D\phi|]$ under reparametrisation and
+can be negative. So ``$\KL$ = cross-entropy minus entropy''
+(\Cref{prop:kl-entropy-decomposition}) is an identity between three
+coordinate-\emph{dependent} quantities whose combination happens to be
+coordinate-\emph{independent}. When we later write $\KL$ on $SO(3)$ with
+respect to the Haar measure, the value does not depend on that choice; had we
+written an entropy, it would have.
+\end{remark}
+
+\begin{proposition}[Gibbs' inequality]
 \label{prop:kl-properties}
-$\KL(p\,\|\,q)\ge0$, with equality iff $p=q$ ($q$-almost everywhere). In
-general $\KL(p\,\|\,q)\ne\KL(q\,\|\,p)$.
+$\KL(p\,\|\,q)\ge0$, with equality if and only if $p=q$ Lebesgue-almost
+everywhere. In general $\KL(p\,\|\,q)\ne\KL(q\,\|\,p)$, so $\KL$ is
+\emph{not} a metric (it also fails the triangle inequality).
 \end{proposition}
 
 \begin{proof}
-By Jensen's inequality applied to the strictly convex function $-\log$,
-$\KL(p\|q) = \EE_{p}[-\log(q(x)/p(x))] \ge -\log\EE_{p}[q(x)/p(x)] = -\log\int q(x)\,dx = -\log1 = 0$,
-with equality iff $q(x)/p(x)$ is $p$-almost-surely constant, i.e.\ (since
-both integrate to $1$) equal to $1$ almost everywhere. Asymmetry is
-immediate from an example, e.g.\ $p,q$ both Gaussian with different
-variances.
+If $p\not\ll q$ then $\KL(p\|q)=+\infty>0$ by \Cref{def:kl}, so assume
+$p\ll q$. Write $S=\{p>0\}$ and apply Jensen's inequality to the strictly
+convex function $-\log$ under the probability measure $p\,dx$:
+\[
+\KL(p\|q)
+= \EE_{p}\Bigl[-\log\frac{q(x)}{p(x)}\Bigr]
+\;\ge\; -\log \EE_{p}\Bigl[\frac{q(x)}{p(x)}\Bigr]
+\;=\; -\log\int_{S} q(x)\,dx
+\;\ge\; -\log\int_{\RR^d} q(x)\,dx
+\;=\; 0 .
+\]
+The last step is an \emph{inequality}, not an equality: $\int_S q\le\int q=1$,
+with equality iff $q$ vanishes outside $S$.
+
+Equality in the whole chain forces both steps to be tight. Jensen is tight iff
+$q/p$ is $p$-almost-surely equal to a constant $c$, and then
+$\int_S q = c\int_S p = c$; the second step is tight iff $\int_S q=1$, i.e.\
+$c=1$. Hence $q=p$ on $S$ and $q=0$ off $S$, i.e.\ $p=q$ almost everywhere.
+Conversely $p=q$ a.e.\ gives $\KL=0$.
 \end{proof}
+
+\begin{caution}[A tempting but false shortcut in the proof]
+\label{caution:kl-jensen-trap}
+One frequently sees the chain above written with $\EE_p[q/p]=\int q\,dx=1$,
+i.e.\ with the second $\ge$ replaced by $=$. That step is valid only if
+$p>0$ almost everywhere. In general $\EE_p[q/p]=\int_{\{p>0\}}q\,dx$, which
+can be strictly less than $1$.
+
+Counterexample, satisfying $p\ll q$: let $p$ be uniform on $[0,1]$ and $q$
+uniform on $[0,2]$. Then $\EE_p[q/p]=\tfrac12$, not $1$, and the correct
+Jensen bound is $-\log\tfrac12=\log 2$ --- which happens to be the exact
+value $\KL(p\|q)=\log 2$. The false version of the chain would have produced
+the far weaker bound $0$. The stated inequality $\KL\ge0$ survives, but the
+intermediate equality does not, and the equality case cannot be read off
+correctly from the flawed version.
+\end{caution}
+
+\begin{example}[The asymmetry, with numbers]
+\label{ex:kl-asymmetry}
+For univariate centred Gaussians,
+$\KL\bigl(\mathcal N(0,\sigma_1^2)\,\|\,\mathcal N(0,\sigma_2^2)\bigr)
+=\log\frac{\sigma_2}{\sigma_1}+\frac{\sigma_1^2}{2\sigma_2^2}-\frac12$.
+With $\sigma_1=1,\sigma_2=2$ this is $\log2+\tfrac18-\tfrac12\approx0.318$,
+whereas the reverse direction is $-\log2+2-\tfrac12\approx0.807$. The two
+differ by more than a factor of two, on the simplest possible pair of
+distributions.
+\end{example}
+
+\begin{proposition}[$\KL$ = cross-entropy $-$ entropy]
+\label{prop:kl-entropy-decomposition}
+Define the \emph{differential entropy} $H(p)=-\EE_{x\sim p}[\log p(x)]$ and
+the \emph{cross-entropy} $H(p,q)=-\EE_{x\sim p}[\log q(x)]$. Whenever $H(p)$
+is finite,
+\[
+\KL(p\,\|\,q) \;=\; H(p,q) - H(p) .
+\]
+\end{proposition}
+
+\begin{proof}
+Split the logarithm: $\EE_p[\log(p/q)]=\EE_p[\log p]-\EE_p[\log q]$, which is
+$-H(p)+H(p,q)$. The split is legitimate only when the two terms are not both
+infinite of the same sign, which the finiteness of $H(p)$ guarantees.
+\end{proof}
+
+Two consequences are used later. First, for a \emph{fixed} $p$, minimising
+$\KL(p\|q)$ over $q$ is the same optimisation as minimising the cross-entropy
+$H(p,q)$, because $H(p)$ is a constant --- this is exactly the step taken in
+\Cref{prop:mle-kl}. Second, $H(p)\ge0$ fails for continuous $p$: differential
+entropy can be negative (a Gaussian with $\sigma<1/\sqrt{2\pi e}$ has
+$H<0$), so no sign conclusion about $\KL$ may be drawn from this
+decomposition. The non-negativity of $\KL$ comes from
+\Cref{prop:kl-properties}, not from here.
+
+\begin{remark}[Forward versus reverse $\KL$: which argument is which matters]
+\label{rem:forward-reverse-kl}
+Fix a data distribution $p$ and a model family $\{q_\theta\}$. The two
+directions penalise different failures, and the difference follows directly
+from which distribution the expectation is taken under.
+
+\emph{Forward} $\KL(p\|q_\theta)=\EE_p[\log(p/q_\theta)]$ averages under the
+\emph{data}. Every region where $p$ has mass is sampled, so $q_\theta$ is
+punished --- infinitely, by \Cref{caution:kl-abs-cont} --- for assigning
+near-zero density anywhere $p$ is positive. Regions where $q_\theta$ is large
+but $p$ is nearly zero contribute almost nothing, because they are almost
+never sampled. Forward $\KL$ is therefore \emph{mass-covering}: the optimum
+spreads $q_\theta$ over all modes of $p$, accepting density in between.
+
+\emph{Reverse} $\KL(q_\theta\|p)=\EE_{q_\theta}[\log(q_\theta/p)]$ averages
+under the \emph{model}. Regions the model avoids cost nothing regardless of
+$p$ there, but the model is punished infinitely for putting mass where $p$ has
+none. Reverse $\KL$ is therefore \emph{mode-seeking}: it prefers to
+concentrate on one mode and represent it well.
+
+Maximum likelihood --- and hence everything in
+\Cref{chap:diffusion,chap:flow-matching} that is justified by
+\Cref{prop:mle-kl} --- optimises the \emph{forward} direction. Variational
+inference in the usual ELBO formulation optimises the \emph{reverse}
+direction. This document uses only the forward direction; the distinction is
+recorded here because the reverse direction is what most readers will have
+met first, under the same name.
+\end{remark}
 
 \begin{definition}[Maximum likelihood]
 \label{def:mle}
@@ -793,29 +991,60 @@ parametric family $\{p_\theta\}$, the \emph{maximum likelihood estimator} is
 $\hat\theta = \argmax_\theta \sum_{i=1}^n\log p_\theta(x_i)$.
 \end{definition}
 
-\begin{proposition}[MLE minimises KL to the data distribution]
+\begin{proposition}[MLE minimises forward KL to the data distribution]
 \label{prop:mle-kl}
-As $n\to\infty$, $\tfrac1n\sum_i \log p_\theta(x_i) \to \EE_{x\sim p_{\mathrm{data}}}[\log p_\theta(x)]$
-almost surely (law of large numbers), and
+Assume the differential entropy $H(p_{\mathrm{data}})$ is finite, and that
+$\EE_{p_{\mathrm{data}}}\lvert\log p_\theta(x)\rvert<\infty$ for every
+$\theta$. Then:
+\begin{enumerate}[nosep,label=(\roman*)]
+\item for each fixed $\theta$,
+$\tfrac1n\sum_i \log p_\theta(x_i) \to \EE_{x\sim p_{\mathrm{data}}}[\log p_\theta(x)]$
+almost surely as $n\to\infty$ (strong law of large numbers);
+\item as \emph{sets},
 \[
 \argmax_\theta \EE_{p_{\mathrm{data}}}[\log p_\theta(x)]
-=
+\;=\;
 \argmin_\theta \KL\bigl(p_{\mathrm{data}}\,\|\,p_\theta\bigr) .
 \]
+\end{enumerate}
 \end{proposition}
 
 \begin{proof}
-$\KL(p_{\mathrm{data}}\|p_\theta) = \EE_{p_{\mathrm{data}}}[\log p_{\mathrm{data}}(x)] - \EE_{p_{\mathrm{data}}}[\log p_\theta(x)]$;
-the first term does not depend on $\theta$, so minimising the KL divergence
-over $\theta$ is the same optimisation as maximising
-$\EE_{p_{\mathrm{data}}}[\log p_\theta(x)]$.
+(i) is the strong law applied to the i.i.d.\ variables $\log p_\theta(x_i)$,
+which are integrable by assumption. For (ii), by
+\Cref{prop:kl-entropy-decomposition},
+$\KL(p_{\mathrm{data}}\|p_\theta) = -H(p_{\mathrm{data}}) - \EE_{p_{\mathrm{data}}}[\log p_\theta(x)]$,
+and the first term is a finite constant independent of $\theta$; adding a
+constant does not change the set of minimisers, and minimising the negative
+of a function is maximising the function.
 \end{proof}
 
+\begin{caution}[What \Cref{prop:mle-kl} does \emph{not} say]
+\label{caution:mle-scope}
+Part (i) is pointwise in $\theta$; it does \emph{not} by itself imply that
+$\hat\theta_n\to\argmin_\theta\KL(p_{\mathrm{data}}\|p_\theta)$. Consistency
+of the estimator additionally requires uniform convergence over $\theta$
+(e.g.\ a Glivenko--Cantelli condition) plus identifiability. We never rely on
+consistency in this document --- only on the statement that the two
+\emph{population} objectives in (ii) define the same optimisation --- so we do
+not develop those conditions.
+
+Note also the direction: it is the \emph{forward} $\KL$, with
+$p_{\mathrm{data}}$ in the first argument, that maximum likelihood minimises
+(\Cref{rem:forward-reverse-kl}). Finally, if the model family cannot cover the
+support of $p_{\mathrm{data}}$, every member has infinite $\KL$ and (ii) is
+vacuous even though the likelihood objective still has a well-defined
+maximiser; this is not a pathology of the proposition but a genuine
+degeneracy of the setting, and it is one more reason the constructions of
+\Cref{chap:diffusion,chap:flow-matching} work with everywhere-positive
+smoothed distributions.
+\end{caution}
+
 \Cref{prop:mle-kl} is why ``fit the model by maximum likelihood'' and ``fit
-the model to minimise KL divergence to the data'' are the same instruction,
-a fact we use once, in \Cref{sec:likelihood-confidence}, when we discuss to
-what extent a flow-matching model's ODE admits an exact likelihood and what
-that would be useful for.
+the model to minimise (forward) KL divergence to the data'' are the same
+instruction, a fact we use once, in \Cref{sec:likelihood-confidence}, when we
+discuss to what extent a flow-matching model's ODE admits an exact likelihood
+and what that would be useful for.
 
 \section{Generative modelling as distribution transport}
 \label{sec:generative-modelling-intro}
@@ -1509,47 +1738,74 @@ this document, the existing thesis draft and the SigmaFlow source code do
 not visibly agree, and it must be resolved by direct derivation rather than
 by trusting either source.
 
-\begin{definition}[Left- and right-trivialised angular velocity]
+\begin{definition}[Body-frame and spatial-frame angular velocity]
 \label{def:trivialisation-scratch}
-Let $R(\tau)$ be a smooth curve in $SO(3)$. Its \emph{left-trivialised} (or
-\emph{world-frame}, or \emph{spatial}) angular velocity is
-$\omega^{\mathrm L}(\tau)\in\RR^3$ with
-$\dot R(\tau) = \widehat{\omega^{\mathrm L}(\tau)}\,R(\tau)$; its
-\emph{right-trivialised} (or \emph{body-frame}) angular velocity is
-$\omega^{\mathrm R}(\tau)\in\RR^3$ with
-$\dot R(\tau) = R(\tau)\,\widehat{\omega^{\mathrm R}(\tau)}$.
+Let $R(\tau)$ be a smooth curve in $SO(3)$. Its \emph{body-frame} angular
+velocity is $\omega^{\mathrm{bd}}(\tau)\in\RR^3$ with
+\[
+\dot R(\tau) = R(\tau)\,\widehat{\omega^{\mathrm{bd}}(\tau)} ,
+\qquad\text{equivalently}\qquad
+\widehat{\omega^{\mathrm{bd}}} = R^{-1}\dot R ;
+\]
+its \emph{spatial-frame} (or \emph{world-frame}) angular velocity is
+$\omega^{\mathrm{sp}}(\tau)\in\RR^3$ with
+\[
+\dot R(\tau) = \widehat{\omega^{\mathrm{sp}}(\tau)}\,R(\tau) ,
+\qquad\text{equivalently}\qquad
+\widehat{\omega^{\mathrm{sp}}} = \dot R\,R^{-1} .
+\]
+In the language of \Cref{def:left-translation}, $\omega^{\mathrm{bd}}$ is the
+\textbf{left-trivialised} and $\omega^{\mathrm{sp}}$ the
+\textbf{right-trivialised} velocity, because $\dot R = R\,\widehat\omega$ is
+exactly $dL_R|_e(\widehat\omega)$ and $\dot R = \widehat\omega\,R$ is exactly
+$dR_R|_e(\widehat\omega)$.
 \end{definition}
 
-\begin{remark}[Terminology warning]
+\begin{caution}[The words ``left'' and ``right'' are a trap; ``body'' and ``spatial'' are not]
 \label{rem:trivialisation-terminology}
-Unfortunately, the words ``left'' and ``right'' in this context are used
-inconsistently across the literature, because they can refer either to
-\emph{which side of $R$ the hat matrix is multiplied on} (the convention
-fixed in \Cref{def:trivialisation-scratch} above, which we adopt, since it
-matches the standard Lie-theory usage in which $\omega^{\mathrm L}$ is
-obtained by \emph{left}-translating a Lie-algebra element to $T_RG$, i.e.\
-$dL_R|_e$) or to \emph{which of $\dot R R^{-1}$ vs.\ $R^{-1}\dot R$} is
-meant, which some authors instead label by the opposite name. We fix
-\Cref{def:trivialisation-scratch} once and use it consistently for the
-remainder of this document; every other source cited or discussed is
-translated into this convention explicitly before its formulas are used.
-\end{remark}
+Two independent naming conflicts meet here, and getting either backwards
+silently transposes a rotation.
 
-By definition, $\widehat{\omega^{\mathrm L}}=\dot RR^\top=\dot RR^{-1}$ and
-$\widehat{\omega^{\mathrm R}}=R^\top\dot R=R^{-1}\dot R$, and they are
-related by $\omega^{\mathrm L}=R\omega^{\mathrm R}$ (apply
-\Cref{prop:hat-cross}-style conjugation: $R\widehat{\omega^{\mathrm R}}R^\top=\widehat{R\omega^{\mathrm R}}$,
+\emph{First}, some authors name the trivialisation after \emph{which side of
+$R$ the hat matrix sits on} rather than after which translation map produces
+it, which inverts the labels relative to
+\Cref{def:trivialisation-scratch}. The attribution fixed above is the
+standard Lie-theoretic one and is forced by
+\Cref{def:left-translation}: left translation $L_R$ acts as $S\mapsto RS$, so
+$dL_R|_e(\xi)=R\xi$, so a tangent vector expressed by left translation is
+$\dot R = R\widehat\omega$ --- the \emph{body} frame. An earlier draft of this
+document had these two labels interchanged; the formulas were unaffected, but
+the names were.
+
+\emph{Second}, the SigmaDock source comments use ``left-invariant'' as a
+synonym for \emph{world} frame (\Cref{sec:newton-euler-precise}), i.e.\ with the
+opposite attribution to the one fixed here. That comment is quoted verbatim
+where it occurs, and is \emph{not} silently corrected --- but the reader
+should know that the code's label and this document's label disagree, while
+the underlying object (which side of $R$ the multiplication happens on) is
+unambiguous and is what every reconstruction in
+\Cref{chap:sigmadock,chap:sigmaflow} is checked against.
+
+\textbf{Practical rule for reading the rest of this document:} trust
+$\omega^{\mathrm{bd}}=R^{-1}\dot R$ and $\omega^{\mathrm{sp}}=\dot RR^{-1}$,
+and treat the words ``left'' and ``right'' as mnemonics only.
+\end{caution}
+
+By definition, $\widehat{\omega^{\mathrm{sp}}}=\dot RR^\top=\dot RR^{-1}$ and
+$\widehat{\omega^{\mathrm{bd}}}=R^\top\dot R=R^{-1}\dot R$, and they are
+related by $\omega^{\mathrm{sp}}=R\omega^{\mathrm{bd}}$ (apply
+\Cref{prop:hat-cross}-style conjugation: $R\widehat{\omega^{\mathrm{bd}}}R^\top=\widehat{R\omega^{\mathrm{bd}}}$,
 a direct consequence of \Cref{prop:so3-isometry}'s cross-product identity),
 i.e.\ the two differ by \emph{rotating the vector itself by $R$}. They are
 equal only when $R$ commutes with the relevant tangent direction, generally
 not the case.
 
-\begin{proposition}[The geodesic interpolant is naturally right-trivialised]
-\label{prop:geodesic-right-triv}
+\begin{proposition}[The geodesic interpolant is naturally left-trivialised (body-frame)]
+\label{prop:geodesic-body-triv}
 Let $R(\tau)=R_0\exp(\tau\Xi)$ for fixed $R_0\in SO(3)$, $\Xi\in\so(3)$
 (this is exactly the geodesic construction of \Cref{def:so3-interp-detail}
 below). Then $\dot R(\tau) = R(\tau)\,\Xi$, i.e.\ the curve has \emph{constant}
-right-trivialised (body-frame) angular velocity $\omega^{\mathrm R}=\Xi^\vee$,
+left-trivialised (body-frame) angular velocity $\omega^{\mathrm{bd}}=\Xi^\vee$,
 in the sense of \Cref{def:trivialisation-scratch}.
 \end{proposition}
 
@@ -1557,25 +1813,25 @@ in the sense of \Cref{def:trivialisation-scratch}.
 Differentiate $R(\tau)=R_0\exp(\tau\Xi)$ directly:
 $\dot R(\tau) = R_0\exp(\tau\Xi)\,\Xi = R(\tau)\,\Xi$, using that $\Xi$
 commutes with $\exp(\tau\Xi)$ (both are polynomials/power series in $\Xi$).
-This matches the second case of \Cref{def:trivialisation-scratch} exactly,
-with $\omega^{\mathrm R}(\tau)\equiv\Xi^\vee$, constant in $\tau$.
+This matches the first case of \Cref{def:trivialisation-scratch} exactly,
+with $\omega^{\mathrm{bd}}(\tau)\equiv\Xi^\vee$, constant in $\tau$.
 \end{proof}
 
 \begin{proposition}[The corresponding one-step update is a right multiplication]
-\label{prop:euler-right-triv}
-If a numerical scheme advances $R$ by one Euler step using a right-trivialised
+\label{prop:euler-body-triv}
+If a numerical scheme advances $R$ by one Euler step using a body-frame (left-trivialised)
 velocity $v\in\RR^3$ over a time increment $dt$, the update that remains
-exactly on $SO(3)$, consistent with \Cref{prop:geodesic-right-triv}, is
+exactly on $SO(3)$, consistent with \Cref{prop:geodesic-body-triv}, is
 $R_{\mathrm{new}} = R\,\exp(dt\,\widehat v)$ (multiplying the exponential on
-the \emph{right}); the analogous left-trivialised update would instead be
+the \emph{right}); the analogous world-frame (right-trivialised) update would instead be
 $R_{\mathrm{new}}=\exp(dt\,\widehat v)\,R$.
 \end{proposition}
 
-\Cref{prop:geodesic-right-triv,prop:euler-right-triv} settle the question
+\Cref{prop:geodesic-body-triv,prop:euler-body-triv} settle the question
 for this document: wherever SigmaFlow's geodesic interpolant
 (\Cref{sec:fm-so3-scratch}) or its Euler integrator
 (\Cref{sec:sigmaflow-sampling}) is discussed, the angular velocity supplied
-by, and returned to, the network is the \textbf{right-trivialised (body-frame)}
+by, and returned to, the network is the \textbf{left-trivialised (body-frame)}
 angular velocity, consistent with the SigmaFlow source code's own comment
 (\file{so3\_flow\_matcher.py}) and with the update rule
 $R\mapsto R\exp(dt\,\widehat v)$ used by both \pyfunc{euler\_step} and
@@ -1598,7 +1854,7 @@ This resolution is a derivation carried out for this document; it should
 not be taken to mean the original published SigmaDock description
 necessarily uses matching language, only that the code that actually runs
 is self-consistent under \Cref{def:trivialisation-scratch}. Where the
-distinction between $\omega^{\mathrm L}$ and $\omega^{\mathrm R}$ affects a
+distinction between $\omega^{\mathrm{sp}}$ and $\omega^{\mathrm{bd}}$ affects a
 formula materially (as opposed to being a bookkeeping choice with no
 observable consequence, e.g.\ because a subsequent step immediately
 re-expresses the result in world frame), this document states which one is
@@ -2607,12 +2863,17 @@ Fokker--Planck equation governing $q_s$'s time evolution transforms under
 time reversal, requiring It\^o calculus we have not developed; see the
 cited reference, or Haussmann \& Pardoux, \emph{Time Reversal of Diffusions},
 Annals of Probability, 1986, for the technically complete statement). We
-translate it into our generation-time convention, $t=1-s$: writing
-$X_t:=\widetilde Y_{1-t}=Y_t$ (so $p_t=q_t$, matching our earlier
-notation), $X_0=Y_1\sim p_{\mathrm{init}}$ (approximately, the fully-noised
-end), $X_1=Y_0\sim p_{\mathrm{data}}$, and, substituting $s=1-t$,
-$ds=-dt$, into \Cref{thm:anderson}'s SDE and flipping the direction of
-integration accordingly,
+translate it into our generation-time convention. The reversed process
+$\widetilde Y$ already runs \emph{forward} in its own time argument, so no
+second reversal is needed --- the translation is a pure renaming. Set
+\[
+X_t \;:=\; \widetilde Y_{t} \;=\; Y_{1-t},
+\qquad\text{hence}\qquad
+p_t \;=\; \mathrm{Law}(X_t) \;=\; q_{1-t} ,
+\]
+which gives $X_0=Y_1\sim p_{\mathrm{init}}$ (the fully-noised end) and
+$X_1=Y_0\sim p_{\mathrm{data}}$, as our convention demands. Renaming $s$ to
+$t$ in \Cref{thm:anderson}'s SDE and substituting $q_{1-t}=p_t$,
 \begin{equation}
 \label{eq:reverse-sde-scratch}
 dX_t
@@ -2739,10 +3000,10 @@ Gaussian tangent vector and push it onto the manifold \\
 \textbf{Implementation:} \file{so3\_utils.py}::\pyfunc{tangent\_gaussian}
 (samples $\widehat\varepsilon$, $\varepsilon\sim\mathcal N(0,I_3)$, and
 left-multiplies by $R$: returns $R\widehat\varepsilon$, a
-right-trivialised --- \Cref{sec:so3-trivialisation}, note the tangent
+left-trivialised (body-frame) --- \Cref{sec:so3-trivialisation}, note the tangent
 vector's own components are drawn in the \emph{same} $\RR^3$ regardless of
 $R$, then transported by right-multiplication, i.e.\ this is exactly
-\Cref{prop:euler-right-triv}'s convention --- Gaussian tangent vector at
+\Cref{prop:euler-body-triv}'s convention --- Gaussian tangent vector at
 $R$) composed with \file{so3\_utils.py}::\pyfunc{expmap} (the map
 $\exp_R$) \\
 \textbf{Tensor shape:} \shape{..., 3, 3} $\to$ \shape{..., 3, 3} \\
@@ -2894,7 +3155,7 @@ $\chi_0(\omega)=\sin(\omega/2)/\sin(\omega/2)=1$), recovering exactly
 
 \begin{proposition}[Riemannian score of $\mathrm{IGSO}(3)$]
 \label{prop:igso3-score-scratch}
-Under the left-trivialised (world-frame) identification of
+Under the right-trivialised (world-frame) identification of
 \Cref{def:trivialisation-scratch} at $R$, the score of
 $p_{\sigma}(R\mid R_0):=\mathrm{IGSO}(3)(R_0,\sigma^2)$-density at $R$, as a
 tangent vector in $T_RSO(3)\cong\RR^3$, is
@@ -4053,7 +4314,7 @@ coordinates were expressed --- this is precisely the ``atom-wise pseudo-force
 in the world frame'' object that \Cref{chap:sigmadock}'s Newton--Euler
 reduction (net force, torque, per fragment) consumes, and it is only at
 that later, non-network step that a fragment's rotational output is
-converted into the \emph{body-frame} (right-trivialised,
+converted into the \emph{body-frame} (left-trivialised,
 \Cref{sec:so3-trivialisation}) angular quantity
 $\omega^{(i)}_\theta\in\so(3)$ that
 \eqref{eq:network-signature-scratch} ultimately requires --- the network
@@ -4902,14 +5163,17 @@ of \Cref{sec:sigmadock-sampling} below, not here). The code's own inline
 comments assert this quantity is expressed in the ``GLOBAL (left-invariant
 --- WORLD) frame'', which we read, per
 \Cref{sec:so3-trivialisation}'s resolved terminology, as the
-\textbf{world-frame (left-trivialised)} angular velocity
-$\omega^{\mathrm L}$ of \Cref{def:trivialisation-scratch}: no rotation by
+\textbf{world-frame (spatial)} angular velocity
+$\omega^{\mathrm{sp}}$ of \Cref{def:trivialisation-scratch} --- note that the
+code's word ``left-invariant'' carries the opposite attribution to this
+document's, per \Cref{rem:trivialisation-terminology}, while the object meant
+is unambiguous: no rotation by
 $R_t$ is applied to $dW$ before or after the linear solve, consistent with
 this reading, and consistent with $I_F$ itself having been computed at the
 current \emph{world-frame} positions $x_i$ (not in any fragment-local
 frame). This is worth flagging explicitly against
 \Cref{sec:so3-trivialisation}'s resolution for the \emph{flow-matching}
-side, which found the \emph{opposite} (right-trivialised/body-frame)
+side, which found the \emph{opposite} (left-trivialised/body-frame)
 convention in \pyfunc{so3\_flow\_matcher.py}: SigmaDock's Newton--Euler
 head and SigmaFlow's flow-matching update operate in different
 trivialisation conventions at this specific point, a genuine architectural
@@ -5358,12 +5622,45 @@ rather than merely asserted.
 \begin{definition}[Conditional probability path, conditional vector field]
 \label{def:cond-path-cfm}
 A \emph{conditional probability path} is a family $p_t(\cdot\mid z)$,
-$z\in\RR^d$, with $p_0(\cdot\mid z)=p_{\mathrm{init}}$,
-$p_1(\cdot\mid z)=\delta_z$ (a Dirac mass at $z$) for every $z$. A
-\emph{conditional vector field} $u_t(\cdot\mid z)$ generates
+$z\in\RR^d$, with $p_0(\cdot\mid z)=p_{\mathrm{init}}$ and
+$p_t(\cdot\mid z)\to\delta_z$ weakly as $t\to1$ (a Dirac mass at $z$), for
+every $z$. A \emph{conditional vector field} $u_t(\cdot\mid z)$ generates
 $p_t(\cdot\mid z)$ in the sense of \Cref{thm:continuity}, for each fixed
-$z$.
+$z$ and each $t\in[0,1)$.
 \end{definition}
+
+\begin{caution}[The endpoint $t=1$ is a limit, not a density]
+\label{caution:dirac-endpoint}
+$\delta_z$ is a measure, not a density with respect to Lebesgue measure, so
+strictly speaking $p_1(\cdot\mid z)$ is outside the framework of
+\Cref{def:density}, and \Cref{thm:continuity} --- which requires $p_t$ to be
+differentiable --- does not apply at $t=1$. Everything below is therefore
+stated on $[0,1)$ and extended to $t=1$ by continuity. Two remarks make this
+harmless, and one makes it practically important.
+
+Harmless: the marginal path is still well defined, since
+$p_t(x)=\int p_t(x\mid z)p_{\mathrm{data}}(z)dz\to p_{\mathrm{data}}(x)$ as
+$t\to1$ in the same weak sense; and the training loss
+$\mathcal L_{\mathrm{CFM}}$ samples $t\sim\mathcal U(0,1)$, so $t=1$ has
+probability zero.
+
+Practically important: the conditional field
+\eqref{eq:linear-path-vf-scratch} has a $1/(1-t)$ factor that blows up as
+$t\to1$. Implementations therefore either use the equivalent
+endpoint form $z-x_0$ (which is finite everywhere --- see the discussion
+after \eqref{eq:linear-path-vf-scratch}), or replace the Dirac endpoint by a
+narrow Gaussian $\mathcal N(z,\sigma_{\min}^2I)$ with $\sigma_{\min}>0$, as
+in Lipman et al.\ (2023).
+
+SigmaFlow takes the first route. Its \file{r3\_flow\_matcher.py} accepts a
+$\sigma_{\min}$ parameter, but the parameter is stored and never read
+(\Cref{sec:sigmaflow-translation} verifies this against the source), and its
+default is $0$; the endpoint really is a Dirac, and the $1/(1-t)$ singularity
+is avoided purely by using the endpoint form of the target. This is
+legitimate, but it means the sampler must not be integrated to exactly
+$t=1$ with the current-point form --- a point taken up in
+\Cref{sec:sigmaflow-sampling}.
+\end{caution}
 
 By \Cref{prop:marginalisation}, the \emph{marginal} path
 $p_t(x) := \int p_t(x\mid z)p_{\mathrm{data}}(z)\,dz$ automatically
@@ -5461,11 +5758,20 @@ evaluate the intractable integral \eqref{eq:marginal-vf-scratch}.
 
 \begin{proposition}[The linear path and its vector field]
 \label{prop:linear-path-scratch}
-The path $p_t(\cdot\mid z) = \mathcal N\bigl((1-t)x_0+tz\ \big|_{x_0\sim p_{\mathrm{init}}}\bigr)$,
-realised by $X_t = (1-t)X_0+tz$, $X_0\sim p_{\mathrm{init}}$ (for
-$p_{\mathrm{init}}=\mathcal N(0,I)$, an ordinary linear interpolation
-between an independently drawn noise sample and the data point $z$),
-satisfies \Cref{def:cond-path-cfm}, and its conditional vector field is
+Let $p_t(\cdot\mid z)$ be the law of
+\[
+X_t = (1-t)X_0 + tz , \qquad X_0\sim p_{\mathrm{init}}\ \text{drawn independently of } z ,
+\]
+i.e.\ $p_t(\cdot\mid z) = \bigl(x_0\mapsto (1-t)x_0+tz\bigr)_{\#}p_{\mathrm{init}}$
+in the notation of \Cref{def:pushforward}. For the Gaussian source
+$p_{\mathrm{init}}=\mathcal N(0,I_d)$ this is explicitly
+\[
+p_t(\cdot\mid z) = \mathcal N\bigl(tz,\;(1-t)^2 I_d\bigr) ,
+\qquad t\in[0,1) ,
+\]
+an ordinary linear interpolation between an independently drawn noise sample
+and the data point $z$. This path satisfies \Cref{def:cond-path-cfm}, and its
+conditional vector field is
 \begin{equation}
 \label{eq:linear-path-vf-scratch}
 u_t(x\mid z) = \frac{z-x}{1-t} = z - x_0
@@ -5671,7 +5977,7 @@ For $R_0,R_1\in SO(3)$, $t\in[0,1]$,
 \label{eq:so3-interp-detail}
 R_t := \exp_{R_0}\bigl(t\log_{R_0}(R_1)\bigr) = R_0\exp\bigl(t\log(R_0^\top R_1)\bigr) ,
 \end{equation}
-using the left-trivialised exponential and logarithm of \Cref{thm:rodrigues-scratch} (equivalently, per
+using the body-frame (left-trivialised) exponential and logarithm of \Cref{thm:rodrigues-scratch} (equivalently, per
 \Cref{sec:so3-trivialisation}'s notation, this expresses the interpolant
 via the group-log $\log(R_0^\top R_1)\in\so(3)$, a coordinate-free object
 not itself labelled left or right, whose trivialisation only becomes a
@@ -5687,16 +5993,16 @@ $SO(3)$-analogue of the linear path
 --- except that, unlike $\mathrm{IGSO}(3)$'s infinite spectral series,
 \eqref{eq:so3-interp-detail} is a two-line, exactly-closed-form expression.
 
-\begin{proposition}[Constant right-trivialised velocity of the geodesic]
+\begin{proposition}[Constant body-frame (left-trivialised) velocity of the geodesic]
 \label{prop:so3-constant-velocity}
 Let $\Xi:=\log(R_0^\top R_1)\in\so(3)$ and $R_t=R_0\exp(t\Xi)$ as in
 \eqref{eq:so3-interp-detail}. Then $\dot R_t = R_t\,\Xi$, i.e.\ the curve
-has \textbf{constant right-trivialised (body-frame)} angular velocity
-$\omega^{\mathrm R}(t)\equiv\Xi^\vee$ (\Cref{def:trivialisation-scratch}),
+has \textbf{constant left-trivialised (body-frame)} angular velocity
+$\omega^{\mathrm{bd}}(t)\equiv\Xi^\vee$ (\Cref{def:trivialisation-scratch}),
 for every $t$.
 \end{proposition}
 
-This is exactly \Cref{prop:geodesic-right-triv} from \Cref{chap:groups},
+This is exactly \Cref{prop:geodesic-body-triv} from \Cref{chap:groups},
 restated here in the flow-matching notation; we do not reprove it (the
 proof --- differentiate $R_0\exp(t\Xi)$ directly, using that $\Xi$
 commutes with its own exponential --- is identical).
@@ -5777,7 +6083,7 @@ Sampling integrates
 \label{eq:so3-flow-euler-scratch}
 R_{t+\Delta t} = \exp_{R_t}\bigl(\Delta t\,u_\theta(R_t,t)\bigr) = R_t\exp\bigl(\Delta t\,\widehat{u_\theta(R_t,t)}\bigr) ,
 \end{equation}
-exactly \Cref{prop:euler-right-triv}'s right-trivialised Euler update,
+exactly \Cref{prop:euler-body-triv}'s body-frame Euler update,
 which --- by construction, since $\exp$ always lands back on $SO(3)$
 regardless of step size (\Cref{sec:rodrigues-scratch}) --- keeps every
 iterate exactly on $SO(3)$, for any number of steps, not merely
@@ -5979,11 +6285,15 @@ and both forms of the conditional vector field of
 exact Haar sampler of \Cref{prop:haar-so3}'s code correspondence
 (\Cref{rem:so3-fm-prior}'s claim, confirmed directly). The class's own
 module-level comment states the convention adopted is
-``right-trivialisation''; per \Cref{sec:so3-trivialisation}'s resolved
-terminology, this matches --- not merely by assumption but by direct
-inspection of \pyfunc{euler\_step}$(R_t,v_t,dt)=R_t\,\exp(v_t\,dt)$, which
-right-multiplies the exponential onto $R_t$, exactly
-\Cref{prop:euler-right-triv}'s right-trivialised update formula.
+``right-trivialisation''. That \emph{word} does not match this document's
+attribution (\Cref{rem:trivialisation-terminology}: what the code calls
+right-trivialisation is what we call left-trivialisation), but the
+\emph{object} does, and the object is what matters: direct inspection of
+\pyfunc{euler\_step}$(R_t,v_t,dt)=R_t\,\exp(v_t\,dt)$ shows it
+right-multiplies the exponential onto $R_t$, which is exactly
+\Cref{prop:euler-body-triv}'s \textbf{body-frame} update. The velocity the
+network supplies is therefore $\omega^{\mathrm{bd}}$, however either side
+chooses to label it.
 \pyfunc{conditional\_probability\_path}$(R_1,t)$ draws $R_0$ internally,
 computes $\Delta=R_0^\top R_1$, $\Xi=\log(\Delta)\in\so(3)$
 (\Cref{def:so3-interp-detail}'s notation), sets $u_t=\Xi$ (a $[n,3,3]$
