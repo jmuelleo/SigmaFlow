@@ -12,6 +12,7 @@
 \setlength{\parskip}{6pt plus 2pt minus 1pt}
 \usepackage{latexsym}
 \usepackage{amsmath, amssymb, amsthm, bm}
+\usepackage{mathtools} % fuer psmallmatrix
 \usepackage{booktabs}
 \usepackage{longtable}
 \usepackage{array}
@@ -2260,6 +2261,467 @@ detail. Everything here is representation theory of $SO(3)$, developed only
 as far as needed and always tied back to $3$-dimensional physical intuition
 (directions, angular momentum) rather than presented abstractly first.
 
+\section{The problem this chapter exists to solve}
+\label{sec:symmetry-problem}
+
+Before any representation theory, we should be completely clear about the
+problem. It is a physical statement, not a mathematical one, and everything
+technical in this chapter is downstream of it.
+
+\subsection{Rotating the whole system changes nothing physical}
+
+Take a protein pocket with a ligand docked in it. Now pick up the entire
+assembly --- protein \emph{and} ligand together --- and rotate it by some
+$Q\in SO(3)$ about the origin. Every atom moves:
+$x_i\mapsto Qx_i$ for all $i$, protein and ligand alike.
+
+Has anything physical changed? No. The binding energy is the same. Every
+interatomic distance is the same. Whether the pose is correct is the same.
+We have merely chosen to look at the same physical configuration from a
+different angle. There is no privileged orientation of space; the laws of
+chemistry do not know which way is ``up''.
+
+That single observation constrains what our model is allowed to be, and the
+constraint has two distinct flavours depending on \emph{what kind of thing}
+the model outputs.
+
+\subsection{Two different kinds of ``unchanged''}
+
+\paragraph{Some quantities should not change at all.} The binding affinity
+of a pose is a number. Rotate the system and you must get the same number.
+A quantity like this is called \emph{invariant}.
+
+\paragraph{Other quantities must change, in lockstep.} Suppose the model
+outputs, for a ligand fragment, the direction it should be nudged in --- a
+vector $v\in\RR^3$. Now rotate the whole input by $Q$. The correct answer is
+no longer $v$: the fragment now sits in a rotated pocket, and the direction
+it should move in is the rotated direction $Qv$. If the model still returned
+$v$, it would be pointing the wrong way. A quantity like this is called
+\emph{equivariant}: it must \emph{co-vary} with the input.
+
+The two are not competing options; they are two cases of one principle. The
+principle is: \emph{the model must not depend on our arbitrary choice of
+coordinate frame}. Which case applies depends on whether the output is the
+kind of object that has a direction.
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lll}
+\toprule
+Quantity & Behaviour under a global rotation $Q$ & Type \\
+\midrule
+Atomic number, formal charge & unchanged & invariant \\
+Interatomic distance $\|x_i-x_j\|$ & unchanged & invariant \\
+Binding affinity, energy & unchanged & invariant \\
+RMSD to a reference pose & unchanged & invariant \\
+\midrule
+Atom position $x_i$ & $x_i\mapsto Qx_i$ & equivariant \\
+Relative vector $r_{ij}=x_j-x_i$ & $r_{ij}\mapsto Qr_{ij}$ & equivariant \\
+Force on an atom & $F_i\mapsto QF_i$ & equivariant \\
+Translational velocity output $v$ & $v\mapsto Qv$ & equivariant \\
+Angular velocity output $\omega$ & $\omega\mapsto Q\omega$ & equivariant \\
+Fragment orientation $R$ & $R\mapsto QR$ & equivariant \\
+\bottomrule
+\end{tabular}
+\caption{Invariant and equivariant quantities in docking. Note that
+distance is invariant while the vector it is the length of is equivariant:
+taking the norm is precisely an operation that \emph{converts} equivariant
+data into invariant data. This will turn out to be the fundamental move in
+every equivariant architecture.}
+\label{tab:inv-equi-examples}
+\end{table}
+
+\begin{caution}[Invariance is not ``better'' than equivariance]
+\label{caution:inv-not-better}
+A common first reaction is: ``invariance sounds safer --- can we not just
+make everything invariant?'' No, and the reason is decisive for docking. A
+model whose \emph{every} internal quantity is invariant can only ever output
+invariant quantities, because there is no way to manufacture a direction out
+of numbers that carry none. Such a model can predict a binding
+\emph{affinity}. It cannot predict a binding \emph{pose}: it has no
+mechanism to say ``move that way''.
+
+SigmaDock and SigmaFlow must output $\omega,v\in\RR^3$ per fragment
+(\Cref{eq:network-signature-scratch}). Those are equivariant objects. So the
+network is \emph{required} to carry directional information internally, and
+the entire difficulty of the architecture is carrying it \emph{correctly}.
+\end{caution}
+
+\subsection{Why an ordinary network does not do this by itself}
+
+Suppose we simply feed the raw coordinates $x_1,\dots,x_N\in\RR^3$ into a
+multilayer perceptron. Concatenate them into one vector of length $3N$ and
+apply $h\mapsto \sigma(Wh+b)$.
+
+Rotate the input. The new input is $Qx_1,\dots,Qx_N$. Is the output the
+rotated old output? Almost never. Two independent reasons:
+
+\begin{enumerate}
+\item \textbf{The linear map does not commute with the rotation.} For the
+first layer to be equivariant we would need $W(Q\oplus\cdots\oplus Q)h
+= (Q\oplus\cdots\oplus Q)Wh$ for \emph{every} $Q\in SO(3)$, i.e.\ $W$ must
+commute with the entire rotation group acting block-wise. Generic weight
+matrices do not; the set that does is a very thin subspace, and nothing in
+ordinary training pushes $W$ into it.
+\item \textbf{The nonlinearity destroys it even if the linear part
+survived.} Applying $\mathrm{ReLU}$ componentwise to a $3$-vector is not
+compatible with rotation: $\mathrm{ReLU}(Qv)\ne Q\,\mathrm{ReLU}(v)$ in
+general. We return to this with an explicit counterexample in
+\Cref{ex:relu-not-equivariant}.
+\end{enumerate}
+
+So equivariance is not something a generic architecture has and can lose.
+It is something a generic architecture \emph{lacks} and must be built to
+have.
+
+\subsection{Why data augmentation is not a substitute}
+
+The obvious cheap fix is to train on many randomly rotated copies of each
+example, hoping the network learns the symmetry. This helps, and it is what
+many models do, but it is strictly weaker than building the symmetry in.
+Four reasons, in increasing order of importance for us:
+
+\begin{enumerate}
+\item \textbf{It only ever holds approximately.} Augmentation encourages
+equivariance on the data distribution; it guarantees nothing off it, and
+nothing exactly. An architecturally equivariant model satisfies
+$f(Q\cdot x)=Q\cdot f(x)$ for every $Q$ and every $x$, exactly, at
+initialisation, before any training.
+\item \textbf{It spends capacity.} The network must devote parameters to
+memorising ``these $|SO(3)|$-many inputs are the same input''. Those
+parameters are not available for chemistry. Equivalently: the effective
+size of the training set is reduced, because the model must relearn each
+example in every orientation.
+\item \textbf{It is a $3$-parameter group.} Augmenting over a
+$3$-dimensional continuous group by sampling is far less effective than
+augmenting over, say, a discrete flip. Coverage is thin.
+\item \textbf{The error mode is invisible and pose-shaped.} A
+non-equivariant docking model can produce a pose that is correct up to an
+unnoticed frame error --- and a systematically mis-rotated pose is exactly
+the failure mode that is hardest to detect from aggregate loss curves and
+most damaging to RMSD. This document's own development history contains an
+instance of precisely this class of bug (\Cref{sec:sigmaflow-rotation}),
+found only by a targeted diagnostic.
+\end{enumerate}
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+SigmaFlow replaces SigmaDock's generative engine and keeps its backbone.
+The backbone is exactly the machinery of this chapter and
+\Cref{chap:equiformer}. So this material is \emph{not} part of what the
+thesis changes --- but it is part of what the thesis must not
+\emph{break}. When we later verify that a modification preserves
+equivariance (\Cref{def:equivariance-full}, and the per-quantity table in
+\Cref{sec:sigmaflow-rotation}), the property being
+checked is the one defined below in \Cref{def:equivariance-scratch}.
+\end{tcolorbox}
+
+\section{Group actions: how a group moves things}
+\label{sec:group-actions}
+
+\Cref{sec:groups-scratch} defined a group as a set with a composition law.
+That is a statement about the group \emph{in isolation}. What we actually
+need is the group \emph{doing something} to another set --- rotations acting
+on points, on molecules, on features. That is a group action.
+
+\paragraph{The problem.} We have $SO(3)$, and we have several different
+kinds of object: single points in $\RR^3$; whole molecules, which are tuples
+of points; and later, abstract feature vectors inside a network. ``Rotate
+it'' means something different in each case. We need one piece of vocabulary
+that covers all of them and states precisely what the common structure is.
+
+\begin{definition}[Group action]
+\label{def:group-action}
+Let $G$ be a group and $X$ a set. A (left) \emph{action} of $G$ on $X$ is a
+map
+\[
+\cdot\;:\;G\times X\to X,
+\qquad (g,x)\mapsto g\cdot x ,
+\]
+satisfying two axioms:
+\begin{enumerate}[nosep,label=(A\arabic*)]
+\item \textbf{Identity.} $e\cdot x = x$ for all $x\in X$, where $e\in G$ is
+the identity.
+\item \textbf{Compatibility.} $g_1\cdot(g_2\cdot x) = (g_1g_2)\cdot x$ for
+all $g_1,g_2\in G$, $x\in X$.
+\end{enumerate}
+\end{definition}
+
+Both axioms say something one would want to be true and which is easy to
+violate by accident. (A1) says ``doing nothing does nothing''. (A2) says
+``rotating by $g_2$ and then by $g_1$ is the same as rotating once by the
+composite $g_1g_2$'' --- the action must respect the group's own composition
+law, which is the whole reason we insisted $G$ was a group in the first
+place.
+
+\begin{caution}[$g\cdot x$ need not be matrix multiplication]
+\label{caution:action-not-matmul}
+The notation $g\cdot x$ is deliberately neutral. In our first example it
+\emph{is} a matrix times a vector. In the next one it is a matrix applied to
+each of $N$ vectors. Later, when $X$ is a space of \emph{functions} on the
+sphere, the action will be
+$(Q\cdot f)(\hat x) = f(Q^{-1}\hat x)$ --- note the inverse, which is
+forced by (A2) and is a classic source of sign-and-direction errors
+(\Cref{caution:function-action-inverse}). And when $X=SO(3)$ itself, the
+action is left multiplication $Q\cdot R = QR$, where the ``point'' being
+acted on is itself a rotation. Writing all of these as $g\cdot x$ is what
+lets one definition of equivariance cover all of them.
+\end{caution}
+
+\begin{example}[Rotations acting on the plane]
+\label{ex:action-r2}
+$G=SO(2)$, $X=\RR^2$, and $g\cdot x = R_\vartheta x$ with
+$R_\vartheta=\begin{psmallmatrix}\cos\vartheta&-\sin\vartheta\\ \sin\vartheta&\cos\vartheta\end{psmallmatrix}$.
+(A1): $R_0=I$. (A2): $R_{\vartheta_1}R_{\vartheta_2}=R_{\vartheta_1+\vartheta_2}$,
+so rotating twice is rotating by the sum --- exactly the group law of
+$SO(2)$. This is the smallest example in which the axioms are not vacuous.
+\end{example}
+
+\begin{example}[Rotations acting on $\RR^3$]
+$G=SO(3)$, $X=\RR^3$, $Q\cdot x = Qx$. Axioms are immediate from matrix
+associativity and $I x=x$. This action is what the word ``rotation'' means
+operationally.
+\end{example}
+
+\begin{example}[Rotations acting on a whole molecule]
+\label{ex:action-molecule}
+This is the one we actually use. Let
+$X=(\RR^3)^N=\{(x_1,\dots,x_N)\}$, the set of all configurations of $N$
+atoms, and define
+\[
+Q\cdot(x_1,\dots,x_N) := (Qx_1,\dots,Qx_N) ,
+\]
+i.e.\ the \emph{same} $Q$ applied to every atom simultaneously. Checking the
+axioms is componentwise and immediate.
+
+Two things are worth noticing. First, this is a genuinely different action
+from ``rotate each atom by its own rotation'' --- the latter is an action of
+the much bigger group $SO(3)^N$, and is not a symmetry of chemistry
+(it would tear the molecule apart). The physical symmetry is the
+\emph{diagonal} action of a single $SO(3)$. Second, the action does not
+change $N$, the atom types, or the bonds: it moves only positions. Those
+other data are along for the ride, which is exactly why they end up as
+$\ell=0$ features later.
+\end{example}
+
+\begin{remark}[Translations, and why we largely ignore them]
+\label{rem:translations-quotient}
+The full symmetry of free space is $SE(3)$: rotations \emph{and}
+translations. Translations are handled by a trick so standard it is easy to
+miss: the architecture never sees absolute positions, only \emph{relative}
+vectors $r_{ij}=x_j-x_i$, which satisfy
+$(x_j+a)-(x_i+a)=x_j-x_i$ and are therefore translation-invariant
+automatically. Once positions enter only through differences, translation
+symmetry is exact and free, and the remaining, genuinely difficult symmetry
+is $SO(3)$. That is why this chapter is about $SO(3)$ and not $SE(3)$; the
+translational half is discharged by \Cref{sec:gnn-scratch}'s
+choice of inputs, and SigmaDock additionally centres each pocket at the
+origin (\Cref{sec:sigmadock-state-space}).
+\end{remark}
+
+\section{Invariance and equivariance, formally}
+\label{sec:invariance-equivariance}
+
+We can now state the property we want a network to have. The subtlety worth
+slowing down for is that a function has \emph{two} sets --- a domain and a
+codomain --- and the group acts on each of them, possibly differently.
+
+\begin{definition}[Invariance]
+\label{def:invariance-scratch}
+Let $G$ act on $X$. A function $f:X\to Y$ is \emph{$G$-invariant} if
+\[
+f(g\cdot x) \;=\; f(x)
+\qquad\text{for all } g\in G,\ x\in X .
+\]
+No action on $Y$ is needed or used.
+\end{definition}
+
+\begin{definition}[Equivariance]
+\label{def:equivariance-scratch}
+Let $G$ act on $X$ \emph{and} on $Y$ (the two actions may be different; we
+write both as $\cdot$). A function $f:X\to Y$ is \emph{$G$-equivariant} if
+\[
+f(g\cdot x) \;=\; g\cdot f(x)
+\qquad\text{for all } g\in G,\ x\in X .
+\]
+\end{definition}
+
+Read the equation slowly, because both sides describe a two-step recipe and
+the content of the definition is that the two recipes agree:
+
+\begin{center}
+\begin{tabular}{ll}
+\textbf{Left-hand side} & first \emph{transform the input}, then apply the model \\
+\textbf{Right-hand side} & first apply the model, then \emph{transform the output} \\
+\end{tabular}
+\end{center}
+
+Equivalently, the following square commutes:
+\[
+\begin{array}{ccc}
+X & \stackrel{f}{\longrightarrow} & Y\\[2pt]
+\Big\downarrow{\scriptstyle g\cdot} & & \Big\downarrow{\scriptstyle g\cdot}\\[4pt]
+X & \stackrel{f}{\longrightarrow} & Y
+\end{array}
+\]
+``Commutes'' means: both paths from the top-left to the bottom-right give
+the same answer. Go right then down, or down then right --- same result.
+
+\begin{remark}[Invariance is a special case of equivariance]
+\label{rem:invariance-special-case}
+Take the action on $Y$ to be trivial, $g\cdot y := y$ for all $g$. Then
+\Cref{def:equivariance-scratch} reads $f(g\cdot x)=f(x)$, which is
+\Cref{def:invariance-scratch}. So there is really only one concept, applied
+with two different choices of what the group does to the output. This is
+worth internalising, because it is why the same representation-theoretic
+machinery handles both, and why $\ell=0$ features (\Cref{ex:ell01}) are
+exactly the invariant ones.
+\end{remark}
+
+\begin{example}[Distance is invariant, the vector is equivariant]
+\label{ex:dist-invariant}
+Let $X=(\RR^3)^2$ with the diagonal action of \Cref{ex:action-molecule}.
+\begin{itemize}[nosep]
+\item $f(x_1,x_2)=\|x_2-x_1\|\in\RR$. Then
+$f(Qx_1,Qx_2)=\|Qx_2-Qx_1\|=\|Q(x_2-x_1)\|=\|x_2-x_1\|=f(x_1,x_2)$,
+using \Cref{prop:so3-isometry}. \textbf{Invariant.}
+\item $f(x_1,x_2)=x_2-x_1\in\RR^3$, with $Y=\RR^3$ carrying the action
+$Q\cdot y=Qy$. Then $f(Qx_1,Qx_2)=Qx_2-Qx_1=Q(x_2-x_1)=Q\cdot f(x_1,x_2)$.
+\textbf{Equivariant.}
+\end{itemize}
+The second computation used nothing but linearity of $Q$. That is the
+prototype of every equivariance proof in this document: push the group
+element through the formula and check it comes out the other side.
+\end{example}
+
+\begin{example}[A function that is neither]
+Let $f(x_1,x_2) = (x_2-x_1)_z$, the $z$-component of the relative vector.
+Rotating by a $Q$ that tilts the $z$-axis changes this number, so $f$ is not
+invariant; and $\RR$ carries no rotation action making it equivariant
+either. Reading off a fixed Cartesian component is exactly the kind of
+innocuous-looking operation that silently breaks equivariance, and it is
+worth having a name for the failure: it \emph{privileges a coordinate axis},
+and there is no privileged axis.
+\end{example}
+
+\begin{proposition}[Compositions inherit equivariance]
+\label{prop:equivariance-composes}
+If $f:X\to Y$ and $h:Y\to Z$ are both $G$-equivariant, so is
+$h\circ f:X\to Z$. If $f$ is equivariant and $h$ is invariant, then
+$h\circ f$ is invariant.
+\end{proposition}
+
+\begin{proof}
+$(h\circ f)(g\cdot x) = h\bigl(f(g\cdot x)\bigr) = h\bigl(g\cdot f(x)\bigr)
+= g\cdot h\bigl(f(x)\bigr)$, using equivariance of $f$ then of $h$. For the
+second claim, replace the last step by invariance of $h$.
+\end{proof}
+
+\begin{example}[Componentwise $\mathrm{ReLU}$ is not equivariant]
+\label{ex:relu-not-equivariant}
+This is the counterexample promised in \Cref{sec:symmetry-problem}, and it
+is worth doing with actual numbers because it is the single most common way
+a well-intentioned architecture silently loses equivariance.
+
+Let $f:\RR^3\to\RR^3$ be $f(v)=\mathrm{ReLU}(v)=(\max(v_1,0),\max(v_2,0),\max(v_3,0))$,
+with $SO(3)$ acting by $Q\cdot v=Qv$ on both sides. Take
+\[
+v=\begin{pmatrix}1\\-1\\0\end{pmatrix},
+\qquad
+Q=\begin{pmatrix}0&-1&0\\1&0&0\\0&0&1\end{pmatrix}
+\quad(\text{a } +90^\circ \text{ rotation about the } z\text{-axis}).
+\]
+Then $Qv=(1,1,0)^\top$, so
+\[
+f(Q\cdot v)=\mathrm{ReLU}\begin{pmatrix}1\\1\\0\end{pmatrix}=\begin{pmatrix}1\\1\\0\end{pmatrix},
+\qquad
+Q\cdot f(v)=Q\,\mathrm{ReLU}\begin{pmatrix}1\\-1\\0\end{pmatrix}
+=Q\begin{pmatrix}1\\0\\0\end{pmatrix}=\begin{pmatrix}0\\1\\0\end{pmatrix} .
+\]
+These differ. Equivariance fails, and it fails badly --- the two answers are
+not even close.
+
+\emph{Why} it fails is more instructive than \emph{that} it fails.
+$\mathrm{ReLU}$ acts on each Cartesian component separately, so it treats
+the coordinate axes as meaningful. But the decomposition of a vector into
+$(v_1,v_2,v_3)$ is an artefact of the frame we chose; a rotation mixes those
+components, and any operation that treats them as independent is comparing
+things that are not comparable. This is the same failure mode as
+\Cref{ex:dist-invariant}'s ``read off the $z$-component'', in a different
+costume.
+
+The repair, developed in \Cref{sec:equivariant-layers}, is to apply
+nonlinearities only to quantities that carry no direction --- e.g.\ to
+$\|v\|$, which is invariant, and then rescale $v$ by the result:
+$v\mapsto \sigma(\|v\|)\,v$ is equivariant, because
+$\sigma(\|Qv\|)\,Qv = \sigma(\|v\|)\,Qv = Q\bigl(\sigma(\|v\|)v\bigr)$.
+\end{example}
+
+\Cref{prop:equivariance-composes} is small but it is the reason the whole
+enterprise is feasible: we do not have to verify equivariance of a
+$20$-layer network as one monolithic claim. We verify it \emph{once per
+layer type}, and composition does the rest. Every architectural decision in
+\Cref{chap:equiformer} is, in the end, a decision about which layer types
+are on the permitted list.
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+\Cref{eq:network-signature-scratch} says the network maps a pose to a pair
+$(\omega,v)$ of $3$-vectors per fragment. In the language just introduced:
+the domain carries the diagonal $SO(3)$ action on atom positions, the
+codomain carries the action $(\omega,v)\mapsto(Q\omega,Qv)$, and the
+network must be equivariant between them. Every layer we are allowed to use
+is a layer for which we can prove that statement.
+\end{tcolorbox}
+
+\section{Why representation theory, and not something simpler}
+\label{sec:why-representations}
+
+We now have the goal (\Cref{def:equivariance-scratch}) but not yet the
+means. Here is the gap.
+
+To say that a network layer is equivariant, we must be able to say how the
+group acts on its \emph{inputs} and on its \emph{outputs}. For the very
+first layer, the input is a set of positions, and we know the action:
+$x\mapsto Qx$. For the very last layer, the output is $(\omega,v)$, and we
+know that action too. But in between sit \emph{hidden features} --- vectors
+of numbers with no a priori geometric meaning, produced by the previous
+layer. Nothing tells us how a rotation acts on those.
+
+And yet we must decide, because \Cref{def:equivariance-scratch} is
+meaningless without an action on both sides. The resolution is to turn this
+from a discovery problem into a \emph{design} problem:
+
+\begin{quote}
+We will not \emph{find out} how hidden features transform. We will
+\emph{declare} how they transform, choosing the rule as part of the
+architecture, and then build only layers that respect the declaration.
+\end{quote}
+
+A choice of ``how a vector space of features transforms under $G$'' is
+precisely what representation theory formalises. Two constraints narrow the
+choice almost completely:
+
+\begin{enumerate}
+\item \textbf{The rule must be linear.} If rotating the input scrambled
+features nonlinearly, no linear layer could ever commute with it. Linearity
+is what makes the bookkeeping tractable, and it costs nothing, because all
+the actions we actually need are linear.
+\item \textbf{The rule must respect composition.} Applying the rule for
+$Q_1$ after the rule for $Q_2$ must equal the rule for $Q_1Q_2$ --- otherwise
+it is not consistent with how rotations compose, i.e.\ with axiom (A2) of
+\Cref{def:group-action}.
+\end{enumerate}
+
+A map assigning to each group element a linear transformation, compatibly
+with composition, is exactly \Cref{def:representation-scratch} below.
+Representation theory then answers the follow-up question that makes the
+whole design finite: \emph{which such rules are there?} For $SO(3)$ the
+answer is remarkably clean --- a single infinite list indexed by
+$\ell=0,1,2,\dots$, from which every other rule is assembled
+(\Cref{thm:so3-irrep-classification}). Designing an equivariant
+architecture then reduces to choosing how many features of each type
+$\ell$ to carry, and using only operations that map declared types to
+declared types.
+
 \section{Representations of $SO(3)$}
 \label{sec:representations}
 
@@ -2437,15 +2899,51 @@ spherical harmonics, there is a matrix $D^\ell(Q)\in\RR^{(2\ell+1)\times(2\ell+1
 with
 \begin{equation}
 \label{eq:sph-equivariance-scratch}
-Y^\ell_m(Q^\top\hat x) = \sum_{m'} D^\ell(Q)_{mm'}\,Y^\ell_{m'}(\hat x),
-\qquad\text{equivalently}\qquad
-Y^\ell(Q\hat x) = D^\ell(Q)\,Y^\ell(\hat x)
+\boxed{\;Y^\ell(Q\hat x) \;=\; D^\ell(Q)\,Y^\ell(\hat x)\;}
+\qquad\text{i.e.}\qquad
+Y^\ell_m(Q\hat x) = \sum_{m'} D^\ell(Q)_{mm'}\,Y^\ell_{m'}(\hat x),
 \end{equation}
-(the second form obtained by relabelling $\hat x\mapsto Q\hat x$ and using
-$Q^\top Q=I$), and $D^\ell$ is a representation of $SO(3)$ in the sense of
+and $D^\ell$ is a representation of $SO(3)$ in the sense of
 \Cref{def:representation-scratch}, of dimension $2\ell+1$, matching
-\Cref{thm:so3-irrep-classification}'s degree-$\ell$ irrep.
+\Cref{thm:so3-irrep-classification}'s degree-$\ell$ irrep. In the standard
+\emph{orthonormal} real basis, $D^\ell(Q)$ is an orthogonal matrix, so
+$D^\ell(Q)^{-1}=D^\ell(Q)^\top=D^\ell(Q^\top)$.
 \end{proposition}
+
+\begin{caution}[Rotating the point versus rotating the function: the inverse]
+\label{caution:function-action-inverse}
+\eqref{eq:sph-equivariance-scratch} is stated with $Q$ applied to the
+\emph{point} $\hat x$. One also frequently meets the companion statement
+with $Q$ applied to the \emph{function}. The two differ by an inverse, and
+conflating them is a standard and hard-to-see error. Substituting
+$\hat x\mapsto Q^\top\hat x$ into \eqref{eq:sph-equivariance-scratch} gives
+\[
+Y^\ell(\hat x) = D^\ell(Q)\,Y^\ell(Q^\top\hat x)
+\qquad\Longleftrightarrow\qquad
+Y^\ell(Q^\top\hat x) \;=\; D^\ell(Q)^{-1}\,Y^\ell(\hat x)
+\;=\; D^\ell(Q^\top)\,Y^\ell(\hat x) ,
+\]
+\emph{not} $D^\ell(Q)Y^\ell(\hat x)$. A numerical check settles it
+immediately: for $\ell=1$ with $Y^1(\hat x)=\hat x$, the claim
+$Y^1(Q^\top\hat x)=D^1(Q)Y^1(\hat x)$ reads $Q^\top\hat x = Q\hat x$, which
+holds only for symmetric $Q$.
+
+The reason the inverse appears is \Cref{caution:action-not-matmul}: when a
+group acts on a space of \emph{functions}, the action must be
+$(Q\cdot f)(\hat x) := f(Q^{-1}\hat x)$. Without the inverse, axiom (A2) of
+\Cref{def:group-action} fails --- one would get
+$(Q_1\cdot(Q_2\cdot f))=(Q_2Q_1)\cdot f$, the composition in the wrong order.
+The inverse is what restores $(Q_1Q_2)\cdot f = Q_1\cdot(Q_2\cdot f)$.
+
+\textbf{Convention fixed for this document:} we always use the boxed form,
+$Y^\ell(Q\hat x)=D^\ell(Q)Y^\ell(\hat x)$, i.e.\ $D^\ell$ is the matrix that
+implements a rotation \emph{of the direction argument}. This is the
+convention of \texttt{e3nn} and hence of EquiformerV2, so no translation is
+needed when the code is read in \Cref{chap:equiformer}. It is consistent
+with $D^1(Q)=Q$ (\Cref{ex:ell01}); a document using the opposite convention
+would have $D^1(Q)=Q^\top$ there, and every subsequent formula would carry a
+transpose.
+\end{caution}
 
 \begin{proof}
 If $p\in\mathcal H_\ell$ (a harmonic homogeneous degree-$\ell$ polynomial on
@@ -2709,6 +3207,7 @@ higher-degree channels.
 \end{example}
 
 \section{Consequences for equivariant linear maps and nonlinearities}
+\label{sec:equivariant-layers}
 \label{sec:schur-consequences}
 
 We record now, as consequences of the theory developed in this chapter, the
