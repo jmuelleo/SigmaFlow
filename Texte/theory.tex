@@ -4146,10 +4146,153 @@ higher-degree channels.
 \label{sec:equivariant-layers}
 \label{sec:schur-consequences}
 
-We record now, as consequences of the theory developed in this chapter, the
-two structural constraints on any equivariant neural network layer, since
-they are used repeatedly and verified directly against the code in
-\Cref{chap:equiformer}.
+\subsection{The question}
+\label{sec:linear-question}
+
+We have features organised as irreps. A standard neural network would now
+flatten everything into one long vector and apply $y=Wh+b$. Suppose a node
+carries
+\[
+h^{(0)}\in\RR^{4},\qquad h^{(1)}\in\RR^{2\times3},\qquad h^{(2)}\in\RR^{1\times5},
+\]
+i.e.\ four scalar channels, two vector channels, one $\ell=2$ channel:
+$4+6+5=15$ numbers in total. The naive layer would learn a $15\times15$
+matrix, $225$ parameters, and mix everything with everything.
+
+\begin{quote}
+\textbf{Which of those $225$ parameters may we actually use?}
+\end{quote}
+
+The answer, derived below, is: $16+4+1=21$. The remaining $204$ are not
+merely unhelpful --- switching any of them on breaks equivariance. This
+section explains where the number $21$ comes from.
+
+\paragraph{The intuition first.} A weight matrix is a fixed array of
+numbers, chosen once and then held constant while the molecule may be
+presented in any orientation. Anything that a fixed array can ``know'' about
+direction is a lie: it was chosen in \emph{some} frame, and there is no
+preferred frame. So a legal weight may combine quantities that carry no
+direction (channels of the same type), but it may not do anything that
+implicitly names a direction --- and mixing an $\ell=0$ with an $\ell=1$
+component, or one $m$-slot with another, does exactly that.
+
+\subsection{The condition a linear layer must satisfy}
+\label{sec:intertwiner-condition}
+
+Make that precise. Let the input transform under a representation
+$\rho_{\mathrm{in}}$ and the output under $\rho_{\mathrm{out}}$, and let
+$W$ be the layer. Equivariance (\Cref{def:equivariance-scratch}) demands
+$W(\rho_{\mathrm{in}}(R)h)=\rho_{\mathrm{out}}(R)(Wh)$ for all $h$, i.e.\ as
+an identity between matrices,
+\begin{equation}
+\label{eq:intertwiner-condition}
+\boxed{\;W\,\rho_{\mathrm{in}}(R) \;=\; \rho_{\mathrm{out}}(R)\,W
+\qquad\text{for every } R\in SO(3). \;}
+\end{equation}
+
+Read the two sides:
+\begin{center}
+\begin{tabular}{ll}
+$W\rho_{\mathrm{in}}(R)h$ & rotate the input, \emph{then} apply the layer \\
+$\rho_{\mathrm{out}}(R)Wh$ & apply the layer, \emph{then} rotate the output \\
+\end{tabular}
+\end{center}
+Equation \eqref{eq:intertwiner-condition} says these agree for every
+rotation and every input. This is precisely
+\Cref{def:intertwiner}: \textbf{an equivariant linear layer is an
+intertwiner}, and the design problem is to describe the space of
+intertwiners --- because that space \emph{is} the space of admissible
+weight matrices.
+
+Note what kind of constraint this is. It is not a soft preference; it is a
+system of linear equations on the entries of $W$, one for each $R$. Since
+$SO(3)$ is $3$-dimensional there are infinitely many such equations, and the
+solution space is correspondingly small.
+
+\subsection{Three cases, worked by hand}
+\label{sec:schur-by-hand}
+
+Before invoking any general theorem, let us solve
+\eqref{eq:intertwiner-condition} in the three cases that matter.
+
+\paragraph{Case 1: scalar $\to$ scalar.} Here
+$\rho_{\mathrm{in}}=\rho_{\mathrm{out}}=D^0$, and $D^0(R)=1$ for every $R$.
+So \eqref{eq:intertwiner-condition} reads $W\cdot1=1\cdot W$, which is
+\emph{no constraint at all}. Any matrix works. With $C_{\mathrm{in}}$ scalar
+channels in and $C_{\mathrm{out}}$ out, the full
+$C_{\mathrm{out}}\times C_{\mathrm{in}}$ matrix is free. Scalars behave
+exactly like ordinary neural-network features, which is why $\ell=0$
+channels are the ``easy'' part of every equivariant architecture.
+
+\paragraph{Case 2: vector $\to$ vector.} Now $\rho_{\mathrm{in}}=\rho_{\mathrm{out}}=D^1$
+and $D^1(R)=R$, so we must find every $3\times3$ matrix $W$ with
+\[
+WR=RW\qquad\text{for \emph{every} } R\in SO(3) .
+\]
+Claim: only $W=\lambda I$. Here is an elementary argument that does not
+require any representation theory.
+
+Let $R_z(\vartheta)$ be rotation about the $z$-axis. Commuting with all of
+these forces $W$ to preserve each eigenspace of $R_z$; over $\RR$ the
+concrete consequence is that $W$ must map the $z$-axis to itself and act on
+the $xy$-plane as a scaled rotation. So
+\[
+W=\begin{pmatrix}a&-b&0\\ b&a&0\\ 0&0&c\end{pmatrix} .
+\]
+Now impose commutation with rotation about the $x$-axis as well. By the same
+reasoning with the roles of the axes permuted, $W$ must also have that form
+with respect to $x$, which forces $c=a$ and $b=0$. Repeating with the
+$y$-axis leaves no freedom: $W=aI$.
+
+The geometric reading is more memorable than the computation.
+$W$ is a fixed linear map that must look the same from every viewpoint. A
+map that stretched more along one direction than another would let you
+\emph{recover} that direction from $W$ --- and $W$ is a constant, fixed
+before we knew the molecule's orientation. The only maps with no preferred
+direction are uniform scalings.
+
+\paragraph{Case 3: scalar $\to$ vector.} Now
+$\rho_{\mathrm{in}}=D^0$, $\rho_{\mathrm{out}}=D^1$, so $W$ is a
+$3\times1$ matrix, i.e.\ a fixed vector $w\in\RR^3$, and
+\eqref{eq:intertwiner-condition} reads
+\[
+w = w\cdot 1 = W\rho_{\mathrm{in}}(R) = \rho_{\mathrm{out}}(R)W = Rw
+\qquad\text{for every } R\in SO(3) .
+\]
+A vector fixed by \emph{every} rotation must be $w=0$: any nonzero $w$ has
+some rotation moving it. So the only equivariant linear map from scalars to
+vectors is the zero map.
+
+Again the intuition is the point: a nonzero $w$ would be a direction
+manufactured out of a number that carries none. It would single out an axis
+in space, and nothing in the input justifies that axis.
+
+\begin{caution}[This is why you cannot ``just add a linear layer'']
+\label{caution:no-cross-degree-linear}
+Case 3 generalises: there is no nonzero equivariant linear map between
+different degrees at all. A network therefore \emph{cannot} create an
+$\ell=1$ feature out of $\ell=0$ features by any linear means, no matter how
+many layers are stacked. Since the output of SigmaFlow's network is an
+$\ell=1$ object (\Cref{eq:network-signature-scratch}), directional
+information must enter from the geometry --- and the only route is the
+tensor product of \Cref{sec:cg-derivation}. This is the structural reason
+the architecture cannot be simplified into ``scalars plus an MLP''.
+\end{caution}
+
+\subsection{Schur's lemma}
+\label{sec:schur-proper}
+
+The three cases above are instances of one theorem. Informally:
+
+\begin{quote}
+\textbf{Between irreducible representations there are almost no equivariant
+linear maps.} If the two irreps are different, there are none but zero. If
+they are the same, there is only one, up to a scale factor.
+\end{quote}
+
+That is a strong statement, and its strength is exactly what makes
+equivariant architecture design tractable: instead of searching a huge space
+of weight matrices, one is handed a very short list of options.
 
 \begin{proposition}[Schur's lemma, and the form of equivariant linear maps]
 \label{prop:schur-scratch}
@@ -4160,16 +4303,52 @@ then $W=cI$ for some scalar $c\in\RR$.
 \end{proposition}
 
 \begin{proof}
-This is Schur's lemma for real irreducible representations of a compact
-group, specialised to $SO(3)$; we take the general statement as classical
-(see, e.g., Fulton \& Harris, \emph{Representation Theory}, 1991, \S1.2,
-noting that the real irreps of $SO(3)$ are of \emph{real type} --- their
-complexifications remain irreducible, unlike, e.g., certain irreps of other
-groups where the commutant would be $\CC$ rather than $\RR$ --- which is
-exactly why the commutant here is $\RR I$ and not a larger algebra; this
-real-type property is itself part of the classical classification cited
-after \Cref{thm:so3-irrep-classification} and is not re-derived here).
+\emph{Case $\ell_1\neq\ell_2$.} Consider $\ker W\subseteq V_{\ell_1}$. If
+$x\in\ker W$ then $W D^{\ell_1}(Q)x = D^{\ell_2}(Q)Wx = 0$, so
+$D^{\ell_1}(Q)x\in\ker W$ too: the kernel is an invariant subspace. Since
+$V_{\ell_1}$ is irreducible, $\ker W$ is $\{0\}$ or all of $V_{\ell_1}$. The
+same argument applied to $\operatorname{im}W\subseteq V_{\ell_2}$ shows the
+image is $\{0\}$ or all of $V_{\ell_2}$. If $W\ne0$ then $\ker W=\{0\}$ and
+$\operatorname{im}W=V_{\ell_2}$, i.e.\ $W$ is an isomorphism --- impossible
+when $\dim V_{\ell_1}=2\ell_1+1\neq2\ell_2+1=\dim V_{\ell_2}$. Hence $W=0$.
+
+\emph{Case $\ell_1=\ell_2=\ell$.} Over $\CC$ one argues that an eigenvalue
+$\lambda$ of $W$ exists and $W-\lambda I$ is again an intertwiner with
+nontrivial kernel, hence zero by the first part. Over $\RR$ this step is not
+immediate, because a real matrix need not have a real eigenvalue, and in
+general the commutant of a real irrep is $\RR$, $\CC$ or $\mathbb H$
+(real, complex or quaternionic type). The conclusion $W=cI$ with $c\in\RR$
+therefore requires knowing that the real irreps $V_\ell$ of $SO(3)$ are of
+\textbf{real type}, i.e.\ that their complexifications stay irreducible.
+That is true, and it is part of the classical classification cited after
+\Cref{thm:so3-irrep-classification} (Fulton \& Harris,
+\emph{Representation Theory}, 1991, \S1.2 and \S3; Br\"ocker \& tom Dieck,
+\emph{Representations of Compact Lie Groups}, 1985, Ch.~II). Given real
+type, the commutant is $\RR I$ and the statement follows.
 \end{proof}
+
+\begin{caution}[The real-versus-complex step is not a formality]
+\label{caution:schur-real-type}
+It is tempting to quote ``Schur's lemma: intertwiners between equivalent
+irreps are multiples of the identity'' and move on. That sentence is true
+over $\CC$ and \emph{not} true over $\RR$ in general. The standard
+counterexample is $SO(2)$ acting on $\RR^2$ by rotation: this real
+representation is irreducible (no real line is preserved by all rotations),
+yet its commutant is two-dimensional --- every rotation matrix commutes with
+every other, so
+$W=\begin{psmallmatrix}a&-b\\ b&a\end{psmallmatrix}$ is an intertwiner for
+all $a,b$. That commutant is a copy of $\CC$, not $\RR$; $SO(2)$'s
+two-dimensional real irreps are of \emph{complex} type.
+
+So the conclusion we use genuinely depends on a property of $SO(3)$ and
+would fail for other groups. Since the whole architecture rests on it, it is
+worth checking rather than assuming. A direct numerical check settles it:
+solving the linear system \eqref{eq:intertwiner-condition} for
+$\ell_1=\ell_2=1$ and for $\ell_1=\ell_2=2$ yields a solution space of
+dimension exactly $1$ in each case, spanned by the identity; for
+$\ell_1=1,\ell_2=2$ (and conversely) the solution space is $\{0\}$. Those
+are the four numbers $1,1,0,0$ that \Cref{prop:schur-scratch} predicts.
+\end{caution}
 
 \begin{proposition}[Consequence for multi-channel equivariant linear layers]
 \label{prop:multichannel-linear}
@@ -4194,6 +4373,397 @@ it vanishes unless $\ell=\ell'$, and is a scalar multiple of the identity
 when $\ell=\ell'$. Collecting the surviving (same-degree) blocks gives
 exactly the stated form.
 \end{proof}
+
+\subsection{What the layer actually looks like}
+\label{sec:linear-layer-form}
+
+\Cref{prop:multichannel-linear} is best absorbed in coordinates. With
+$C_{\mathrm{in}}$ input channels and $C_{\mathrm{out}}$ output channels of
+degree $\ell$, the layer is
+\begin{equation}
+\label{eq:equivariant-linear-coords}
+y^{(\ell)}_{c,m} \;=\; \sum_{c'=1}^{C_{\mathrm{in}}} A^{(\ell)}_{cc'}\;h^{(\ell)}_{c',m},
+\qquad
+A^{(\ell)}\in\RR^{C_{\mathrm{out}}\times C_{\mathrm{in}}} .
+\end{equation}
+The index $m$ appears on both sides untouched: it is a spectator. The
+learned matrix $A^{(\ell)}$ carries no $m$-index and acts identically on
+every one of the $2\ell+1$ slots.
+
+In Kronecker form, acting on the stacked vector,
+\begin{equation}
+\label{eq:equivariant-linear-kron}
+W^{(\ell)} \;=\; A^{(\ell)}\otimes I_{2\ell+1} .
+\end{equation}
+Compare this with how the \emph{features} transform,
+$\rho^{(\ell)}(R)=I_{C}\otimes D^\ell(R)$ from
+\eqref{eq:feature-transform-kron}. The two commute for a reason that is now
+visible at a glance:
+\[
+\bigl(A\otimes I_{2\ell+1}\bigr)\bigl(I_{C_{\mathrm{in}}}\otimes D^\ell(R)\bigr)
+= A\otimes D^\ell(R)
+= \bigl(I_{C_{\mathrm{out}}}\otimes D^\ell(R)\bigr)\bigl(A\otimes I_{2\ell+1}\bigr),
+\]
+using the mixed-product rule $(A\otimes B)(C\otimes D)=(AC)\otimes(BD)$.
+\textbf{Each factor acts on a different index and they simply pass through
+one another.} The learned part touches only $c$; the rotation touches only
+$m$; neither sees the other.
+
+That single line is, in the end, the whole of \Cref{sec:equivariant-layers}.
+
+\begin{tcolorbox}[colback=green!3,colframe=green!35!black,title={Two axes, two owners}]
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Axis & Owned by & May be manipulated by \\
+\midrule
+channel $c$ & the network & learned weights, freely \\
+component $m$ & the symmetry & only $D^\ell(R)$ and Clebsch--Gordan \\
+\bottomrule
+\end{tabular}
+\end{center}
+The channel axis carries \emph{learned feature semantics}: what the feature
+means. The $m$ axis carries \emph{geometric structure}: how the feature
+points. Keeping them separate is what equivariance amounts to in practice,
+and mixing them is the single most common way to break it.
+\end{tcolorbox}
+
+\subsection{Bias terms}
+\label{sec:bias-terms}
+
+A standard linear layer is $y=Wh+b$. We have discussed $W$; what about $b$?
+
+The bias is a \emph{constant}, added regardless of the input, so
+equivariance requires $\rho_{\mathrm{out}}(R)\,b = b$ for every $R$: the
+bias must be a fixed point of the output representation.
+
+\begin{itemize}
+\item \textbf{$\ell=0$:} $D^0(R)=1$, so the condition reads $b=b$. Any bias
+is allowed. Scalar channels may have biases exactly as in an ordinary
+network.
+\item \textbf{$\ell\ge1$:} the condition reads $D^\ell(R)b=b$ for all $R$,
+i.e.\ $b$ is a rotation-invariant element of $V_\ell$. Since $V_\ell$ is
+irreducible and nontrivial, the set of such fixed points is $\{0\}$ ---
+otherwise the line $\RR b$ would be a proper nonzero invariant subspace,
+contradicting irreducibility. Hence $b^{(\ell)}=0$ is forced.
+\end{itemize}
+
+So:
+\[
+b^{(0)}\ \text{free},\qquad b^{(\ell)}=0\ \ \text{for}\ \ell\ge1 .
+\]
+The reasoning is the same as Case 3 of \Cref{sec:schur-by-hand}: a nonzero
+constant vector would name a direction, and there is no direction to name.
+Libraries enforce this by construction --- \texttt{e3nn}'s linear layer
+accepts a bias only on scalar irreps --- and a layer that appeared to have
+biases on $\ell\ge1$ would be a bug, not a design choice.
+
+\subsection{Why linear layers are not enough}
+\label{sec:need-nonlinearity}
+
+Everything so far is linear, and a composition of linear maps is linear. A
+network built only from \eqref{eq:equivariant-linear-coords} would be an
+(equivariant) linear function of its input, which is far too weak: it could
+not represent the dependence of a docking score on the shape of a pocket any
+more than a linear regression could.
+
+So we need nonlinearities. And here the difficulty of the equivariant
+setting reappears in a new place:
+
+\begin{quote}
+\textbf{An ordinary elementwise nonlinearity does not respect the irrep
+structure.}
+\end{quote}
+
+\Cref{ex:relu-not-equivariant} already showed this with explicit numbers: for
+$v=(1,-1,0)^\top$ and a $90^\circ$ rotation about $z$,
+$\mathrm{ReLU}(Rv)=(1,1,0)^\top$ while $R\,\mathrm{ReLU}(v)=(0,1,0)^\top$.
+The reason bears repeating, because it also tells us what \emph{will} work:
+$\mathrm{ReLU}$ treats the three slots of an $\ell=1$ feature as three
+independent numbers, but a rotation mixes them. Any operation that acts
+slot-by-slot is implicitly asserting that the slots have separate meaning,
+and they do not.
+
+The repairs all follow one principle:
+
+\begin{quote}
+\textbf{Do the nonlinear thing to something invariant; use the result to
+scale something equivariant.}
+\end{quote}
+
+We now examine the three standard realisations of that principle.
+
+\subsection{Nonlinearity 1: scalars are unrestricted}
+\label{sec:nonlin-scalar}
+
+For $\ell=0$ features there is no problem at all. Since $D^0(R)=1$, an
+$\ell=0$ feature $s$ satisfies $s\mapsto s$ under rotation, so for any
+function $\sigma:\RR\to\RR$,
+\[
+\sigma(s)\ \longmapsto\ \sigma(s) .
+\]
+The output is again invariant, hence again a legitimate $\ell=0$ feature.
+$\mathrm{ReLU}$, SiLU, GELU, layer normalisation, softmax over channels ---
+all are available on scalar channels, unchanged from ordinary deep learning.
+
+This is more useful than it sounds, because it means the network can perform
+arbitrary nonlinear computation, \emph{provided} it does so on the invariant
+part of its state. The remaining two mechanisms are about transporting that
+nonlinearity back onto the higher-$\ell$ channels.
+
+\subsection{Nonlinearity 2: norm nonlinearities}
+\label{sec:nonlin-norm}
+
+For $\ell\ge1$ we cannot touch the components. But we can compute an
+invariant from them.
+
+\begin{proposition}[The norm of an irrep feature is invariant]
+\label{prop:norm-invariant}
+If $D^\ell(R)$ is orthogonal --- which it is in the standard real
+orthonormal basis, by \Cref{prop:wigner-properties} --- then
+$\|D^\ell(R)v\| = \|v\|$ for every $v\in V_\ell$.
+\end{proposition}
+
+\begin{proof}
+$\|D v\|^2 = v^\top D^\top D v = v^\top v = \|v\|^2$.
+\end{proof}
+
+So $\|v\|$ is a scalar we are allowed to feed to any nonlinearity. Define
+\begin{equation}
+\label{eq:norm-nonlinearity}
+f(v) \;=\; \alpha\bigl(\|v\|\bigr)\,v ,
+\end{equation}
+for any function $\alpha:\RR_{\ge0}\to\RR$ (e.g.\
+$\alpha(r)=\sigma(r)/(r+\varepsilon)$, which turns \eqref{eq:norm-nonlinearity}
+into ``rescale $v$ to have length $\sigma(\|v\|)$'').
+
+\begin{proposition}[Norm nonlinearities are equivariant]
+\label{prop:norm-nonlin-equivariant}
+$f\bigl(D^\ell(R)v\bigr) = D^\ell(R)\,f(v)$.
+\end{proposition}
+
+\begin{proof}
+\[
+f\bigl(D^\ell(R)v\bigr)
+= \alpha\bigl(\|D^\ell(R)v\|\bigr)\,D^\ell(R)v
+\overset{\text{(a)}}{=} \alpha\bigl(\|v\|\bigr)\,D^\ell(R)v
+\overset{\text{(b)}}{=} D^\ell(R)\bigl(\alpha(\|v\|)\,v\bigr)
+= D^\ell(R)f(v),
+\]
+where (a) is \Cref{prop:norm-invariant} and (b) is linearity of
+$D^\ell(R)$ together with the fact that $\alpha(\|v\|)$ is a
+\emph{scalar}, which therefore commutes with the matrix.
+\end{proof}
+
+\begin{remark}[What norm nonlinearities cannot do]
+\label{rem:norm-nonlin-limits}
+The direction of $v$ is untouched: \eqref{eq:norm-nonlinearity} can only
+rescale, never reorient. In particular $f(v)$ is always parallel to $v$ (or
+antiparallel, if $\alpha<0$). A network built only from linear layers and
+norm nonlinearities can therefore change how strongly a direction is
+expressed but cannot change \emph{which} direction --- reorientation must
+come from the tensor product. A second, practical drawback is the
+singularity at $v=0$, which is why implementations carry an $\varepsilon$
+and why the derivative near the origin needs care.
+\end{remark}
+
+\subsection{Nonlinearity 3: gating}
+\label{sec:nonlin-gate}
+
+Gating is the variant Equiformer actually relies on, and it is a small
+generalisation of the previous idea: instead of deriving the scalar from
+$v$'s own norm, derive it from a \emph{separate scalar channel}, which the
+network is free to compute however it likes.
+
+\paragraph{The mechanism, in one line.} Let $g\in\RR$ be an invariant scalar
+and $v\in V_\ell$ a feature. Then $v\mapsto g\,v$ is equivariant:
+\[
+g\,D^\ell(R)v \;=\; D^\ell(R)\,(g\,v) ,
+\]
+because a scalar commutes with a matrix. That is the entire argument. Its
+force comes from where $g$ is allowed to come from: \emph{anywhere}, as long
+as it is invariant. In particular $g$ may be the output of a deep,
+thoroughly nonlinear MLP acting on the node's scalar channels.
+
+\paragraph{As a network block.} A gated layer is organised as follows.
+Suppose we want $C_\ell$ output channels of degree $\ell$. The preceding
+equivariant layer is asked to produce
+\begin{itemize}[nosep]
+\item $C_\ell$ channels of degree $\ell$: the features to be gated,
+$h^{(\ell)}_{c}\in\RR^{2\ell+1}$;
+\item $C_\ell$ \emph{extra} scalar channels: the gate pre-activations,
+$s_c\in\RR$, one per output channel;
+\item plus whatever ordinary scalar channels the block also outputs.
+\end{itemize}
+Then
+\begin{equation}
+\label{eq:gate-block}
+g_c=\sigma(s_c)\in\RR,
+\qquad
+h^{(\ell),\mathrm{out}}_{c,m} = g_c\;h^{(\ell)}_{c,m} ,
+\end{equation}
+with $\sigma$ any scalar nonlinearity (sigmoid, SiLU, $\dots$). Shapes:
+$s\in\RR^{C_\ell}$, $h^{(\ell)}\in\RR^{C_\ell\times(2\ell+1)}$, and the
+product broadcasts $g$ along the $m$-axis --- again, $m$ is a spectator.
+
+\paragraph{Why this is strictly more expressive than a norm nonlinearity.}
+In \eqref{eq:norm-nonlinearity} the scaling factor is a function of that one
+feature's own magnitude. In \eqref{eq:gate-block} the gate can depend on
+\emph{all} scalar information available at the node --- atom type, local
+density, time embedding, anything --- so the network can learn to suppress or
+amplify a directional channel based on chemical context rather than only on
+its own size. Both are equivariant; gating simply has a richer input.
+
+\begin{caution}[A gate is not an attention weight]
+\label{caution:gate-vs-attention}
+Both are invariant scalars multiplying equivariant quantities, so they look
+alike in a formula. They occupy different roles:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+& Gate & Attention weight \\
+\midrule
+Indexed by & channel $c$ (and node $i$) & \emph{edge} $(i,j)$ \\
+Purpose & modulate feature channels & weight neighbours in a sum \\
+Normalised? & no & yes, across $j$ (softmax) \\
+Appears in & the pointwise nonlinearity & the aggregation step \\
+\bottomrule
+\end{tabular}
+\end{center}
+Keeping the two apart matters when reading \Cref{sec:equiformer-attention},
+where both occur within a few lines of each other.
+\end{caution}
+
+\subsection{The three admissible operations, and what each is for}
+\label{sec:three-operations}
+
+We can now state the design space completely. An equivariant network is
+assembled from exactly three kinds of operation, and each does something the
+others cannot:
+
+\begin{center}
+\begin{tabular}{p{3.1cm}p{4.4cm}p{4.4cm}}
+\toprule
+Operation & Can do & Cannot do \\
+\midrule
+\textbf{Equivariant linear} \eqref{eq:equivariant-linear-coords} & mix channels within one $\ell$; change channel count & create or mix degrees; introduce nonlinearity \\[3pt]
+\textbf{Tensor product} \eqref{eq:tp-layer} & couple two degrees; \emph{create} new degrees $\ell$ within the selection rule & act on a single feature alone \\[3pt]
+\textbf{Gate / norm nonlinearity} \eqref{eq:gate-block} & introduce nonlinearity; modulate by context & change $\ell$; reorient a feature \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Each row is a genuine limitation, and together they are exhaustive: any
+equivariant layer is built from these. Read the middle column downwards and
+you get a recipe --- couple geometry into features (tensor product), remix
+the resulting channels (linear), apply context-dependent nonlinearity
+(gate), repeat. That is, in outline, an Equiformer block.
+
+\subsection{A small block, end to end}
+\label{sec:small-block-example}
+
+Concretely, take a node carrying $4$ scalar channels and $2$ vector
+channels, and build a layer producing $8$ scalars and $5$ vectors.
+
+\paragraph{Input.}
+$h^{(0)}\in\RR^{4}$, $h^{(1)}\in\RR^{2\times3}$. Total numbers:
+$4+6=10$.
+
+\paragraph{Equivariant linear.} Two independent matrices,
+\[
+A^{(0)}\in\RR^{(8+5)\times4},
+\qquad
+A^{(1)}\in\RR^{5\times2} .
+\]
+The $\ell=0$ matrix produces $13$ scalar outputs: $8$ ordinary scalars plus
+$5$ gate pre-activations, one for each intended vector channel. The $\ell=1$
+matrix produces $5$ vector channels by mixing the $2$ input vector channels.
+Parameter count: $13\cdot4+5\cdot2=52+10=62$, plus a bias
+$b^{(0)}\in\RR^{13}$ --- and \emph{no} bias on the $\ell=1$ part.
+
+Note what is absent: there is no matrix from the $4$ scalars to the $5$
+vectors, and none from the $2$ vectors to the scalars. By
+\Cref{caution:no-cross-degree-linear} those blocks are forced to zero. Of
+the $\bigl(8\cdot1+5\cdot3\bigr)\times\bigl(4\cdot1+2\cdot3\bigr)=23\times10=230$
+entries a naive dense layer would have, only $62$ are admissible.
+
+\paragraph{Gate.} Split the $13$ scalars into $8$ outputs and $5$ gates
+$s\in\RR^{5}$; set $g=\sigma(s)\in\RR^{5}$ and
+\[
+h^{(1),\mathrm{out}}_{c,m}=g_c\,h^{(1)}_{c,m},
+\qquad c=1,\dots,5,\quad m=1,2,3 .
+\]
+
+\paragraph{Output.} $8$ scalars and $5$ vectors, i.e.\ $8+15=23$ numbers,
+transforming under $I_8\oplus(I_5\otimes D^1(R))$.
+
+\paragraph{What is still missing.} Nothing in this block created an $\ell=2$
+feature, and nothing could have: linear layers preserve degree and gates
+preserve degree. Higher degrees enter only through the tensor product with
+the spherical harmonics of an edge --- which is the message-passing step, and
+the subject of \Cref{sec:steerable-messages}.
+
+\subsection{Summary in one formula}
+\label{sec:linear-summary}
+
+Collecting \eqref{eq:feature-transform-kron} and
+\eqref{eq:equivariant-linear-kron}: if a node's feature space is
+$\bigoplus_\ell\bigl(\RR^{C_\ell}\otimes V_\ell\bigr)$, then the rotation
+acts by
+\[
+\rho(R) \;=\; \bigoplus_{\ell}\Bigl(I_{C_\ell}\otimes D^\ell(R)\Bigr),
+\]
+and the most general equivariant linear layer is
+\[
+W \;=\; \bigoplus_{\ell}\Bigl(A^{(\ell)}\otimes I_{2\ell+1}\Bigr),
+\qquad A^{(\ell)}\in\RR^{C^{\mathrm{out}}_\ell\times C^{\mathrm{in}}_\ell}\ \text{arbitrary.}
+\]
+Block-diagonal in $\ell$; free in $c$; identity in $m$. Everything in this
+section is a consequence of those three words.
+
+\begin{remark}[A preview: parity, and $O(3)$ versus $SO(3)$]
+\label{rem:parity-preview}
+Implementations label irreps not by $\ell$ alone but by $\ell$ together with
+a \emph{parity}, written \texttt{0e}, \texttt{1o}, \texttt{2e} and so on
+(\texttt{e} = even, \texttt{o} = odd). This extends the group from $SO(3)$
+to $O(3)$ by including the inversion $x\mapsto-x$: an even feature is
+unchanged by inversion, an odd one flips sign. Ordinary position vectors are
+odd; angular momenta and cross products are even (they are
+\emph{pseudo}vectors).
+
+Nothing in this chapter changes: parity refines the bookkeeping and adds a
+second selection rule (parities multiply), but the $\ell$-structure,
+Schur's lemma and the layer forms above are unaffected. We take parity up
+only where it actually bites --- molecular chirality, where the distinction
+between $SO(3)$ and $O(3)$ is chemically real --- in
+\Cref{rem:parity-scratch}.
+\end{remark}
+
+\begin{tcolorbox}[colback=blue!3,colframe=blue!40!black,title=Why this matters for SigmaFlow]
+\textbf{Linear mixing.} The backbone can learn arbitrary new combinations of
+same-type channels --- new chemical semantics --- without any risk to
+geometry. This is where most of the parameters live, and it is why the
+architecture can be wide without becoming fragile.
+
+\textbf{Gating.} It is what makes the network nonlinear at all on its
+directional channels. Without it, all the $\ell\ge1$ processing would be
+linear, and the model could not represent the strongly nonlinear dependence
+of a pose on its environment.
+
+\textbf{Tensor products remain essential.} \Cref{sec:three-operations} makes
+precise why they cannot be dispensed with: they are the only operation that
+can create a degree that was not already present. Since the network's output
+is $\ell=1$ and its raw chemical inputs are $\ell=0$, at least one tensor
+product with the geometry is unavoidable.
+
+\textbf{Independent of the generative engine.} All three operations are
+statements about how features may be transformed. They say nothing about
+what the network is asked to predict. Replacing SigmaDock's score target
+with SigmaFlow's velocity target changes the loss and the sampler; it does
+not touch a single one of the constraints in this section. That is precisely
+why the backbone is shared, and why the SigmaFlow conversion could be
+confined to five files (\Cref{chap:sigmaflow}).
+\end{tcolorbox}
 
 \begin{definition}[Steerable feature; restated]
 \label{def:steerable-scratch}
