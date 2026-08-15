@@ -4800,6 +4800,698 @@ is unavoidable, as promised at the end of \Cref{sec:gnn-scratch}.
 \label{part:diffusion}
 % ================================================================
 
+\chapter{From Random Walks to Stochastic Differential Equations}
+\label{chap:sde-toolbox}
+
+Every diffusion model in this document is a stochastic differential equation.
+The literature tends to introduce them in one line --- ``consider the SDE
+$dX_t = f(X_t,t)\,dt + g(t)\,dW_t$'' --- and move on. That line hides three
+genuinely non-obvious things: why the noise term carries $\sqrt{dt}$ rather
+than $dt$, what $dW_t$ means when Brownian motion is nowhere
+differentiable, and why the whole expression is not really a differential
+equation at all.
+
+This chapter builds the object from scratch, starting from something with no
+mystery in it: a discrete random walk. Nothing here is specific to
+generative modelling; it is the toolbox that \Cref{chap:diffusion} then uses.
+A reader comfortable with stochastic calculus can skip to
+\Cref{sec:sde-ddpm-limit}, where the two concrete limits (DDPM $\to$ VP-SDE,
+SMLD $\to$ VE-SDE) are derived.
+
+\begin{remark}[Sources and how they differ]
+\label{rem:sde-sources}
+The route taken here is not the one in Holderrieth and Erives,
+\emph{An Introduction to Flow Matching and Diffusion Models}, which defines
+an SDE directly through infinitesimal updates
+$X_{t+h}=X_t+hu_t(X_t)+\sigma_t(W_{t+h}-W_t)+hR_t(h)$ and never passes
+through a random-walk limit. That definition is cleaner, and this document
+adopts its \emph{form} in \Cref{def:sde-integral}; but it presupposes that
+Brownian motion already exists and that one accepts the increment scaling.
+The construction below earns both. The concrete SDEs (VP, VE) and the
+reverse-time result follow Song et al., \emph{Score-Based Generative
+Modeling through Stochastic Differential Equations}, ICLR 2021.
+
+Two warnings about conventions, both of which will matter later:
+\begin{itemize}
+\item Song et al.\ (and hence SigmaDock) run \textbf{$t=0$ data,
+      $t=T$ noise}. Holderrieth--Erives (and hence SigmaFlow) run
+      \textbf{$t=0$ noise, $t=1$ data}. Neither is more correct. This
+      document states the convention at the top of every chapter that uses
+      one.
+\item ``Diffusion coefficient'' means $g$ in some texts and $g^2/2$ in
+      others. Here it is always $g$, the factor multiplying $dW_t$.
+\end{itemize}
+\end{remark}
+
+\section{Start with something concrete: a discrete noising chain}
+\label{sec:sde-discrete-chain}
+
+Take a data point $x_0\in\RR^d$ and corrupt it in $n$ small steps. At each
+step, move a little in some systematic direction and add a little
+independent noise:
+\begin{equation}
+\label{eq:sde-discrete-chain}
+X_{k+1} = X_k + \mu(X_k,t_k)\,\Delta t + s_k\,\epsilon_k,
+\qquad \epsilon_k\sim\mathcal N(0,I_d)\ \text{i.i.d.},
+\end{equation}
+with $t_k=k\Delta t$ and $\Delta t=T/n$. This is a discrete-time Markov
+chain and there is nothing subtle about it: given $X_k$, the next state is a
+Gaussian with mean $X_k+\mu\Delta t$ and covariance $s_k^2I$.
+
+Two design choices are already visible. The systematic part is proportional
+to $\Delta t$ --- that is forced, because $\mu$ is meant to be a
+\emph{rate}, and over a time interval $\Delta t$ a rate contributes
+$\mu\Delta t$. The noise amplitude $s_k$ is so far unspecified. Choosing it
+is the whole problem.
+
+\section{Why the noise scales as \texorpdfstring{$\sqrt{\Delta t}$}{sqrt(dt)}}
+\label{sec:sde-sqrt-scaling}
+
+We want \eqref{eq:sde-discrete-chain} to have a sensible limit as
+$n\to\infty$: refining the time grid should refine our description of a
+\emph{fixed} process, not change the process. So ask what the accumulated
+noise does under the natural guesses $s_k = \sigma\,\Delta t^{\alpha}$.
+
+Set $\mu=0$ and look only at the noise. After $n$ steps the total
+perturbation is
+\begin{equation}
+S_n \;=\; \sigma\,\Delta t^{\alpha}\sum_{k=1}^{n}\epsilon_k .
+\end{equation}
+The $\epsilon_k$ are independent with unit covariance, so variances add:
+\begin{equation}
+\label{eq:sde-variance-count}
+\Var(S_n) \;=\; \sigma^2\,\Delta t^{2\alpha}\cdot n
+\;=\; \sigma^2\,\Delta t^{2\alpha}\cdot\frac{T}{\Delta t}
+\;=\; \sigma^2\,T\,\Delta t^{2\alpha-1}.
+\end{equation}
+Everything follows from the exponent $2\alpha-1$:
+
+\begin{center}
+\begin{tabular}{clll}
+\toprule
+$\alpha$ & $s_k$ & $\Var(S_n)$ as $\Delta t\to0$ & Verdict \\
+\midrule
+$1$ & $\sigma\Delta t$ & $\sigma^2T\,\Delta t\to0$ & noise vanishes; a plain ODE \\
+$\tfrac12$ & $\sigma\sqrt{\Delta t}$ & $\sigma^2T$ & \textbf{finite, $n$-independent} \\
+$0$ & $\sigma$ & $\sigma^2T/\Delta t\to\infty$ & noise blows up \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Only $\alpha=\tfrac12$ survives. It is the unique exponent for which
+refining the grid neither destroys the randomness nor lets it explode.
+
+\begin{remark}[The counting argument in one sentence]
+\label{rem:sde-counting}
+Independent noise adds in \emph{variance}, not in amplitude: $n$ steps of
+size $\varepsilon$ accumulate to $\sqrt{n}\,\varepsilon$, not $n\varepsilon$.
+Since $n$ grows like $1/\Delta t$, an amplitude of $\sqrt{\Delta t}$ per step
+gives $\sqrt{1/\Delta t}\cdot\sqrt{\Delta t}=1$. That is the entire content
+of $\sqrt{\Delta t}$, and it is the reason a random walk is fundamentally
+rougher than a smooth curve.
+\end{remark}
+
+Measured (\file{audits/sde\_limit\_check.py}), variance of $\sum_k
+s_k\epsilon_k$ over $[0,1]$, $20{,}000$ samples:
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+$n$ & $s_k\propto\Delta t$ & $s_k\propto\sqrt{\Delta t}$ & $s_k\propto1$ \\
+\midrule
+$10$ & $0.099$ & $0.995$ & $9.9$ \\
+$100$ & $0.010$ & $1.005$ & $100.5$ \\
+$1000$ & $0.00100$ & $0.996$ & $995.6$ \\
+$10000$ & $0.00010$ & $1.015$ & $10154.2$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The middle column is the only one that converges, and it converges to
+$T=1$, exactly as \eqref{eq:sde-variance-count} predicts.
+
+\section{Brownian motion}
+\label{sec:sde-brownian}
+
+Fix $\alpha=\tfrac12$, $\sigma=1$, $\mu=0$, and define the accumulated noise
+up to time $t$:
+\begin{equation}
+W^{(n)}_t \;:=\; \sum_{k\,:\,t_k<t}\sqrt{\Delta t}\;\epsilon_k .
+\end{equation}
+Three properties hold for every $n$, and they characterise the limit.
+
+\begin{enumerate}
+\item \textbf{$W^{(n)}_0=0$.} Empty sum.
+\item \textbf{Independent increments.} For $s<t$, the increment
+      $W^{(n)}_t-W^{(n)}_s$ uses only $\epsilon_k$ with $s\le t_k<t$, and
+      those are independent of the ones before $s$. Disjoint time intervals
+      use disjoint noise.
+\item \textbf{Gaussian increments with variance $=$ elapsed time.} The
+      increment is a sum of $\approx(t-s)/\Delta t$ independent
+      $\mathcal N(0,\Delta t\,I)$ terms, hence Gaussian with covariance
+      $\frac{t-s}{\Delta t}\cdot\Delta t\,I=(t-s)I$ --- \emph{independent of
+      $\Delta t$}.
+\end{enumerate}
+
+Property 3 is where the $\sqrt{\Delta t}$ pays off: the increment law does
+not depend on the discretisation at all. The limiting object is therefore
+already pinned down.
+
+\begin{definition}[Brownian motion / Wiener process]
+\label{def:brownian}
+A \emph{standard Brownian motion} on $\RR^d$ is a stochastic process
+$(W_t)_{t\ge0}$ with
+\begin{enumerate}
+\item $W_0=0$;
+\item independent increments;
+\item $W_t-W_s\sim\mathcal N\bigl(0,(t-s)I_d\bigr)$ for $s<t$;
+\item continuous sample paths $t\mapsto W_t$.
+\end{enumerate}
+\end{definition}
+
+That such a process exists is Wiener's theorem; we take it as given. What
+matters here is that Brownian motion is precisely the continuum limit of the
+$\sqrt{\Delta t}$-scaled random walk (Donsker's invariance principle), and
+that it is the \emph{unique} such limit --- the central limit theorem means
+the limit does not depend on the distribution of $\epsilon_k$, only on its
+mean and variance. Bernoulli $\pm1$ steps give the same Brownian motion as
+Gaussian steps.
+
+\subsection{Brownian motion is nowhere differentiable}
+\label{sec:sde-nondiff}
+
+This is the fact that makes the notation $dW_t$ delicate, and it follows
+directly from property 3 without any hard analysis. Consider the difference
+quotient over a window $h$:
+\begin{equation}
+\frac{W_{t+h}-W_t}{h}\;\sim\;\mathcal N\Bigl(0,\tfrac{h}{h^2}I\Bigr)
+=\mathcal N\Bigl(0,\tfrac1h I\Bigr).
+\end{equation}
+Its standard deviation is $h^{-1/2}$, which diverges as $h\to0$. The
+difference quotient has no limit; it spreads out without bound. So $W'(t)$
+does not exist --- not at any $t$, almost surely.
+
+\begin{caution}[What $dW_t$ is not]
+\label{caution:dW-not-derivative}
+In an ordinary differential equation, $dx = f(x)\,dt$ abbreviates
+$\frac{dx}{dt}=f(x)$, and one may divide by $dt$. In
+\[
+dX_t = f(X_t,t)\,dt + g(t)\,dW_t
+\]
+one may \textbf{not}. There is no function $W'(t)$ such that
+$dW_t=W'(t)\,dt$. The expression is not an equation between derivatives; it
+is shorthand, and \Cref{def:sde-integral} says for what.
+\end{caution}
+
+\section{What an SDE actually is}
+\label{sec:sde-integral-form}
+
+Since we cannot differentiate, we integrate. The honest object is an
+integral equation.
+
+\begin{definition}[SDE as an integral equation]
+\label{def:sde-integral}
+The notation
+\begin{equation}
+\label{eq:sde-shorthand}
+dX_t = f(X_t,t)\,dt + g(t)\,dW_t,\qquad X_0 = x_0
+\end{equation}
+is shorthand for the statement that the process $(X_t)$ satisfies, for every
+$t$ and almost surely,
+\begin{equation}
+\label{eq:sde-integral}
+X_t \;=\; x_0
+\;+\; \underbrace{\int_0^t f(X_s,s)\,ds}_{\text{ordinary integral}}
+\;+\; \underbrace{\int_0^t g(s)\,dW_s}_{\text{It\^o integral}} .
+\end{equation}
+\end{definition}
+
+The first integral is an ordinary (pathwise Riemann) integral: for a fixed
+realisation, $s\mapsto f(X_s,s)$ is a continuous function and can be
+integrated as usual. The second needs a definition, because $W$ has
+unbounded variation --- one cannot integrate against it pathwise in the
+Riemann--Stieltjes sense.
+
+\subsection{The It\^o integral, at the level we need}
+\label{sec:sde-ito}
+
+Define it as a limit of Riemann-type sums, but with one rule fixed in
+advance:
+\begin{equation}
+\label{eq:ito-sum}
+\int_0^t h(s)\,dW_s \;:=\; \lim_{\Delta t\to0}\sum_{k} h(t_k)\,
+\bigl(W_{t_{k+1}}-W_{t_k}\bigr),
+\end{equation}
+evaluating the integrand at the \textbf{left endpoint} $t_k$ of each
+subinterval.
+
+For a Riemann integral of a continuous function the choice of evaluation
+point is irrelevant --- left, right, or midpoint all converge to the same
+number. Here it is not. The increments are random and of size
+$\sqrt{\Delta t}$, and a right-endpoint rule would correlate $h(t_{k+1})$
+with the increment $W_{t_{k+1}}-W_{t_k}$ it multiplies, producing a
+different limit. (The midpoint rule gives the \emph{Stratonovich} integral.)
+
+The left-endpoint rule is chosen because it makes the integrand
+\emph{non-anticipating}: $h(t_k)$ is known before the increment happens. Two
+consequences follow immediately, and they are all we will use:
+
+\begin{proposition}[Mean and variance of an It\^o integral]
+\label{prop:ito-isometry}
+For deterministic $g$,
+\begin{equation}
+\EE\Bigl[\int_0^t g(s)\,dW_s\Bigr]=0,
+\qquad
+\Var\Bigl[\int_0^t g(s)\,dW_s\Bigr]=\int_0^t g(s)^2\,ds .
+\end{equation}
+\end{proposition}
+
+\begin{proof}
+Each term of \eqref{eq:ito-sum} has $\EE[g(t_k)(W_{t_{k+1}}-W_{t_k})]
+= g(t_k)\cdot0 = 0$. For the variance, cross terms vanish because
+increments over disjoint intervals are independent and mean-zero, so
+\[
+\Var\Bigl[\sum_k g(t_k)\Delta W_k\Bigr]
+= \sum_k g(t_k)^2\,\Var(\Delta W_k)
+= \sum_k g(t_k)^2\,\Delta t
+\;\xrightarrow[\Delta t\to0]{}\;\int_0^t g(s)^2ds . \qedhere
+\]
+\end{proof}
+
+The second identity is the \emph{It\^o isometry}. It converts a statement
+about a stochastic integral into an ordinary calculus statement, and it is
+the workhorse of every variance computation in this chapter. Note where the
+$\sqrt{\Delta t}$ went: $\Var(\Delta W_k)=\Delta t$, so summing $n\sim
+1/\Delta t$ terms gives something finite.
+
+\begin{remark}[Scope]
+\label{rem:sde-scope}
+We do not need It\^o's lemma, martingale theory, or the general theory of
+semimartingales anywhere in this document; every SDE we meet has
+deterministic, state-independent $g$, and every marginal we need is Gaussian
+and computable by \Cref{prop:ito-isometry} alone. Stratonovich calculus is
+mentioned only to explain why the evaluation point matters. Riemannian
+Brownian motion (\Cref{chap:diffusion-so3}) is the one place where more care
+is genuinely required, and it is treated there.
+\end{remark}
+
+\section{Euler--Maruyama: the bridge in both directions}
+\label{sec:sde-euler-maruyama}
+
+Truncating \eqref{eq:sde-integral} at one step of size $h$ and using the
+left-endpoint rule gives
+\begin{equation}
+\label{eq:euler-maruyama}
+\boxed{\;X_{t+h} \;=\; X_t + f(X_t,t)\,h + g(t)\,\sqrt{h}\,\epsilon,
+\qquad \epsilon\sim\mathcal N(0,I_d).\;}
+\end{equation}
+This is the \textbf{Euler--Maruyama} scheme, and it is worth reading it
+twice, once in each direction.
+
+\paragraph{SDE $\to$ discretisation.} Given the continuous object, this is
+how one simulates it. The single change from the deterministic Euler method
+is the extra $g\sqrt h\,\epsilon$ term. Note $\sqrt h$, not $h$: with $h$
+the noise would vanish in the limit, by \Cref{sec:sde-sqrt-scaling}.
+
+\paragraph{Discretisation $\to$ SDE.} Compare \eqref{eq:euler-maruyama} with
+the discrete chain \eqref{eq:sde-discrete-chain} we started from. They are
+the same equation, with $s_k = g(t_k)\sqrt{\Delta t}$. So an SDE is not a
+new kind of object to be taken on faith: it is exactly the $\Delta t\to0$
+limit of the diffusive random walk, and Euler--Maruyama walks back from the
+limit to the walk. Whenever an SDE in this document is unclear, the reliable
+move is to write down \eqref{eq:euler-maruyama} and read off what one step
+does.
+
+\begin{example}[Ornstein--Uhlenbeck, worked in full]
+\label{ex:ou-process}
+Take $d=1$, $f(x,t)=-\theta x$ with $\theta>0$, and constant $g=\sigma$:
+\begin{equation}
+\label{eq:ou}
+dX_t = -\theta X_t\,dt + \sigma\,dW_t,\qquad X_0=x_0 .
+\end{equation}
+The drift pulls towards the origin at a rate proportional to the current
+displacement; the noise pushes outward at a constant rate. The two balance,
+and the process settles into a stationary distribution rather than either
+collapsing or escaping.
+
+\emph{Solving it.} Multiply by the integrating factor $e^{\theta t}$. In the
+integral form \eqref{eq:sde-integral} one obtains
+\[
+X_t = x_0e^{-\theta t} + \sigma\int_0^t e^{-\theta(t-s)}\,dW_s .
+\]
+The first term is deterministic. The second is an It\^o integral with
+deterministic integrand, so by \Cref{prop:ito-isometry} it is Gaussian with
+mean $0$ and variance
+\[
+\sigma^2\int_0^t e^{-2\theta(t-s)}ds
+= \frac{\sigma^2}{2\theta}\bigl(1-e^{-2\theta t}\bigr).
+\]
+Hence
+\begin{equation}
+\label{eq:ou-marginal}
+X_t \sim \mathcal N\Bigl(x_0e^{-\theta t},\;
+\tfrac{\sigma^2}{2\theta}\bigl(1-e^{-2\theta t}\bigr)\Bigr)
+\;\xrightarrow[t\to\infty]{}\;
+\mathcal N\Bigl(0,\tfrac{\sigma^2}{2\theta}\Bigr).
+\end{equation}
+The mean decays exponentially and the variance saturates: the process
+\emph{forgets} $x_0$. That is exactly the property a forward noising process
+needs, and the OU process is the prototype of every diffusion model's
+forward pass.
+
+\emph{Checking Euler--Maruyama against it.} With $\theta=1.5$,
+$\sigma=0.8$, $x_0=2$, $T=2$, \eqref{eq:ou-marginal} gives mean
+$0.0995741$ and variance $0.2128045$. The Euler--Maruyama recursion
+$X_{k+1}=(1-\theta h)X_k+\sigma\sqrt h\,\epsilon$ is itself Gaussian, so its
+mean and variance can be computed exactly rather than sampled:
+
+\begin{center}
+\begin{tabular}{rrrrr}
+\toprule
+$N$ & mean & error & error$\,\times N$ & variance error \\
+\midrule
+$20$ & $0.0775191$ & $2.21\times10^{-2}$ & $0.441$ & $1.75\times10^{-2}$ \\
+$100$ & $0.0951050$ & $4.47\times10^{-3}$ & $0.447$ & $3.29\times10^{-3}$ \\
+$500$ & $0.0986784$ & $8.96\times10^{-4}$ & $0.448$ & $6.50\times10^{-4}$ \\
+$2500$ & $0.0993949$ & $1.79\times10^{-4}$ & $0.448$ & $1.30\times10^{-4}$ \\
+$12500$ & $0.0995383$ & $3.58\times10^{-5}$ & $0.448$ & $2.59\times10^{-5}$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The fourth column is constant: the error falls exactly like $1/N$, i.e.\
+Euler--Maruyama is first order in the weak sense (correct distributions to
+$O(h)$). Computing the discrete moments in closed form rather than by Monte
+Carlo matters here --- with $40{,}000$ samples the sampling error alone is
+$\approx5\times10^{-3}$ and would hide the entire table.
+\end{example}
+
+\section{Drift and diffusion}
+\label{sec:sde-drift-diffusion}
+
+In $dX_t = f(X_t,t)\,dt + g(t)\,dW_t$:
+\begin{itemize}
+\item $f$ is the \textbf{drift}: the systematic, predictable part. Over a
+      short window it contributes $f\cdot h$, a displacement in a definite
+      direction. It is what survives averaging: $\EE[X_{t+h}-X_t\mid X_t]
+      = f(X_t,t)h+O(h^2)$.
+\item $g$ is the \textbf{diffusion coefficient}: the random, unpredictable
+      part. It contributes $g\sqrt h\,\epsilon$, with zero mean and standard
+      deviation $g\sqrt h$. It is what survives squaring:
+      $\Var[X_{t+h}-X_t\mid X_t]=g(t)^2h+O(h^2)$.
+\end{itemize}
+
+\begin{remark}[The apparent paradox of the two scales]
+\label{rem:sde-two-scales}
+For small $h$, $\sqrt h\gg h$. So locally the noise dominates: zoom in far
+enough on a sample path and it looks like pure Brownian motion, with the
+drift invisible. Yet over a fixed interval $[0,T]$ both contribute at the
+same order --- $\sum f h\to\int f\,ds$ and $\Var(\sum g\sqrt h\epsilon)\to
+\int g^2ds$, both $O(T)$.
+
+There is no contradiction. The drift accumulates \emph{coherently}, $n$
+terms of size $h$ summing to $nh=T$. The noise accumulates
+\emph{incoherently}, $n$ terms of size $\sqrt h$ summing not to $n\sqrt h$
+but to $\sqrt n\sqrt h=\sqrt T$ in standard deviation. Locally the larger
+per-step term is the noise; globally the two balance, because cancellation
+eats most of the noise and none of the drift. This is the same distinction
+as between a biased and an unbiased random walk, and it is worth carrying
+around: it explains why a diffusion model can be simultaneously very noisy
+step-to-step and very well behaved end-to-end.
+\end{remark}
+
+\section{Paths versus marginals}
+\label{sec:sde-paths-vs-marginals}
+
+An SDE describes two different things, and separating them is essential for
+everything that follows.
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+& Object & Question it answers \\
+\midrule
+\textbf{Path} & $(X_t)_{t\in[0,T]}$, one random trajectory & Where does
+\emph{this} sample go? \\
+\textbf{Marginal} & $p_t = \mathrm{Law}(X_t)$, a density per $t$ & Where is
+the \emph{population} at time $t$? \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The marginal $p_t$ forgets everything about how a sample arrived: it is the
+histogram over infinitely many independent runs at a fixed time. Two
+completely different processes can have identical marginals --- we will use
+exactly that fact twice, once for the reverse SDE and once for the
+probability flow ODE (\Cref{sec:pf-ode-scratch}), and it is the reason
+diffusion and flow matching can be trained toward the same $p_t$ by
+different means.
+
+Generative modelling only ever cares about the marginals: we want
+$p_T\approx p_{\mathrm{data}}$. The paths are a means.
+
+\section{Fokker--Planck: how the population moves}
+\label{sec:sde-fokker-planck}
+
+So: if individual samples follow the SDE, what equation governs $p_t$?
+
+Start with the noise-free case $g=0$, where the SDE is the ODE
+$\dot X_t=f(X_t,t)$. Probability mass is conserved --- samples are neither
+created nor destroyed --- and it is transported by the velocity field $f$.
+In one dimension, consider a small interval $[x,x+\delta]$. Mass flows in at
+the left at rate $p_t(x)f(x)$ and out at the right at rate
+$p_t(x+\delta)f(x+\delta)$; the density inside rises at the rate of the
+difference. Dividing by $\delta$ and letting $\delta\to0$:
+\begin{equation}
+\label{eq:continuity-1d}
+\partial_tp_t(x) = -\partial_x\bigl(p_t(x)f(x)\bigr),
+\qquad\text{in general}\qquad
+\partial_tp_t = -\nabla\cdot(p_tf).
+\end{equation}
+This is the \emph{continuity equation}, the same equation as for an
+incompressible fluid or an electric charge density, and it reappears as the
+foundation of flow matching in \Cref{chap:flow-matching}. The quantity
+$p_tf$ is the probability \emph{flux}.
+
+Now add noise. Independent Gaussian kicks spread mass symmetrically in every
+direction --- they do not transport it anywhere on average, they smear it.
+The operator that describes local smearing is the Laplacian, and the
+resulting equation is:
+
+\begin{theorem}[Fokker--Planck equation]
+\label{thm:fokker-planck}
+Let $(X_t)$ solve $dX_t=f(X_t,t)\,dt+g(t)\,dW_t$ with $X_0\sim p_0$. Then
+the marginals $p_t=\mathrm{Law}(X_t)$ satisfy
+\begin{equation}
+\label{eq:fokker-planck}
+\partial_tp_t(x)
+= \underbrace{-\nabla\cdot\bigl(p_t(x)f(x,t)\bigr)}_{\text{transport}}
+\;+\; \underbrace{\tfrac12 g(t)^2\,\Delta p_t(x)}_{\text{diffusion}} .
+\end{equation}
+\end{theorem}
+
+Two remarks make \eqref{eq:fokker-planck} memorable rather than magical.
+
+First, the \textbf{factor $\tfrac12$} is the $\sqrt{\Delta t}$ scaling
+resurfacing. A one-step kick of standard deviation $g\sqrt h$ convolves
+$p_t$ with $\mathcal N(0,g^2h)$. Taylor-expanding a convolution with a
+mean-zero kernel of variance $v$ gives $p + \tfrac{v}{2}\Delta p + O(v^2)$
+--- the first-order term vanishes by symmetry and the second-order term
+carries the $\tfrac12$ from the Taylor coefficient. Substituting $v=g^2h$
+and dividing by $h$ yields $\tfrac12g^2\Delta p$.
+
+Second, the \textbf{heat equation is the special case} $f=0$, $g$ constant:
+$\partial_tp=\tfrac12g^2\Delta p$. Diffusion of probability and diffusion of
+heat are the same mathematics, which is why the term ``diffusion model'' is
+literal and not a metaphor.
+
+\begin{remark}[What Fokker--Planck buys us]
+\label{rem:fp-buys}
+It converts a statement about random trajectories into a deterministic PDE
+about densities. Every ``these two processes have the same marginals''
+argument in this document is proved the same way: write down both
+Fokker--Planck equations and check they coincide. That is exactly how the
+reverse-time SDE (\Cref{thm:anderson}) and the probability flow ODE
+(\Cref{thm:pf-ode-scratch}) are established.
+\end{remark}
+
+\section{DDPM is a VP-SDE in disguise}
+\label{sec:sde-ddpm-limit}
+
+We can now do the limit that connects the discrete diffusion-model
+literature to the continuous one. This section and the next are the payoff
+of the chapter.
+
+DDPM (Ho et al., 2020; in the notation of Song et al., 2021, §2.2) defines a
+discrete Markov chain over $N$ steps with a schedule
+$0<\beta_1,\dots,\beta_N<1$:
+\begin{equation}
+\label{eq:ddpm-chain}
+x_k = \sqrt{1-\beta_k}\;x_{k-1} + \sqrt{\beta_k}\;\epsilon_k,
+\qquad \epsilon_k\sim\mathcal N(0,I).
+\end{equation}
+The factor $\sqrt{1-\beta_k}$ on the signal is what makes this
+\emph{variance preserving}: if $\Var(x_{k-1})=1$ then
+$\Var(x_k)=(1-\beta_k)+\beta_k=1$.
+
+To take a continuum limit we must say how $\beta_k$ shrinks as $N$ grows.
+The only consistent choice --- by the very scaling argument of
+\Cref{sec:sde-sqrt-scaling}, since the noise enters as $\sqrt{\beta_k}$ and
+must be $O(\sqrt{\Delta t})$ --- is
+\begin{equation}
+\label{eq:beta-scaling}
+\beta_k = \beta(t_k)\,\Delta t,\qquad \Delta t = \tfrac1N,\ t_k=k\Delta t,
+\end{equation}
+for a fixed continuous schedule $\beta:[0,1]\to\RR_{>0}$.
+
+Now expand. Since $\beta_k=O(\Delta t)$ is small,
+\begin{equation}
+\sqrt{1-\beta_k} = 1 - \tfrac12\beta_k + O(\beta_k^2)
+= 1 - \tfrac12\beta(t_k)\Delta t + O(\Delta t^2).
+\end{equation}
+Substituting into \eqref{eq:ddpm-chain} and subtracting $x_{k-1}$:
+\begin{align}
+x_k - x_{k-1}
+&= \bigl(\sqrt{1-\beta_k}-1\bigr)x_{k-1} + \sqrt{\beta_k}\,\epsilon_k \\
+&= -\tfrac12\beta(t_k)\,x_{k-1}\,\Delta t
+ \;+\; \sqrt{\beta(t_k)}\,\sqrt{\Delta t}\;\epsilon_k
+ \;+\; O(\Delta t^2).
+\end{align}
+Compare with Euler--Maruyama \eqref{eq:euler-maruyama}: the first term is
+$f\,\Delta t$ with $f(x,t)=-\tfrac12\beta(t)x$, and the second is
+$g\sqrt{\Delta t}\,\epsilon$ with $g(t)=\sqrt{\beta(t)}$. Therefore
+
+\begin{equation}
+\label{eq:vp-sde}
+\boxed{\;dX_t = -\tfrac12\beta(t)\,X_t\,dt + \sqrt{\beta(t)}\;dW_t\;}
+\qquad\text{(VP-SDE)}
+\end{equation}
+
+which is Song et al.'s variance-preserving SDE. Note it is an OU process
+(\Cref{ex:ou-process}) with time-varying coefficients, so its marginals are
+available in closed form: with $\bar\beta(t):=\int_0^t\beta(s)\,ds$ and
+$\alpha_t:=e^{-\bar\beta(t)/2}$,
+\begin{equation}
+\label{eq:vp-marginal}
+X_t\mid X_0 \;\sim\; \mathcal N\bigl(\alpha_tX_0,\;(1-\alpha_t^2)I\bigr).
+\end{equation}
+This is precisely the formula SigmaDock's \pyfunc{R3Diffuser} implements.
+
+\begin{remark}[Numerical confirmation, and one honest limitation]
+\label{rem:ddpm-limit-numbers}
+Both \eqref{eq:ddpm-chain} and \eqref{eq:vp-marginal} are Gaussian, so the
+convergence can be checked exactly. With $\beta$ linear from $0.1$ to $20$
+and $x_0=1$, the limit gives mean $\alpha_1x_0=0.0065716$:
+
+\begin{center}
+\begin{tabular}{rrrr}
+\toprule
+$N$ & discrete mean & error & error$\,\times N$ \\
+\midrule
+$10$ & \multicolumn{3}{l}{$\beta_k=2.00\ge1$ --- undefined} \\
+$50$ & $0.0024770$ & $4.09\times10^{-3}$ & $0.205$ \\
+$200$ & $0.0053662$ & $1.21\times10^{-3}$ & $0.241$ \\
+$1000$ & $0.0063211$ & $2.51\times10^{-4}$ & $0.251$ \\
+$5000$ & $0.0065211$ & $5.05\times10^{-5}$ & $0.252$ \\
+$20000$ & $0.0065590$ & $1.26\times10^{-5}$ & $0.253$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The last column is constant, confirming the $O(\Delta t)$ error promised by
+the Taylor expansion.
+
+The first row is not a bug. The DDPM parametrisation
+\eqref{eq:ddpm-chain} requires $\beta_k<1$ for $\sqrt{1-\beta_k}$ to be
+real, and with $\beta_{\max}=20$ that forces $\Delta t<1/20$, i.e.\
+$N>20$. The discrete formulation carries a step-size restriction that the
+SDE does not: \eqref{eq:vp-sde} is perfectly well defined for any $\beta$.
+This is a small but genuine advantage of the continuous view, and a good
+illustration that the SDE is not merely a re-notation of the chain.
+\end{remark}
+
+\section{SMLD is a VE-SDE}
+\label{sec:sde-smld-limit}
+
+The other family perturbs without shrinking the signal:
+\begin{equation}
+\label{eq:smld-chain}
+x_t = x_0 + \sigma(t)\,\epsilon,\qquad\epsilon\sim\mathcal N(0,I),
+\end{equation}
+with $\sigma$ increasing --- typically geometric,
+$\sigma(t)=\sigma_{\min}(\sigma_{\max}/\sigma_{\min})^t$. Here the variance
+\emph{grows} without bound, hence \emph{variance exploding}.
+
+Which SDE has these marginals? There is no drift to find: \eqref{eq:smld-chain}
+has mean $x_0$ for all $t$, so $f=0$. It remains to choose $g$ so that the
+accumulated variance matches. By \Cref{prop:ito-isometry}, a driftless SDE
+$dX_t=g(t)\,dW_t$ started at $x_0$ has
+\begin{equation}
+\Var(X_t) = \int_0^t g(s)^2\,ds .
+\end{equation}
+We need this to equal $\sigma(t)^2-\sigma(0)^2$. Differentiating both sides
+in $t$:
+\begin{equation}
+g(t)^2 = \frac{d}{dt}\sigma(t)^2
+\qquad\Longrightarrow\qquad
+\boxed{\;dX_t = \sqrt{\frac{d\,\sigma^2(t)}{dt}}\;dW_t\;}
+\qquad\text{(VE-SDE)}
+\end{equation}
+which is Song et al.'s variance-exploding SDE. The derivation is a
+one-line consequence of the It\^o isometry, which is why
+\Cref{prop:ito-isometry} was worth proving.
+
+For the geometric schedule, $\sigma^2(t)=\sigma_{\min}^2r^{2t}$ with
+$r=\sigma_{\max}/\sigma_{\min}$, so
+$\frac{d\sigma^2}{dt}=2\sigma(t)^2\ln r$.
+
+\begin{remark}[Numerical confirmation]
+\label{rem:ve-limit-numbers}
+With $\sigma_{\min}=0.01$, $\sigma_{\max}=50$, the target accumulated
+variance is $\sigma(1)^2-\sigma(0)^2=2499.9999$. Riemann sums
+$\sum_kg(t_k)^2\Delta t$:
+$947.9$ ($N=10$), $2293.1$ ($N=100$), $2478.8$ ($N=1000$),
+$2497.9$ ($N=10^4$) --- relative errors $6.2\times10^{-1}$,
+$8.3\times10^{-2}$, $8.5\times10^{-3}$, $8.5\times10^{-4}$, again $O(\Delta
+t)$. Convergence is slower in absolute terms than the VP case because the
+geometric schedule makes $g^2$ vary over four orders of magnitude across
+$[0,1]$.
+\end{remark}
+
+\section{Summary}
+\label{sec:sde-summary}
+
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Question & Answer \\
+\midrule
+Why $\sqrt{\Delta t}$? & Independent noise adds in variance;
+$n\sim1/\Delta t$ steps \\
+& of size $\sqrt{\Delta t}$ give $O(1)$. Any other exponent \\
+& collapses or explodes (\Cref{sec:sde-sqrt-scaling}). \\
+What is $W_t$? & The limit of that walk: independent Gaussian \\
+& increments with variance $=$ elapsed time. \\
+What is $dW_t$? & Not a derivative --- $W$ is nowhere differentiable. \\
+& Shorthand for an It\^o integral (\Cref{def:sde-integral}). \\
+Why left endpoints? & Keeps the integrand non-anticipating; gives \\
+& the It\^o isometry (\Cref{prop:ito-isometry}). \\
+How do I simulate? & Euler--Maruyama \eqref{eq:euler-maruyama}. \\
+How does $p_t$ move? & Fokker--Planck \eqref{eq:fokker-planck}:
+transport $+$ smoothing. \\
+DDPM in continuous time? & VP-SDE \eqref{eq:vp-sde}, via
+$\sqrt{1-\beta}\approx1-\beta/2$. \\
+SMLD in continuous time? & VE-SDE, via $g^2=d\sigma^2/dt$. \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+What is still missing is the direction of travel. Everything above runs
+\emph{forwards}, from data to noise, and destroys information. The next
+chapter asks how to run it backwards --- and that is where the score
+appears.
+
+
 \chapter{Diffusion Models in $\RR^d$}
 \label{chap:diffusion}
 
@@ -4811,6 +5503,87 @@ process. Everything in this chapter is developed in $\RR^d$ first; the
 manifold (in particular $SO(3)$) generalisation is
 \Cref{chap:diffusion-so3}, and SigmaDock's actual use of both is
 reconstructed in full, with code correspondence, in \Cref{chap:sigmadock}.
+
+\section{What the score is, before we learn it}
+\label{sec:score-intuition}
+
+The score function
+\begin{equation}
+\label{eq:score-def-intuition}
+s_t(x) \;:=\; \nabla_x\log p_t(x)
+\end{equation}
+will be the central learned object of this chapter, so it is worth
+understanding it as a geometric object first, independently of any algorithm.
+
+\paragraph{It is a direction, and it lives on the sample space.} For each
+$x$, $s_t(x)$ is a vector in $\RR^d$ --- the direction in which the
+log-density increases fastest, with magnitude equal to the rate of that
+increase. It is a vector field on the same space the data lives in. Standing
+at $x$ and asked ``which way is it to somewhere more typical?'', $s_t(x)$ is
+the answer.
+
+\paragraph{The normalising constant disappears.} This is the property that
+makes the score usable at all. Write $p_t(x)=\tilde p_t(x)/Z$ with $Z$ an
+unknown constant. Then
+\begin{equation}
+\nabla_x\log p_t(x) = \nabla_x\bigl[\log\tilde p_t(x)-\log Z\bigr]
+= \nabla_x\log\tilde p_t(x),
+\end{equation}
+because $\log Z$ does not depend on $x$. Densities are hard precisely
+because $Z=\int\tilde p$ is an intractable integral; the score sidesteps it
+entirely. One can know the score everywhere and still not know a single
+value of $p_t$.
+
+\begin{example}[The score of a one-dimensional Gaussian]
+\label{ex:score-gaussian-1d}
+Let $p(x)=\mathcal N(x;\mu,\sigma^2)$. Then
+\[
+\log p(x) = -\frac{(x-\mu)^2}{2\sigma^2} - \log\bigl(\sigma\sqrt{2\pi}\bigr),
+\qquad
+s(x) = \frac{d}{dx}\log p(x) = -\frac{x-\mu}{\sigma^2}.
+\]
+Read off three things:
+\begin{itemize}
+\item \textbf{It points home.} For $x>\mu$ the score is negative, for
+      $x<\mu$ positive. It always points towards the mean.
+\item \textbf{It is a restoring force with spring constant $1/\sigma^2$.}
+      The score of a Gaussian is exactly the force of a harmonic
+      oscillator. Following it downhill in $-s$ is gradient descent on
+      $\tfrac12(x-\mu)^2/\sigma^2$.
+\item \textbf{It blows up as $\sigma\to0$.} At fixed displacement
+      $x-\mu$, $\|s\|\propto1/\sigma^2$. A sharply concentrated distribution
+      has an enormous score just outside its support.
+\end{itemize}
+The last point has a direct consequence for training. Under the noising
+kernel $p_t(\cdot\mid x_0)=\mathcal N(\alpha_tx_0,\sigma_t^2I)$ the
+conditional score is
+\begin{equation}
+\label{eq:cond-score-gaussian}
+\nabla_x\log p_t(x\mid x_0) = -\frac{x-\alpha_tx_0}{\sigma_t^2},
+\end{equation}
+whose typical magnitude is $\sqrt d/\sigma_t$, diverging as $\sigma_t\to0$.
+A plain mean-squared-error loss on the score would therefore be dominated
+entirely by the smallest-noise samples. Every practical implementation
+rescales --- SigmaDock multiplies the network output by $1/\sigma_t$ and the
+loss by $\sigma_t^2$, so that the network in fact regresses the
+\emph{dimensionless} quantity $\sigma_ts_t$. That is not an arbitrary
+engineering choice but a direct response to \eqref{eq:cond-score-gaussian}.
+\end{example}
+
+\begin{remark}[Why the score, and not the density?]
+\label{rem:why-score}
+Three reasons, in increasing order of importance:
+\begin{enumerate}
+\item It is normalisation-free, as above.
+\item It is exactly what Langevin dynamics needs
+      (\Cref{sec:langevin}): the update $x\leftarrow x+\tfrac{\eta}{2}s(x)
+      +\sqrt\eta\,\epsilon$ requires no density values.
+\item It is exactly the missing ingredient in the reverse-time dynamics
+      (\Cref{sec:why-score-appears}). This is the deep reason: the score is
+      not chosen because it is convenient, it is forced by the structure of
+      time reversal.
+\end{enumerate}
+\end{remark}
 
 \section{Denoising score matching}
 \label{sec:score-matching-intro}
@@ -5037,10 +5810,55 @@ variation, and reappears, generalised to $SO(3)$, as the
 \pyfunc{score\_scaling} construction reconstructed precisely in
 \Cref{sec:diff-so3-numerics}.
 
-\subsection{The reverse-time SDE}
+\subsection{Why running time backwards is not enough}
+\label{sec:why-score-appears}
 
 \Cref{eq:forward-sde-scratch} destroys structure (runs from data to noise);
-generation needs the reverse. The following classical theorem is what
+generation needs the reverse. Before stating the theorem that provides it,
+it is worth seeing why the obvious idea fails --- because the reason is
+exactly the reason the score appears, and the formula looks arbitrary
+otherwise.
+
+\paragraph{The naive attempt.} For an ODE $\dot X_t = f(X_t,t)$, reversing
+is trivial: integrate $\dot X_s = -f(X_s,\cdot)$ and the trajectory retraces
+itself exactly. Each path is reversible because it is deterministic. So one
+might hope that flipping the sign of $dt$ in the SDE reverses it too.
+
+It does not, and a single example shows why. Take pure Brownian motion,
+$f=0$, $g=1$, started at $X_0=0$. Flipping the sign of $dt$ leaves $dX =
+dW$, which is the \emph{same} process: a driftless random walk. Run it from
+$X_1\sim\mathcal N(0,1)$ and after one unit of time you get
+$\mathcal N(0,2)$ --- the variance keeps growing. Running the clock backwards
+did not undo the spreading; it produced more of it.
+
+\paragraph{Why.} The forward process is not path-reversible, because it is
+not deterministic. Many different starting points lead to the same $x$ at
+time $t$, and the forward dynamics has forgotten which one it was. Reversal
+therefore cannot be a pathwise operation --- it must be a statement about
+distributions, and it needs the information the forward process threw away.
+
+That information is precisely \emph{where the mass came from}. If at time
+$t$ we are at $x$, the more likely origins are the ones in regions where
+$p_t$ is large. Undoing a diffusion step therefore requires a systematic
+pull towards higher density, on top of the reversed drift. Quantitatively,
+the local direction of steepest increase of the log-density is
+\[
+\nabla_x\log p_t(x),
+\]
+and this is exactly the extra term that appears below.
+
+\paragraph{A sanity check on the sign.} Consider the Brownian example again
+with $p_t=\mathcal N(0,t)$, whose score is $\nabla\log p_t(x)=-x/t$. The
+reverse dynamics acquires a term $g^2\nabla\log p_t = -x/t$: a restoring
+force pointing back towards the origin, whose strength grows as $t\to0$.
+That is exactly what is needed to counteract the spreading, and it could not
+have come from the drift, which is zero. The score is not a technical
+device; it is the missing information, and it is missing for a structural
+reason.
+
+\subsection{The reverse-time SDE}
+
+The following classical theorem makes this precise, and it is what
 licenses training a score network and then \emph{simulating backwards} to
 generate samples.
 
@@ -5105,6 +5923,69 @@ for the translational (VP) component.
 \section{The probability flow ODE, and the bridge to flow matching}
 \label{sec:pf-ode-scratch}
 
+\subsection{How can a deterministic process match a stochastic one?}
+\label{sec:pf-ode-motivation}
+
+The result below should look surprising at first, and it is worth pausing on
+the surprise rather than stepping over it. We are about to claim that a
+\emph{deterministic} ODE --- no randomness at all after the initial draw ---
+produces the same distributions $p_t$ at every time as a stochastic
+process whose paths visibly jitter.
+
+The resolution is \Cref{sec:sde-paths-vs-marginals}: \emph{paths and
+marginals are different objects}. Nothing forces two processes with the same
+marginals to have anything else in common. The trajectories differ
+completely --- SDE paths are nowhere differentiable, ODE paths are smooth;
+SDE paths starting from the same point diverge, ODE paths never cross.
+Only the histograms agree.
+
+\paragraph{A picture in one dimension.} Think of a cloud of dust spreading
+out. There are two ways to produce the same expanding cloud:
+\begin{itemize}
+\item let every speck jitter randomly (diffusion), or
+\item give every speck a definite outward velocity, faster the further out
+      it already is (transport).
+\end{itemize}
+The first is the SDE, the second the ODE. A photograph at any fixed time
+cannot tell them apart; a video following one speck can.
+
+\paragraph{Where the factor $\tfrac12$ comes from.} This is the one place a
+reader is likely to suspect a typo, so it is worth deriving.
+Fokker--Planck for the SDE reads
+\[
+\partial_tp_t = -\nabla\cdot(p_tb) + \tfrac12g^2\Delta p_t ,
+\]
+whereas an ODE with velocity $u_t$ obeys the continuity equation with
+\emph{no} second-order term,
+\[
+\partial_tp_t = -\nabla\cdot(p_tu_t).
+\]
+To match them we must absorb the Laplacian into a divergence. The identity
+that does it is
+\begin{equation}
+\label{eq:laplacian-as-div}
+\Delta p_t = \nabla\cdot(\nabla p_t)
+= \nabla\cdot\Bigl(p_t\,\frac{\nabla p_t}{p_t}\Bigr)
+= \nabla\cdot\bigl(p_t\,\nabla\log p_t\bigr),
+\end{equation}
+using $\nabla\log p_t=\nabla p_t/p_t$. Substituting,
+\[
+\partial_tp_t
+= -\nabla\cdot(p_tb) + \tfrac12g^2\nabla\cdot(p_t\nabla\log p_t)
+= -\nabla\cdot\Bigl(p_t\bigl[b - \tfrac12g^2\nabla\log p_t\bigr]\Bigr),
+\]
+which is a continuity equation with velocity
+$u_t = b - \tfrac12g^2\nabla\log p_t$.
+
+So the $\tfrac12$ is inherited directly from the $\tfrac12$ in
+Fokker--Planck, which in turn came from the second-order Taylor coefficient
+of a convolution (\Cref{thm:fokker-planck}). The score enters with
+\emph{half} the coefficient it has in the reverse SDE precisely because the
+reverse SDE keeps its own noise term, which supplies the other half.
+\Cref{eq:laplacian-as-div} is the single algebraic step underlying the whole
+correspondence, and it is worth remembering on its own: \emph{a Laplacian is
+a divergence of a probability flux with velocity $\nabla\log p$}.
+
 \begin{theorem}[Probability flow ODE]
 \label{thm:pf-ode-scratch}
 Under the same conditions as \Cref{thm:anderson}, the deterministic ODE
@@ -5155,6 +6036,62 @@ the code, that this is in fact the \emph{default} configuration SigmaDock
 ships with (\file{conf/sampling/base.yaml}'s default \texttt{noise\_scale:0.0}),
 narrowing the ``stochastic vs.\ deterministic'' distinction between the two
 methods considerably.
+
+\subsection{Reverse SDE versus probability flow ODE, side by side}
+\label{sec:sde-vs-pfode-table}
+
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+& Reverse SDE & Probability flow ODE \\
+\midrule
+Stochastic? & yes, injects fresh noise & no, deterministic given $X_0$ \\
+Same marginals $p_t$? & yes & yes \\
+Same trajectories? & no & no --- and not even the same \emph{kind} \\
+Paths & nowhere differentiable & smooth, never crossing \\
+Needs the score? & yes & yes \\
+Score coefficient & $g^2$ & $\tfrac12g^2$ \\
+Repeat from same $X_1$ & different output each time & identical output \\
+Exact likelihood? & no & yes, by the instantaneous \\
+& & change-of-variables formula \\
+Discretisation error & $O(\sqrt h)$ strong, $O(h)$ weak & $O(h^p)$ for a
+$p$-th order solver \\
+Error self-correcting? & partly --- noise re-mixes & no --- errors accumulate \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Three of these rows deserve a sentence.
+
+\emph{Likelihoods.} Because the ODE is a deterministic, invertible map, the
+change-of-variables formula applies and the exact log-likelihood of a sample
+can be computed by integrating $-\nabla\cdot u_t$ along the trajectory. The
+SDE offers no such thing. This is the main practical reason to prefer the
+ODE formulation even when sampling quality is equal.
+
+\emph{Higher-order solvers.} The ODE is a classical initial value problem,
+so Heun, Runge--Kutta and adaptive solvers apply directly and buy accuracy
+per function evaluation. For the SDE, high-order schemes exist but are much
+more delicate, because the $\sqrt h$ scaling caps the achievable order.
+This is why deterministic samplers dominate the few-step regime.
+
+\emph{Self-correction.} The injected noise in the SDE partially forgets
+accumulated error: if a step lands in a slightly wrong place, subsequent
+noise plus the score's restoring pull can bring the sample back onto the
+data manifold. The ODE has no such mechanism, so a systematically biased
+velocity field --- for instance, one whose equivariance is broken --- integrates
+its bias coherently over every step. That asymmetry is worth keeping in mind
+when comparing a diffusion sampler against an ODE sampler that share a
+backbone.
+
+\begin{caution}[Deterministic $\ne$ better; it is a different trade]
+\label{caution:ode-vs-sde-tradeoff}
+It is tempting to read the table as a case for the ODE. It is not. The ODE
+wins on likelihood, on solver technology, and on reproducibility; the SDE
+wins on robustness to an imperfect score network, which in practice is
+always what one has. Which dominates is an empirical question about a
+particular model, not a theoretical one.
+\end{caution}
 
 \clearpage
 
