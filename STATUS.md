@@ -61,77 +61,93 @@ Flow-Matching-Paper (Lipman et al.), Equiformer/EquiformerV2.
 
 Commit `cd16b4c`. 181 → **196 Seiten**. Details im Session-Log unten.
 
-### ⏭️ NÄCHSTER SCHRITT: Phase 2 — Flow Matching didaktisch ausbauen
+### ✅ Phase 2 abgeschlossen (2026-08-16): Flow Matching didaktisch ausgebaut
 
-```
-probability path → continuity equation → vector field
-                 → conditional path → CFM → relation to diffusion
-```
+196 → **230 Seiten**. Kapitel 11 (Euclidean FM) komplett neu aufgebaut:
+7 → 39 Seiten, 20 Sections statt 4. Alle 13 User-Punkte umgesetzt.
+Details im Session-Log unten. Neues Audit-Skript
+`audits/flow_matching_theory_audit.py` (27 Checks, alle grün).
 
-Vom User vorgegebene Punkte (aus der Anforderungsliste §26–§38):
-1. **Nicht** mit dem Loss beginnen. Erst: Source `p_0` nach Target `p_1`
-   transportieren, Probability Path wählen, dann Vector Field suchen.
-2. Continuity equation als Fundament, mit Massenerhaltung erst in 1D.
-   *(Teilweise schon in `chap:sde-toolbox` §Fokker–Planck vorbereitet —
-   dort steht die 1D-Herleitung bereits. Nicht duplizieren, referenzieren.)*
-3. Duale Sicht: ein Sample folgt `Ẋ = u_t(X)`, die Population folgt der
-   Continuity Equation — parallel zu SDE-Pfad vs. Fokker–Planck.
-4. Warum überhaupt Flow Matching: marginales `u_t` ist intraktabel, CFM macht
-   daraus supervised regression. Dieser Übergang muss motiviert werden.
-5. Conditional probability paths langsam; `p_t(x) = ∫ p_t(x|x_1) p_data(x_1)`.
-6. Conditional vector field analytisch herleiten (linearer Gauß-Pfad).
-7. **Marginalisierungssatz nicht nur zitieren:** `u_t(x) = E[u_t(x|X_1)|X_t=x]`,
-   dann squared-error-Regression → optimaler Regressor = marginales Feld.
-   Conditional-Expectation-Projektion langsam erklären.
-8. Ein vollständig durchgerechneter linearer Pfad.
-9. **Diffusion als Probability Path im selben Framework** — laut User der
-   wichtigste konzeptionelle Brückenschlag.
-10. Score Matching vs. Flow Matching nebeneinander.
-11. Für Gauß-Pfade: `u_t(x) = a_t x + b_t ∇log p_t(x)`, Koeffizienten
-    vollständig herleiten (nicht aus Erinnerung). Vgl. Proposition 1 im
-    Intro-Paper.
-12. **Parameterizations-Abschnitt**: ε, score, x_0, v, u — wann linear
-    ineinander überführbar. Mit ausdrücklicher Warnung vor der
-    Namenskollision „velocity prediction" (DDPM/Stable Diffusion) ≠
-    Flow-Matching-Velocity.
-13. Sampling erst NACH der Theorie.
+### ✅ Phase 3 abgeschlossen (2026-08-16): Geometry Revisit + Riemannian FM
 
-### Phase 3 danach: Geometrie/Riemannian FM erneut vertiefen
+230 → **263 Seiten**. Kapitel 3 (Geometrie) gezielt erweitert, Kapitel 12
+(Riemannian FM) komplett neu aufgebaut: 12 → 45 Seiten, 4 → 16 Sections.
+Details im Session-Log unten. Neues Audit-Skript
+`audits/riemannian_fm_theory_audit.py` (35 Checks, alle grün).
 
-Die vom User gewünschte Kette, jeder Pfeil motiviert:
-```
-R^n → warum euklidisch nicht reicht → Manifold → Tangent Space →
-Vector Field → Riemannian Metric → Längen/Winkel → Geodesics →
-Exp → Log → Lie Groups → Lie Algebra → SO(3) → hat/vee →
-Exp/Log auf SO(3) → Trivialisierung → ODEs auf SO(3) → Riemannian FM
-```
-Besonders gewünscht:
-- Tangentialraum **erst intuitiv**: warum ein neuer Vektorraum an jedem
-  Punkt, was schiefgeht beim Addieren von Punkt + Vektor, Kurvenbild,
-  warum `γ̇(0)` ein Tangentialvektor ist — auf S¹, S², SO(3).
-- Exp/Log als Ersatz für `x+v` und `y−x`, erst S¹/S², dann SO(3).
-- Lie-Gruppen als Verbindung Algebra/Geometrie: warum SO(3) beides ist, und
-  warum man Tangentialinformation per Multiplikation transportieren kann.
-  **Erst daraus** Trivialisierung entwickeln.
-- body/spatial zuerst als allgemeine Mathematik, **danach** Implementation
-  Note zur Konjugationswirkung.
-- Product manifolds als Brücke zu SigmaFlow.
+### ✅ Phase 4 abgeschlossen (2026-08-16): globaler Konsolidierungs-Audit
 
-### Offene Lücke, die ich selbst benannt habe
+263 → **277 Seiten**. Keine neue Theorie, sondern Kohärenz: Dependency-,
+Notations-, Redundanz- und Dichte-Audit über alle 16 Kapitel, plus die
+strukturellen Navigationselemente, die bei 277 Seiten gefehlt haben.
+Details im Session-Log unten.
 
-**Fokker–Planck ist motiviert, aber nicht bewiesen.** Der ½-Faktor ist über
-das Faltungs-/Taylor-Argument erklärt, der Transportterm über
-Massenerhaltung. Ein sauberer Beweis bräuchte Itôs Lemma, das nach
-User-Vorgabe §47/§48 weggelassen wurde. Ca. 4 Seiten, falls gewünscht.
+### ✅ Phase 5 abgeschlossen (2026-08-16): die drei letzten Blocker
+
+277 → **286 Seiten**. `cleveref` repariert (`aliascnt`),
+EquiformerV2-Worked-Example in Kapitel 9, Part VIII strukturell bereinigt.
+Details im Session-Log unten.
+
+---
+
+## 🏁 THEORY SUMMARY = FINISHED THEORY DOCUMENT (2026-08-16)
+
+Der Theoriestrang ist **abgeschlossen**. Das Dokument wird ab jetzt als
+stabile theoretische Basis behandelt, nicht mehr als Baustelle.
+
+**Vom User ausdrücklich als Nicht-Blocker akzeptiert, bewusst offen:**
+1. Vollständiger Fokker–Planck-Beweis (bräuchte Itôs Lemma). Empfehlung aus
+   dem Phase-4-Audit angenommen: **nicht** ergänzen.
+2. Zweiseitige Kopplung / OT-CFM. `caution:two-sided-conditioning` reicht.
+
+**Regel für kommende Sitzungen:** keine Theory-Erweiterungen vorschlagen.
+Änderungen am Dokument nur auf ausdrückliche Anforderung.
+
+### ⏭️ NÄCHSTER SCHRITT
+
+Zurück zum **Implementierungs-/ARC-Strang** (ruht seit 2026-08-13). Siehe
+den historischen Block unten; der dortige oberste offene Punkt ist der
+`sdf_regex`-Bug beim Sampling.
+
+### Offene Lücken, selbst benannt
+
+1. **Fokker–Planck ist motiviert, aber nicht bewiesen.** Der ½-Faktor ist über
+   das Faltungs-/Taylor-Argument erklärt, der Transportterm über
+   Massenerhaltung. Ein sauberer Beweis bräuchte Itôs Lemma, das nach
+   User-Vorgabe §47/§48 weggelassen wurde. Ca. 4 Seiten, falls gewünscht.
+2. **Zweiseitige Kopplung (OT-CFM) nur benannt, nicht repariert.**
+   `caution:two-sided-conditioning`: bedingt man auf das Paar `(x_0,x_1)`,
+   ist der Conditional Path zu *jedem* `t` ein Dirac, hat also keine Dichte —
+   `thm:continuity` greift nicht. Reparierbar per `σ_min`-Glättung oder
+   schwacher Formulierung; im Dokument bewusst als Lücke markiert statt
+   überklebt. Für SigmaFlow irrelevant (dort unabhängige Kopplung).
+3. **cleveref nennt Definitionen/Propositionen „Theorem".** Dokumentweite
+   Altlast: alle Theorem-Umgebungen teilen sich per `[theorem]` denselben
+   Zähler, und cleveref unterscheidet nach Zähler, nicht nach Umgebung.
+   Folge: `\Cref{def:...}` rendert als „Theorem 11.16", `\Cref{caution:...}`
+   als „Theorem 12.13". Fix wäre `aliascnt` oder `thmtools`/`\declaretheorem`
+   im Präambel-Block — betrifft ~1000 Querverweise in allen 13 Kapiteln.
+   In Phase 2 zurückgestellt, in Phase 3 vom User ausdrücklich
+   zurückgestellt (§74). Durch Kapitel 12 (viele Verweise auf Definitionen
+   und Cautions) inzwischen deutlich sichtbarer. **Entscheidung steht aus.**
+4. **Kosmetische Overfull-hboxes.** Kapitel 11: 25 pt im geerbten Beweis von
+   `thm:continuity`. Kapitel 12: max. 18 pt (eine `\file{}`-Zeile). Beides
+   unter dem bestehenden Dokumentstandard (anderswo 340 pt und 110 pt).
 
 ### Mehr Worked Examples (User-Wunsch §46, laufend)
 
 - Geometrie: S¹, S², Rotation um z-Achse, Exp/Log einer 90°-Rotation
 - Diffusion: 1D-Gauß ✅, diskreter Random Walk ✅, VP-SDE in 1D ✅,
   Score einer Gauß ✅
-- Flow Matching: zwei Punkte in 1D, Gauß-Source → fester Datenpunkt,
-  einfacher 2D-Transport
-- Riemannian FM: S¹-Geodäte, SO(2)-Analogie, dann SO(3)
+- Flow Matching ✅ (Phase 2): 1D-Paar `x_0=-1,x_1=3`, Gauß-Source → fester
+  Datenpunkt (inkl. ODE-Lösung von Hand), 2D-Zweipunkt-Beispiel mit
+  geschlossener tanh-Form für das marginale Feld
+- Geometrie ✅ (Phase 3): S¹, S² (Exp/Log in geschlossener Form, mit
+  Zahlen), Großkreise als Geodäten, Polarkoordinaten als Volumen- und
+  Divergenz-Sanity-Check, 90°-Rotation um z
+- Riemannian FM ✅ (Phase 3): S¹ (170°→−170°, Wrap-Falle), S² (Viertelbogen,
+  vollständig), SO(3) (90°, jeder Matrixeintrag ausgerechnet),
+  Produkt-Zustand (ein Fragment, r und R gemeinsam)
 
 ---
 
@@ -5399,6 +5415,301 @@ Drei Lücken im bestehenden Kapitel geschlossen:
 - `sec:sde-vs-pfode-table`: Vergleichstabelle + Caution „deterministisch ist
   nicht besser, sondern ein anderer Handel".
 
+## Runde: Flow Matching didaktisch neu aufgebaut (2026-08-16, 196 → 230 S.)
+
+Phase 2 der Theory-first-Priorität. **Kein Implementierungsdetail angefasst,
+kein Label gelöscht** (alle 19 extern zitierten Part-VI-Labels erhalten).
+
+Kapitel 11 („Continuous Normalizing Flows and Flow Matching in R^d")
+vollständig neu aufgebaut: **7 → 39 Seiten**, 4 → **20 Sections + 21
+Subsections**. Reihenfolge jetzt Theorie-zuerst: Transportproblem →
+Probability Path → Flow → Continuity Equation → Nichteindeutigkeit →
+marginales Feld unerreichbar → Conditional Paths → Marginalisierungssatz →
+L²-Projektion → CFM-Loss → linearer Pfad → drei Worked Examples →
+Gauß-Pfade → Score-vs-Velocity → **Diffusionsbrücke** → Parameterizations →
+Sampling → Pfad-Design/Kopplungen → Synthese → Missverständnisse →
+numerische Verifikation → Übergang zu Riemannian.
+
+**Neu hergeleitet (nicht zitiert):**
+- Continuity Equation zuerst in Integralform über ein Intervall
+  (Ein-/Ausfluss an den Rändern), dann punktweise, dann `R^d`.
+- **Nichteindeutigkeit von `u_t`**: `p_t ≡ N(0,I_2)` wird sowohl von `u=0` als
+  auch vom Rotationsfeld `(-x_2,x_1)` erzeugt. Räumt das Missverständnis
+  „zu jedem `p_t` gehört genau ein `u_t`" aus.
+- **L²-Projektionslemma** mit vollem Beweis (Kreuzterm verschwindet per
+  Tower-Property), daraus CFM als Korollar. Ist jetzt die *primäre*
+  Beweisführung; der alte Expansionsbeweis steht als Remark daneben.
+- **Loss-Floor**: `L_CFM(θ*) = E[Var(u_t(X_t|Z)|X_t,t)] > 0`. Ein Plateau
+  über null ist erwartetes Verhalten, kein Underfitting. Numerisch belegt
+  (1.5821 vs. exakt 0 für `L_FM`).
+- Allgemeiner Gauß-Pfad `X_t = α_t z + σ_t ε` samt Feld
+  `u = α̇z + (σ̇/σ)(x-αz)`; linearer Pfad als Spezialfall.
+- **Score↔Velocity**: `u = a_t·score + b_t·x` mit
+  `a_t = σ²α̇/α - σ̇σ`, `b_t = α̇/α` — *dieselben* Koeffizienten conditional
+  wie marginal. Plus Tweedie/Denoiser in beiden Formen.
+- **Diffusionsbrücke, der wichtigste Teil**: die Rand-Marginalen eines
+  Diffusionsmodells *sind* rückwärts gelesen ein Gauß-Pfad,
+  `α_t = α_diff(1-t)`, `σ_t = σ_diff(1-t)`. Bewiesen, dass die PF-ODE-
+  Geschwindigkeit exakt `a_t·score + b_t·x` ist — für VP *und* VE. Der ½
+  aus Fokker–Planck fällt dabei aus `α²+σ²=1` heraus, ganz ohne Itô.
+- **Interkonvertierbarkeit** aller fünf Parameterisierungen ⟺
+  `Δ_t = α̇σ - ασ̇ = σ²·d/dt(α/σ) ≠ 0` ⟺ **SNR streng monoton**.
+
+**Namenskollision `v` sauber aufgelöst:** auf dem trigonometrischen
+VP-Pfad gilt `u_t = φ̇_t · v` (Skalar, **negativ**, weil `v` in
+Rausch-Richtung definiert ist). Auf dem linearen Pfad sind `u` und `v`
+*nicht* parallel — außer bei genau `t = ½`, wo `u = -2v`. Beides bewiesen
+und numerisch belegt.
+
+**Zwei eigene Fehler beim Nachrechnen gefunden und korrigiert**
+(vor dem Commit, siehe Report): (a) Behauptung „`u`,`v` nirgends parallel
+auf dem linearen Pfad" war falsch — `2t-1=0` bei `t=½`; (b) Vorzeichen von
+`C` in `thm:cfm-equivalence-scratch` war so formuliert, dass `C` negativ
+sein konnte, im Widerspruch zur Floor-Aussage. Jetzt `L_CFM = L_FM + C`,
+`C ≥ 0`.
+
+**Fehlende Primärquellen dokumentiert** (in `rem:fm-sources` und
+`caution:v-source`): Lipman et al. 2023 (Original-FM) und Salimans & Ho
+2022 (`v`-Parameterisierung) liegen **nicht** in `papers/`. Die
+`v`-Definition ist die einzige importierte, hier nicht verifizierbare
+Definition; alles daraus Abgeleitete ist eigenständige Algebra.
+
+**Verwendet:** Holderrieth & Erives §3–§4 (tatsächlich gelesen, S. 1–8,
+14–33), Song et al. 2021 für die Brücke. Deren Prop. 1 (`a_t,b_t`)
+unabhängig nachgerechnet und bestätigt.
+
+## Runde: Geometry Revisit + Riemannian FM (2026-08-16, 230 → 263 S.)
+
+Phase 3. **Kein Implementierungsdetail angefasst, kein Label gelöscht**
+(alle 17 extern zitierten Kapitel-12-Labels erhalten, 0 undefinierte
+Referenzen, 0 doppelte Labels).
+
+### Kapitel 3 (Geometrie): gezielt erweitert, nicht neu geschrieben
+
+Vor der Arbeit gegen die Frage geprüft „Was muss ein Leser verstanden haben,
+bevor er RFM lernt?". Sechs echte Lücken gefunden und geschlossen:
+
+1. **Kovariante Ableitung fehlte komplett.** `def:geodesic-scratch` benutzte
+   `∇_γ̇ γ̇ = 0`, ohne dass `∇` je erklärt wurde — die Geodätendefinition war
+   faktisch unlesbar. Jetzt konkret für eingebettete Mannigfaltigkeiten:
+   `DV/dτ = P_{T_xM}(dV/dτ)`, Tangentialprojektion der gewöhnlichen
+   Ableitung. Daraus fällt heraus: Geodäte ⟺ `γ̈ ⊥ T_γM`, und **konstante
+   Geschwindigkeit ist eine Folgerung, keine Zusatzannahme**.
+2. **Tangentialbündel und Vektorfeld auf einer Mannigfaltigkeit** waren nie
+   definiert. Jetzt `def:tangent-bundle`, `def:vector-field-manifold`, plus
+   `prop:flow-stays-on-manifold` (ein tangentiales Feld verlässt die
+   Mannigfaltigkeit nie — Beweis über `DF(X_t)u_t(X_t)=0`).
+3. **Cut Locus** war nie benannt (nur „injectivity radius", einmal).
+   Jetzt `def:cut-locus` + `ex:cut-locus-three` (S¹, S², SO(3)) +
+   `lem:subarc-minimising`.
+4. **Riemannscher Gradient, Divergenz, Volumenmaß** fehlten ganz. Neue
+   Section `sec:manifold-calculus`. Volumenmaß über die Gram-Determinante
+   motiviert (`√|g|` ist erzwungen, nicht Konvention), Divergenz erst
+   intuitiv (lokale Volumenexpansion), dann Koordinatenformel Symbol für
+   Symbol, dann euklidischer Spezialfall, dann Polarkoordinaten als Check.
+5. **Skalierungseigenschaft der Exp-Map** (`γ_v(t) = Exp_x(tv)`) war nie
+   ausgesprochen — sie ist aber genau das, was `Exp_{x_0}(t Log_{x_0}(x_1))`
+   überhaupt sinnvoll macht. Jetzt `lem:geodesic-reparam` +
+   `prop:exp-scaling` + `cor:geodesic-interp-general`.
+6. **S²-Beispiel für Exp/Log** fehlte (nur S¹ war da). Jetzt geschlossene
+   Formeln mit Herleitung, Zahlen, und der Stelle wo es bricht (Antipode).
+
+**Bonus: eine geerbte Zitat-Lücke geschlossen.** `prop:geodesic-oneparam`
+(Einparameter-Untergruppen sind Geodäten) war mit „do Carmo Ch. 11"
+zitiert. Mit der Projektionsdefinition der kovarianten Ableitung ist der
+Beweis elementar: die induzierte Metrik von `⟨A,B⟩=½tr(AᵀB)` **ist** die
+bi-invariante Metrik des Dokuments, und `R̈ = RΞ²` ist orthogonal zu
+`T_RSO(3)`, weil `Ξ²` symmetrisch und `Ω` schiefsymmetrisch ist. Jetzt als
+`prop:so3-geodesic-proof` vollständig bewiesen.
+
+**Produktmetrik-Gewicht λ** ausgebaut (`prop:lambda-effect`): λ ändert
+(i) die Geodäten **nicht**, (ii) das Volumenmaß nur um `λ^{3/2}`,
+(iii) den Loss **doch** — ein Loss mit Rotationsgewicht λ *ist* die
+quadrierte Norm von `g^λ` —, (iv) den exakten Minimierer **nicht**.
+Damit ist die User-Frage „ist Loss-Weighting eine Metrikwahl?" präzise
+beantwortet: **ja und gleichzeitig egal am Populationsoptimum**; die ganze
+Wirkung sitzt in der endlichen Approximation.
+
+### Kapitel 12 (Riemannian FM): von Grund auf neu
+
+12 → **45 Seiten**, 4 → **16 Sections**. Reihenfolge: was bricht →
+tangentialwertige Dynamik → Riemannsche Probability Paths → Riemannsche
+Continuity Equation → konditionale Geodäten + Geschwindigkeit →
+Marginalisierung + L²-Projektion → Vergleichstabelle → S¹ → S² → SO(3) →
+Produktmannigfaltigkeit → CNF/Likelihood → Diffusion vs. RFM → ein Bild →
+Missverständnisse → numerische Verifikation → Brücke zu SigmaFlow.
+
+**Die ausstehende Lücke aus STATUS ist geschlossen.** `prop:geodesic-vf-general`
+(allgemeiner Beweis, dass `u_t(X_t) = Log_{X_t}(x_1)/(1-t)`) war bisher nur
+für SO(3) ausgeführt, mit der Begründung, der allgemeine Fall brauche
+Jacobi-Felder. **Das stimmte nicht.** Der Beweis braucht genau zwei Lemmata,
+beide elementar: affine Umparametrisierung erhält Geodäten, und ein
+Teilbogen einer minimierenden Geodäte ist minimierend. Damit:
+`σ(s) := γ(t+s(1-t))` ist die minimierende Geodäte von `X_t` nach `x_1` mit
+`σ̇(0) = (1-t)Ẋ_t`, also `x_1 = Exp_{X_t}((1-t)Ẋ_t)`, also
+`Log_{X_t}(x_1) = (1-t)Ẋ_t`. Fünf Zeilen. Als `rem:no-jacobi` ausdrücklich
+festgehalten, dass die frühere Begründung die Voraussetzung überschätzt hat.
+
+**Riemannsche Continuity Equation** (zweite offene Lücke) jetzt zweifach
+hergeleitet: einmal über Massenerhaltung + Riemannschen Divergenzsatz,
+einmal in Koordinaten — dort zeigt sich, dass sie **die flache
+Continuity Equation für die Koordinatendichte `p√|g|`** ist und die beiden
+`√|g|` in `div_g` genau Hin- und Rückumrechnung sind.
+
+**Der eine Punkt, an dem der euklidische Beweis wirklich Geometrie benutzte,
+ist benannt** (`sec:rfm-averaging`): `E[u_t(x|Z) | X_t = x]` mittelt
+Tangentialvektoren — erlaubt, weil die Bedingung den Punkt `x` fixiert und
+alle gemittelten Vektoren damit in *demselben* `T_xM` liegen. Mit
+`caution:rfm-averaging-trap`: eine unbedingte Erwartung `E[Ẋ_t]` wäre
+**nicht** definiert.
+
+**Parallel Transport** wird nicht entwickelt, aber `rem:no-parallel-transport`
+erklärt warum: jeder Vergleich von Tangentialvektoren fixiert vorher den
+Punkt, und die Body-Frame-Trivialisierung liefert die Identifikation ohnehin.
+
+**Cut Locus theoretisch vs. numerisch sauber getrennt**
+(`sec:rfm-so3-cut-locus`): bei θ=π exakt ist der Pfad nicht eindeutig, aber
+Maß null → für einen Erwartungswert irrelevant. *Nahe* π ist die Formel
+schlecht konditioniert, und das ist auf SO(3) der **meistbesuchte** Bereich
+(`p(θ) ∝ 1−cos θ` maximal bei π) — 9 % der Haar-Paare. Als eigene Tabelle.
+
+**Trennung Theorie / SigmaFlow-Konvention eingehalten** (§60/§61): der
+Haupttext benutzt durchgehend die Standard-Linkswirkung `R ↦ QR`; die
+Konjugationswirkung `R ↦ QRQᵀ` steht ausschließlich in
+`caution:rfm-conjugation-preview` am Kapitelende, als Eigenschaft der
+SigmaFlow-*Zustandsparametrisierung*, nicht der Methode. Ebenso der
+`Omega()`-Clamp: Theorie beschreibt die **exakte** Principal-Log-Map, der
+Implementierungsbefund steht separat in `rem:rfm-log-implementation-note`.
+
+**Verwendet:** Chen & Lipman 2024 (ICLR), §2–§3.2 vollständig gelesen. Deren
+Prämetrik-Konstruktion (Gl. 13) mit `d = d_g` und `κ(t)=1−t` liefert
+`u_t(x|x_1) = Log_x(x_1)/(1−t)` — Vorzeichen **positiv** in unserer
+Zeitkonvention; unabhängig nachgerechnet und bestätigt. do Carmo und Lee für
+die importierten Standardfakten (Levi-Civita = Tangentialprojektion,
+Riemannscher Divergenzsatz).
+
+## Runde: globaler Konsolidierungs-Audit (2026-08-16, 263 → 277 S.)
+
+Phase 4. **Keine neue Theorie**, sondern Kohärenz des Gesamtdokuments.
+0 Fehler, 0 undefinierte Referenzen, 0 doppelte Labels.
+
+**Dependency-Audit** (Erstverwendung vs. Definition, 30 Kernbegriffe
+maschinell geprüft): Vorwärtsreferenzen sind durchgehend ausgeschildert
+(„from \Cref{chap:groups} onward"), also sauber — **eine** echte Lücke:
+**Bedingte Erwartung war nirgends definiert.** `def:conditional-density`
+gab es, `\EE[Y|X]`, Tower Property und „Funktionen von X gehen durch" nicht
+— obwohl `lem:l2-projection`, der zentrale Beweis des ganzen Dokuments,
+genau darauf beruht. Neue Section `sec:conditional-expectation` in Kap. 2
+mit Definition, beiden Rechenregeln samt Beweis und einem
+Zwei-Punkt-Beispiel, das auch die *falsche* Manipulation zeigt.
+
+**Notations-Audit** (maschinelle Kollisionssuche): sechs echte
+Mehrfachbelegungen gefunden, jetzt in `caution:symbol-reuse` im Frontmatter
+global aufgelistet — „score" (statistisch vs. Docking-Score), `s`
+(Rauschzeit vs. `s_θ`), `λ` (Metrikgewicht vs. DSM-Gewichtung `λ(s)`),
+`φ` (Fragment-Rekonstruktionsabbildung vs. Winkel `φ_t`), `v` (Flow-Velocity
+vs. Diffusions-`v`), `d` (Dimension vs. `d_g`). Plus die Liste der Symbole,
+die *nicht* mehrfach belegt sind. Lokal behoben: `σ` wurde in
+`ex:two-point-2d` als Logistik-Funktion benutzt — entfernt.
+
+**Dichte-Audit** (Zeilen/Beispiele/Cautions je Kapitel gezählt): klarer
+Ausreißer ist **Kap. 7 (Diffusion auf SO(3)): 433 Zeilen, 0 Beispiele,
+0 Cautions** — bei schwerem Stoff (Heat Kernel, IGSO(3), Peter–Weyl).
+Behoben mit `ex:igso3-limits`: beide Grenzfälle der Reihe, mit Zahlen.
+Groß-σ liefert `prop:so3-brownian-stationary` in einer Zeile, **und** den
+quantitativen Befund, dass `σ_max = 1.5` noch *nicht* uniform ist
+(`max|f−1| = 0.98` gegen `1.3e-10` bei σ=5) — das ist die **Ursache** des in
+`sec:engine-sources` gemessenen Quellverteilungs-Confounders. Klein-σ liefert
+das Bild „IGSO(3)-Rauschen = gaußscher Rotationsvektor" und räumt das
+`ω²`-Missverständnis aus (Haar-Jacobi, nicht Rauschmodell).
+
+**Redundanz-Audit**: geprüft und **freigegeben** — die drei Herleitungen der
+Continuity Equation (Kap. 5 1D, Kap. 11 Integralform, Kap. 12 Riemannsch)
+sind ausgeschildert und bauen aufeinander auf; die zwei
+Äquivarianz-Definitionen (Kap. 4 linear, Kap. 8 allgemeine Gruppenwirkung)
+sind explizit als Verallgemeinerung markiert. Keine Bad Duplication
+gefunden. Auch **keine neue Synthesis-Kapitel** angelegt: die vom User
+skizzierte Diffusion-vs-FM-Synthese existiert bereits dreifach
+(`sec:fm-diffusion-synthesis`, `sec:rfm-vs-diffusion`, `chap:engine-swap`)
+plus „Closing Remarks" — eine vierte wäre genau die Duplikation, die der
+Audit vermeiden soll.
+
+**Navigation** (das eigentliche Problem bei 277 Seiten):
+- **8 Part-Roadmaps** („What you will learn / Why it is needed / What
+  depends on it") am Anfang jedes Parts.
+- **12 Kapitel-Lernziele** („What you should now be able to do", 4–6
+  Punkte) am Ende jedes Theoriekapitels. Kap. 5 hatte bereits eine
+  hervorragende Q&A-Tabelle und blieb unangetastet.
+- Damit ist die Story jetzt aus dem Inhaltsverzeichnis allein lesbar.
+
+**Übergang SigmaDock → Flow Matching** war der einzige abrupte: Kap. 10
+endete auf Ranking-Heuristiken. Jetzt schließt es mit einer expliziten
+Keep/Replace-Aussage und einem Verweis auf
+`tab:sigmadock-vs-sigmaflow-precise`.
+
+## Runde: die drei letzten Blocker (2026-08-16, 277 → 286 S.)
+
+Phase 5. Abschluss des Theoriestrangs. 0 Fehler, 0 undefinierte Referenzen,
+0 doppelte Labels.
+
+**1. `cleveref` repariert.** Ursache: alle Theorem-Umgebungen teilten sich
+per `\newtheorem{X}[theorem]{...}` den `theorem`-Zähler, und cleveref
+bestimmt den Typ über den *Zähler*, nicht über die Umgebung → jeder
+`\Cref` schrieb „Theorem". Lösung: `aliascnt` (aus `oberdiek`, per `tlmgr`
+nachinstalliert). `\newaliascnt{definition}{theorem}` legt einen Zähler
+`definition` an, der ein Alias von `theorem` ist; `\aliascntresetthe` macht
+`\thedefinition` = `\thetheorem`. **Nummerierung damit byte-identisch**,
+kein Label angefasst, kein `\Cref`-Aufruf geändert. Plus explizite
+`\crefname`/`\Crefname` für alle neun Umgebungen.
+
+Regressionstest: neues Skript `audits/cleveref_type_check.py` liest die
+`.aux`, extrahiert für jedes Label den von cleveref gespeicherten Typ und
+vergleicht ihn mit dem Label-Präfix. 349 theoremartige Labels geprüft, alle
+korrekt. Typverteilung jetzt: definition 81, proposition 69, caution 64,
+remark 56, example 42, theorem 23, lemma 4, notation 4, corollary 2.
+
+Nebenbefund dabei: 5 eigene Labels waren *falsch benannt* (vier
+`ex:`-Labels saßen auf Subsections, `rem:trivialisation-terminology` auf
+einer Caution). Umbenannt, nicht auf die Whitelist gesetzt.
+
+**2. EquiformerV2-Worked-Example** (Kapitel 9, neue §9.13, ~7 Seiten,
+14 Schritte). Drei Atome, zwei Kanten, `l_max=1`, ein Head. Vollständig
+durchgerechnet: Kantengeometrie → Radialfeatures → Kantenframe →
+m-Sektoren → SO(2)-Faltung → m=0-Invariante → Attention-Logits → Softmax →
+Werte → Rückrotation → Aggregation → Residual. Alle Zahlen kommen aus
+`audits/equiformer_toy_block.py`, keine von Hand.
+
+Tragender Trick: **bei `l=1` ist die Wigner-D-Matrix in Cartesischer Basis
+die Rotationsmatrix selbst** — deshalb ist das Beispiel exakt und trotzdem
+von Hand nachrechenbar. `caution:toy-block-scope` trennt explizit fünf
+exakte von fünf didaktisch vereinfachten Punkten.
+
+Zwei numerische Checks, beide bestanden: Äquivarianz
+`F(Qx,Qh) = Q F(x,h)` (1.6e-15 über 200 Rotationen) und
+**Eichunabhängigkeit** — das Ergebnis hängt nicht von der willkürlich
+gewählten Transversalachse des Kantenframes ab (1.7e-16 über 200
+Referenzvektoren). Dazu ein **Gegentest**: bricht man die SO(2)-Bedingung
+absichtlich (verschiedene Gewichte auf die beiden Transversalpartner),
+springt die Streuung auf 0.85 — der Test kann also scheitern.
+
+**3. Part VIII bereinigt.** Vorher: Part hieß „Synthesis", enthielt aber nur
+den Numerik-Index, und die eigentlichen „Closing Remarks" standen als
+unnummeriertes `\chapter*` dahinter. Jetzt:
+`Part VIII — Implementation Reference and Synthesis` mit
+Kap. 16 „Numerical and Implementation Reference" und Kap. 17
+„Closing Synthesis" (§17.1 eine Ein-Seiten-Vergleichstabelle der beiden
+Modelle, ausschließlich aus vorhandenem Material mit Querverweisen;
+§17.2 der bestehende Closing-Remarks-Text). **Keine neue Theorie.**
+
+**Eigener Fehler, gefunden und behoben:** `STATUS.md` war durch einen
+früheren PowerShell-Befehl doppelt kodiert
+(`Get-Content -Raw | Set-Content -Encoding utf8` — PS 5.1 liest UTF-8 ohne
+BOM als Windows-1252). Repariert per cp1252-Rücktransformation, verifiziert
+gegen `git show HEAD:STATUS.md`. **Lehre:** in PowerShell nicht nur beim
+*Schreiben* `-Encoding utf8` setzen, sondern auch beim *Lesen*
+(`Get-Content -Encoding utf8`) — sonst ist der Round-Trip destruktiv. Besser:
+solche Ersetzungen mit Python statt PowerShell machen.
+
 ## Audit-Skripte (`audits/`, alle lokal, ohne GPU/Checkpoint)
 
 | Skript | Zweck |
@@ -5407,6 +5718,10 @@ Drei Lücken im bestehenden Kapitel geschlossen:
 | `s2_gauge_audit.py` | S²-Äquivarianzbruch bei Produktionsgröße |
 | `engine_swap_audit.py` | FM-Ziele, Quellverteilungen, Loss-Skalen, Log-Map |
 | `sde_limit_check.py` | √Δt, DDPM→VP, SMLD→VE, Euler–Maruyama |
+| `flow_matching_theory_audit.py` | **neu (Phase 2):** 27 Checks über 3 Schedules — Gauß-Feld, Score↔Velocity (cond. + marg.), Continuity Equation, Marginalisierungssatz (Monte Carlo), tanh-Beispiel, PF-ODE↔FM für VP/VE, `v` vs. `u`, SNR-Bedingung, Nichteindeutigkeit, L²-Projektion + Loss-Floor. Alle grün. |
+| `riemannian_fm_theory_audit.py` | **neu (Phase 3), erweitert in Phase 4:** 38 Checks. SO(3): Exp/Log-Rundlauf, ½-Metrik-Isometrie, Bi-Invarianz, `d_g = θ`, `R̈ ⊥ T_RSO(3)`, konstante Geschwindigkeit, Interpolant-Endpunkte, `R_tᵀṘ_t = Ξ` per finiter Differenz, Current-Point-Log, 90°-Beispiel, Haar-Invarianz (KS-Test). S²: Exp/Log, Tangentialität, `prop:geodesic-vf-general` numerisch. S¹: Wrap. Produkt: Endpunkte, Geschwindigkeiten, λ-Unabhängigkeit der Geodäte. Flacher Grenzfall → Kapitel 11. Exp/Log aus Rodrigues selbst implementiert, **nicht** aus dem Repo importiert. Alle grün. |
+| `cleveref_type_check.py` | **neu (Phase 5):** liest `Texte/theory.aux`, extrahiert für jedes Label den von cleveref gespeicherten Referenztyp und vergleicht ihn mit dem Label-Präfix. Regressionstest für den `aliascnt`-Fix. 349 theoremartige Labels, alle korrekt. |
+| `equiformer_toy_block.py` | **neu (Phase 5):** der Toy-EquiformerV2-Block aus §9.13. Erzeugt alle im Text zitierten Zahlen und testet zwei Strukturaussagen: SO(3)-Äquivarianz (1.6e-15) und Eichunabhängigkeit vom Kantenframe (1.7e-16), plus einen Gegentest, der zeigt dass der zweite Check scheitern *kann*. |
 
 **Zwei Methodikfallen, beide selbst hineingetappt und behoben** — bei neuen
 Skripten beachten:
@@ -5415,6 +5730,20 @@ Skripten beachten:
 2. **Monte Carlo verdeckt Konvergenzordnungen.** Bei 40 000 Samples ist der
    Stichprobenfehler 5e-3; die behauptete 1/N-Konvergenz war unsichtbar. Wo
    die Marginale gaußisch sind: geschlossen rechnen, nicht simulieren.
+3. **(2026-08-16, Phase 2)** Ein Monte-Carlo-Test braucht eine Toleranz *in
+   Einheiten seines eigenen Standardfehlers* — eine absolute Toleranz unter
+   dem Sampling-Rauschen lässt eine korrekte Identität durchfallen.
+4. **(2026-08-16, Phase 2)** Posterior-Gewichte immer im Log-Raum rechnen.
+   Bei kleinem `σ_t` unterlaufen alle Mischungskomponenten auf 0 → `0/0` →
+   `NaN`, und ein Max-Residuum-Test meldet `NaN <= tol` als bestanden.
+   Ein Check muss auf seine *Fähigkeit zu scheitern* geprüft werden,
+   bevor sein Bestehen als Beleg zählt.
+5. **(2026-08-16, Phase 3) — dieselbe Falle, zum zweiten Mal.** Ein
+   λ-Check im RFM-Audit verglich zunächst einen Ausdruck mit sich selbst
+   und hätte für jede Theorie bestanden. Ersetzt durch einen, der scheitern
+   kann (ändert λ die Geodäte, ist die Geschwindigkeit nicht mehr konstant
+   in t). Lehre Nr. 4 war notiert und half trotzdem nicht — der Check auf
+   Fallierbarkeit muss zur **Routine** werden, nicht zur Notiz.
 
 Weitere Stolpersteine: `timestep_embedder.py` pinnt hart `timesteps.float()`
 (Zeitpfad bleibt float32, speist nur ℓ=0 → für Äquivarianz irrelevant);
@@ -5434,3 +5763,140 @@ Weitere Stolpersteine: `timestep_embedder.py` pinnt hart `timesteps.float()`
   Approximation entsteht (die `m_max`-Trunkierung war exakt äquivariant, ich
   hatte sie fälschlich als approximativ geführt).
 - `SigmaDock/` und `SigmaFlow_Minimal/` sind eingefroren.
+
+---
+
+# ARC-Vorbereitung — Stand 2026-08-16
+
+`theory.tex` ist eingefroren. Diese Phase ist ausschliesslich Code, Jobs,
+Configs, Experimentdesign und Validierung.
+
+## Fertig und getestet (alle Suiten gruen)
+
+| Artefakt | Zweck | Test |
+|---|---|---|
+| `arc/throughput_sweep.slurm` | misst Batch/Precision/`--debug`/`val_interval` | — (Messjob) |
+| `arc/final_config.sh` | einzige Stelle fuer die finalen Werte | Validator |
+| `arc/train_final_72h.slurm` | ein Skript, vier Varianten, Snapshots + USR1-Trap | `bash -n`, Validator |
+| `arc/submit_final.sh` | setzt Partition/Zeit/GPU, die `#SBATCH` nicht lesen kann | `bash -n` |
+| `arc/write_manifest.py` | Reproduzierbarkeits-Manifest je Lauf | Selbsttest |
+| `arc/variant_diff.py` | semantischer Diff Minimal -> Variante | 2 Selbsttests |
+| `arc/exp101_source_audit.slurm` | Gate fuer den Source-Strang, **ohne GPU** | `bash -n` |
+| `SigmaFlow_FM_Specific/EXP-101_.../source_distance_audit.py` | die Messung | 20 Checks |
+| `SigmaFlow_Evaluation/evaluate_run.py` | RMSD/TFD/Oracle@K/Top-1@K in einem Durchgang | 22 Checks |
+
+## Zwei Befunde, die den Plan geaendert haben
+
+1. **Die Koordinaten sind taschenzentriert.** `sigma_flow_generator.py:499`
+   zieht `pocket_com` ab, `:501` teilt durch `DIMENSIONAL_SCALE = 2.7 A`.
+   `trans_0 ~ N(0, I)` sitzt also im Taschenzentrum. Die im Compute-Audit
+   offen gelassene Sorge, die Quelle koenne systematisch zig Angstroem
+   danebenliegen, ist damit **ausgeraeumt** — aus dem Code, nicht aus einer
+   Messung.
+
+2. **`R_1 ≡ I` in SigmaFlow_Minimal.** `get_fragment_com_and_rot` gibt die
+   Zielrotation unbedingt als Identitaet zurueck (`rots.append(I3)`). Ein
+   Rotations-Audit gegen Minimal haette deshalb einen scheinbar perfekten
+   Strukturgewinn von 132 Grad gemeldet und mit voller Zuversicht
+   "EXP-102 bauen" empfohlen — ein reines Artefakt der Parametrisierung.
+   `analyse()` hat jetzt eine Sperre, und die belastbare Messung laeuft gegen
+   **EXP-100**, wo `R_1` eine echte inferenzsaubere Zielrotation ist.
+
+   Das ist Lehre Nr. 6 (siehe unten) und derselbe Fehlertyp, den
+   `feedback_audit_against_code` schon beschreibt: ich hatte die Zentrierung
+   im Code geprueft, die Rotation aber aus der Roadmap-Formulierung
+   uebernommen.
+
+## Bewusst NICHT gebaut
+
+- **EXP-102 (informierte Quelle)** — das Gate (EXP-101) ist noch nicht
+  gelaufen. Die Roadmap sagt ausdruecklich: faellt es negativ aus,
+  "wird EXP-102 nicht gebaut". Eine Heuristik jetzt zu waehlen hiesse, die
+  Entscheidung vorwegzunehmen, die die Messung treffen soll.
+- **EXP-105 (Confidence)** — die Roadmap definiert sie als
+  `C_psi(z_1, P, L) ≈ P(RMSD < 2 A)`, also einen Klassifikator auf FERTIGEN
+  Posen. Der braucht generierte Daten aus einem trainierten Checkpoint; die
+  gibt es offline nicht. Vorbereitet ist stattdessen die **Nahtstelle**:
+  `evaluate_run.py --scores` nimmt jeden Ranker entgegen, und der bestehende
+  Baseline-Ranker (`chem/statistics.py::compute_heuristic`, Vinardo mal
+  Mittel der PB-Checks) ist damit ohne neuen Code anschliessbar.
+
+## Naechster konkreter Schritt
+
+Sobald ARC laeuft: Runbook Abschnitt 0 und 0a, Schritte 1-5 in dieser
+Reihenfolge. Schritt 3 (`exp101_source_audit.slurm`) braucht weder GPU noch
+Checkpoint und kann sofort parallel laufen.
+
+**Offen und noch nicht committet:** 8 neue Dateien sind `untracked`. Der
+Validator meldet sie als Fehler, weil ARC den Code per `git pull` bekommt.
+Committen ist eine Entscheidung des Nutzers, keine autonome Aktion.
+
+
+---
+
+# ARC-Plan konkretisiert — 2026-08-16 (zweite Runde)
+
+Vollstaendiger Bericht: **`ARC_PLAN_2026-08-16.md`**.
+
+## Verifizierter Laufstand (nicht aus Erinnerung)
+
+Der letzte methodisch gueltige Vergleich war **12h vs. 12h**, nicht 6h:
+- SigmaFlow Frame-Fix **8541310**, 11:05:40, 13.750 Steps, max_epochs=6
+- SigmaDock **8541439**, 10:52:16, 13.200 Steps, max_epochs=6
+- Sampling **8554147/8554149**, je 209 Komplexe x 10 Seeds
+
+Ein gueltiges 6h-Paar existiert ebenfalls (8530243 / 8512922, max_epochs=3,
+je ~7.050 Steps), wurde aber vom 12h-Paar abgeloest. Die 24h-Laeufe
+(8465054/8465055) bleiben INVALID.
+
+## Drei Zahlen, die den Plan bestimmen
+
+1. **72 h liefern bei aktuellem Durchsatz ~37 Epochen, nicht 128.**
+   Aus dem 12h-Lauf: 110.000 Beispiele in 11,1 h = 2,75/s, also 713.000 in
+   72 h = 14 % des Paperbudgets. `FINAL_MAX_EPOCHS=128` verlangt eine
+   3,5-fache Beschleunigung, die der Throughput-Sweep erst nachweisen muss.
+
+2. **SigmaFlows Orientierungsfehler (145,9 Grad) liegt UEBER der
+   Zufallsbaseline (132,3 Grad).** Nicht nur auf Zufallsniveau, sondern
+   systematisch schlechter als raten. SigmaDock: 124,4 Grad.
+
+3. **Die Oracle-Luecke ist riesig:** ein Zug 1,9 % (SF) / 9,1 % (SD),
+   best-of-10 29,2 % / 45,9 %.
+
+## SigmaDock-Confidence: verifiziert
+
+**SigmaDock hat KEIN trainiertes Confidence-Modell** (Paper S. 8 und
+Appendix F.2, S. 33). Stattdessen `s_i = -b_i * p_i^4` mit Vinardo-Energie
+und PoseBusters-Checks. Null gelernte Parameter, null Trainings-Compute.
+Bereits implementiert in `chem/statistics.py::compute_heuristic`.
+
+**Alle Paper-Hauptzahlen sind NACH Ranking** (N_seeds = 40). Das Ranking
+traegt rund 13 Prozentpunkte (Ablation I* 79,9 vs. D 66,1). Unsere Zahlen
+sind Einzelziehungen und mit 79,9 % NICHT vergleichbar.
+
+**Risiko:** `gnina` ist ein externes Binary und auf ARC ungeprueft.
+
+## Bewusst zurueckgestellt
+
+**Integrierte Confidence kann waehrend des generativen Trainings nicht fair
+gescreent werden.** Das Target `P(RMSD < 2 A)` braucht generierte Posen mit
+variierender Qualitaet; das Netz sieht waehrend des Trainings aber nur `x_t`
+auf dem Wahrscheinlichkeitspfad, bei t=1 exakt die Kristallpose. Labels dafuer
+zu erfinden waere unsauber. Reihenfolge stattdessen: 72h-Generatoren -> K
+Samples -> Labels -> C_ext -> optional integrierter Head auf denselben Labels.
+Die frei werdende GPU geht an einen zweiten Seed.
+
+## Zwei Fehler in der eigenen Vorarbeit
+
+1. **Snapshot-Zeitplan war kumulativ.** `sleep h*3600` je Eintrag haette bei
+   "6 12 24 48" die Snapshots auf 6, 18, 42 und 90 h gelegt -- der letzte waere
+   nie gefallen, ohne jede Fehlermeldung. Behoben, `arc/test_snapshot_schedule.sh`
+   prueft es mit Gegenprobe.
+2. **EXP-101 doppelt gebaut.** `arc/exp101_distance_audit.py` existierte
+   bereits und war vollstaendiger (Hauptachsen-Heuristik samt
+   Vorzeichenfixierung). Nicht gesucht. Konsolidiert, Duplikat geloescht.
+
+## Naechster Schritt
+
+`ARC_PLAN_2026-08-16.md` Abschnitt L, Schritte 0-8. Schritt 2 muss um
+`which gnina` ergaenzt werden.

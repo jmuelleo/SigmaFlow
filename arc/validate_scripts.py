@@ -195,7 +195,12 @@ def check_shell(path: Path) -> None:
     # --- unaufgeloeste Variablen --------------------------------------
     # Variablen, die benutzt, aber weder gesetzt, exportiert, als Parameter
     # dokumentiert noch von _common.sh geliefert werden.
-    common = (ARC / "_common.sh").read_text(errors="replace")
+    # _common.sh und final_config.sh sind die beiden Dateien, die von den
+    # Jobskripten ge-source-t werden; was sie exportieren, gilt als gesetzt.
+    common = "\n".join(
+        (ARC / f).read_text(errors="replace")
+        for f in ("_common.sh", "final_config.sh") if (ARC / f).exists()
+    )
     provided = set(re.findall(r"^export\s+([A-Z_][A-Z0-9_]*)=", common, flags=re.M))
     provided |= set(re.findall(r"^\s*export\s+([A-Z_][A-Z0-9_]*)=", text, flags=re.M))
     provided |= set(re.findall(r"^\s*([A-Z_][A-Z0-9_]*)=", text, flags=re.M))

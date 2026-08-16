@@ -1,0 +1,34 @@
+# Fingerprint eines finalen Modells. Erzeugt von arc/make_model_fingerprint.py.
+# Felder mit UNVERIFIED sind bewusst offen gelassen, nicht geschaetzt.
+model_name: sigmaflow_minimal
+code_dir: C:\Users\julia\Documents\SigmaFlow\SigmaFlow_Minimal
+git_commit: a225029685eefe6aca5fac326f7546564d3a058f
+git_clean: true
+backbone_hash: 3ce51d27aed3e8cfd35a9ab90dcf78648a0d164381a897d6638c55082fb54ead
+n_behaviour_files: 10/10
+frame_fix: PRESENT   # adjungierter Transport Welt -> Koerper vorhanden
+rotation_target_R1: identity   # R_1 = I; R_t ist Delta-Rotation gegen die Kristallorientierung von pos_0
+rotation_convention: >-
+    Rdot = R * Omega  (KOERPER / linkstrivialisiert). Ziel log(R_t^T R_1)/(1-t); Integrator R_next = R_t @ exp(v dt); Netzausgabe wird per R_t^T w R_t transportiert. Numerisch verifiziert: audits/frame_convention_audit.py
+training_objective: conditional flow matching, MSE auf u_t (trans) und u_t_R (rot)
+source_distribution: trans_0 ~ N(0, I) (taschenzentriert, /2.7 A); R_0 ~ Haar auf SO(3)
+config: arc/final_config.sh   # batch_size, seed, precision, max_epochs
+batch_size: FROM_final_config.sh
+seed: FROM_final_config.sh
+written_utc: 2026-08-16T15:25:22Z
+known_caveats:
+  - so3_utils.Log ist nahe 180 Grad begrenzt genau (Omega-Clamp auf +-(1-1e-7)). Relativer Fehler auf dem Trainingsziel: median 5e-7, p99 3e-4, max 5e-3. Gegen einen Rotationsfehler von 145 Grad belanglos - Caveat, kein Blocker.
+  - Der Docstring in calc_rot_vector_field nennt die Groesse 'right trivialised'. Nach ueblicher Konvention ist sie LINKS-trivialisiert (Koerperframe). Reine Benennungsfrage, Mathematik und Code sind konsistent.
+  - R_1 = I: das Rotationsziel ist per Konstruktion die Identitaet. Eine informative Rotationsquelle ist in dieser Parametrisierung nicht sinnvoll messbar (dafuer EXP-100).
+  - Val- und Testsatz sind beide posebusters (aus SigmaDocks Setup geerbt). Trifft beide Methoden identisch, verzerrt den Vergleich also nicht.
+file_hashes:
+  src/sigmadock/diff/sigma_flow_generator.py: 6e66db54972be2c99a6f8d67fa009166af459540bd98365c98c5d4ad0dd091d0
+  src/sigmadock/diff/so3_flow_matcher.py: 117cf03e680c0f5ff4d71262d7a03396d6c11fb55f9909e148a4ec9f79c4e250
+  src/sigmadock/diff/r3_flow_matcher.py: 2bceb628e144a1511a1c36e63c1f2a38d3fbcc29e38438d353a7acab9f54c964
+  src/sigmadock/diff/se3_flow_matcher.py: 85fc58f8fc441e11949eed91937ab872f1f4ca003343eabe740c22be9db42087
+  src/sigmadock/diff/so3_utils.py: 986549a609b3a598724d8c2088172741bde9245e77ba755185fd40ce7511999b
+  src/sigmadock/diff/sampling.py: 3c04a3b068f1715928ee133e53a1e6fc58ab0c751fbaf8a669cc9004609e6d6b
+  src/sigmadock/net/model.py: fd3cc78abe56f492fa26cb52c4a7bed1f4e51d69e8820b14d5d61784105159b8
+  src/sigmadock/trainer.py: 68e44ad5d9d4aa1aed0be5ba62e5ab709d081f25996ee50eaff9d80e84241e19
+  src/sigmadock/oracle.py: de6614428932579637ea1a244b6db5b830af251a2787a7ec9d837d05f13d227a
+  src/sigmadock/data.py: 278a87500d76bc7f442ef55428c2e7df3ecdfd4aeb6f81152207f26a3193a7ca

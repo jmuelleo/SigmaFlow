@@ -34,6 +34,55 @@ Danach weiter bei [Abschnitt 9](#9-copy-paste-commands-when-arc-is-back).
 
 ---
 
+## 0a. Reihenfolge der finalen Kampagne
+
+Die Schritte sind so sortiert, dass **jede Messung vor der Entscheidung
+kommt, die sie tragen soll**. Kein Schritt darf vorgezogen werden, weil sein
+Ergebnis sonst geraten statt gemessen wäre.
+
+| # | Job | Dauer | Wozu | Blockiert |
+|---|---|---|---|---|
+| 1 | `arc/00_preflight.sh` | — | Pfade, Envs, Partitionen, GPU-Klasse | alles |
+| 2 | `arc/train_exp100_sanity.slurm` | ~40 min | EXP-100 läuft auf ARC | 5 |
+| 3 | `sbatch arc/exp101_source_audit.slurm` | ≤2 h, **keine GPU** | Gate für den Source-Strang | EXP-102 |
+| 4 | `sbatch arc/throughput_sweep.slurm` | ~6 h | Batch/Precision/Durchsatz messen | 5 |
+| 5 | `bash arc/submit_final.sh <model>` | 72 h | die eigentlichen Läufe | Auswertung |
+
+Schritt 3 braucht **weder GPU noch Checkpoint** und kann parallel zu 2 und 4
+laufen — er ist der billigste Job der ganzen Kampagne und entscheidet trotzdem
+über einen kompletten Experimentstrang.
+
+```bash
+# 3. Source-Audit (Gate für EXP-102). Standard misst gegen EXP-100.
+sbatch arc/exp101_source_audit.slurm                        # beide Hälften
+DATASET=pdbbind-core sbatch arc/exp101_source_audit.slurm     # 10-min-Vorlauf
+TREE=minimal         sbatch arc/exp101_source_audit.slurm     # nur Translation
+
+# 4. Durchsatz messen — DANACH arc/final_config.sh ausfüllen.
+sbatch arc/throughput_sweep.slurm
+
+# 5. Finale Läufe. Erst nach Schritt 4, sonst ist max_epochs geraten.
+DRY_RUN=1 bash arc/submit_final.sh sigmadock          # anzeigen, nicht submitten
+bash arc/submit_final.sh sigmadock
+bash arc/submit_final.sh sigmaflow_minimal
+```
+
+### Warum Schritt 4 nicht übersprungen werden darf
+
+`final_config.sh` liefert bewusst nur **Platzhalter**. `FINAL_MAX_EPOCHS=128`
+ist eine Zielgröße, keine gemessene: bei den bisher beobachteten
+2.94 Samples/s wären 128 Epochen ≈ 3.3× zu langsam für 72 h. Ob die
+Beschleunigung reicht, entscheiden die drei ungemessenen Hebel des Sweeps —
+`--debug` (detect_anomaly + NaN-Callback), `cuda_precision` (TF32) und
+`val_check_interval` (bisher ~49 Validierungen pro Epoche).
+
+Wird der Sweep übersprungen, läuft das Training in einen Scheduler, dessen
+`max_steps` aus einer falschen Epochenzahl stammt — die LR-Kurve passt dann
+nicht zur tatsächlichen Laufzeit, und das ist **nach** 72 h nicht mehr
+reparierbar.
+
+---
+
 ## 1. Projektstand
 
 ### 1.1 SigmaDock (Referenz, unverändert)
