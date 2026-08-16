@@ -138,6 +138,15 @@ def main() -> int:
     frame_fix, frame_note = verify_frame_fix(code_dir)
     r1_form, r1_note = verify_r1(code_dir)
     commit = git(code_dir, "rev-parse", "HEAD")
+    # Der Repo-HEAD sagt, welchen Stand das Arbeitsverzeichnis hat -- er
+    # aendert sich bei jedem Commit irgendwo im Repo. Aussagekraeftig fuer das
+    # MODELL ist der letzte Commit, der dieses Codeverzeichnis beruehrt hat.
+    # Beides wird notiert; verwechselt man sie, sieht ein unveraendertes Modell
+    # nach jeder Theorieaenderung wie eine neue Version aus.
+    # Eingegrenzt auf src/, nicht auf das ganze Verzeichnis: in
+    # SigmaFlow_Minimal liegt ein verirrtes texput.log, dessen Aenderung sonst
+    # als "neue Modellversion" gezaehlt wuerde. Nur src/ bestimmt das Verhalten.
+    code_commit = git(code_dir, "log", "-1", "--format=%H %ad", "--date=short", "--", "src")
     # WICHTIG: auf das Codeverzeichnis EINGRENZEN. `git status --short` ohne
     # Pfad meldet das ganze Repository, also auch voellig unbeteiligte
     # Aenderungen (theory.tex, Notizen). Der Fingerprint soll aussagen, ob
@@ -187,7 +196,8 @@ def main() -> int:
         "# Felder mit UNVERIFIED sind bewusst offen gelassen, nicht geschaetzt.",
         f"model_name: {args.model}",
         f"code_dir: {code_dir}",
-        f"git_commit: {commit}",
+        f"git_commit_repo_head: {commit}",
+        f"git_commit_code_dir: {code_commit}   # letzte Aenderung an DIESEM Modellcode",
         f"git_clean: {'true' if not dirty or dirty == 'KEIN GIT-REPO' else 'false'}",
         f"backbone_hash: {combined}",
         f"n_behaviour_files: {len(present)}/{len(files)}",

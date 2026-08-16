@@ -44,7 +44,7 @@ Ergebnis sonst geraten statt gemessen wäre.
 |---|---|---|---|---|
 | 1 | `arc/00_preflight.sh` | — | Pfade, Envs, Partitionen, GPU-Klasse | alles |
 | 2 | `arc/train_exp100_sanity.slurm` | ~40 min | EXP-100 läuft auf ARC | 5 |
-| 3 | `sbatch arc/exp101_source_audit.slurm` | ≤2 h, **keine GPU** | Gate für den Source-Strang | EXP-102 |
+| 3 | `sbatch arc/exp101_distance_audit.slurm` | ≤2 h, **keine GPU** | Gate für den Source-Strang | EXP-102 |
 | 4 | `sbatch arc/throughput_sweep.slurm` | ~6 h | Batch/Precision/Durchsatz messen | 5 |
 | 5 | `bash arc/submit_final.sh <model>` | 72 h | die eigentlichen Läufe | Auswertung |
 
@@ -53,10 +53,10 @@ laufen — er ist der billigste Job der ganzen Kampagne und entscheidet trotzdem
 über einen kompletten Experimentstrang.
 
 ```bash
-# 3. Source-Audit (Gate für EXP-102). Standard misst gegen EXP-100.
-sbatch arc/exp101_source_audit.slurm                        # beide Hälften
-DATASET=pdbbind-core sbatch arc/exp101_source_audit.slurm     # 10-min-Vorlauf
-TREE=minimal         sbatch arc/exp101_source_audit.slurm     # nur Translation
+# 3. Source-Audit (Gate für EXP-102). Läuft gegen die EXP-100-Codebasis;
+#    in SigmaFlow-Minimal ist R_1 = I und jede Rotationsmessung tautologisch,
+#    das Skript bricht dort per assert ab.
+sbatch arc/exp101_distance_audit.slurm
 
 # 4. Durchsatz messen — DANACH arc/final_config.sh ausfüllen.
 sbatch arc/throughput_sweep.slurm
@@ -70,8 +70,8 @@ bash arc/submit_final.sh sigmaflow_minimal
 ### Warum Schritt 4 nicht übersprungen werden darf
 
 `final_config.sh` liefert bewusst nur **Platzhalter**. `FINAL_MAX_EPOCHS=128`
-ist eine Zielgröße, keine gemessene: bei den bisher beobachteten
-2.94 Samples/s wären 128 Epochen ≈ 3.3× zu langsam für 72 h. Ob die
+ist eine Zielgröße, keine gemessene: bei den gemessenen
+2.75 Samples/s (110.000 Beispiele in 11,1 h, Job 8541310) wären 128 Epochen ≈ 3.3× zu langsam für 72 h. Ob die
 Beschleunigung reicht, entscheiden die drei ungemessenen Hebel des Sweeps —
 `--debug` (detect_anomaly + NaN-Callback), `cuda_precision` (TF32) und
 `val_check_interval` (bisher ~49 Validierungen pro Epoche).
@@ -80,6 +80,49 @@ Wird der Sweep übersprungen, läuft das Training in einen Scheduler, dessen
 `max_steps` aus einer falschen Epochenzahl stammt — die LR-Kurve passt dann
 nicht zur tatsächlichen Laufzeit, und das ist **nach** 72 h nicht mehr
 reparierbar.
+
+---
+
+## 0b. Kanonische Modellversionen — nach diesen und keinen anderen wird trainiert
+
+| | `SD_FINAL` | `SF_MIN_FINAL` |
+|---|---|---|
+| Ordner | `SigmaDock_Reproduction_JulianMueller/sigmadock` (eigenes Repo auf ARC) | `SigmaFlow_Minimal/` |
+| Modell-Commit | **beim Preflight ablesen** (`git -C $ARC_SIGMADOCK rev-parse HEAD`) | **`267fb69`** (2026-08-13, Freeze) |
+| `backbone_hash` | beim Preflight erzeugen | `3ce51d27aed3e8cf` |
+| Model class | `SigmaDockDenoiser` | `SigmaFlowGenerator` |
+| Ziel | Denoising Score Matching, SE(3)-Diffusion | Conditional Flow Matching |
+| Rotationskonvention | Score-Parametrisierung, Konsum per **Links**multiplikation (`dR @ R_t`) | `Ṙ = R·Ω` (Körper / linkstrivialisiert) |
+| Frame-Fix | entfällt (SigmaDock war nie betroffen) | **PRESENT**, numerisch verifiziert |
+| Quelle | vom Vorwärtsprozess festgelegt | `trans_0 ~ N(0,I)` taschenzentriert, `R_0 ~ Haar` |
+| Config | `arc/final_config.sh` | `arc/final_config.sh` |
+| Fingerprint | `arc/fingerprint_sigmadock.yaml` (auf ARC erzeugen) | `arc/fingerprint_sigmaflow_minimal.yaml` |
+
+**Diese beiden Versionen werden ab jetzt nicht mehr verändert.** Jede Änderung
+an `SigmaFlow_Minimal/src/` macht `backbone_hash` ungültig und damit den
+72h-Lauf unvergleichbar.
+
+Erzeugen bzw. nachprüfen:
+
+```bash
+python arc/make_model_fingerprint.py --model sigmaflow_minimal
+python arc/make_model_fingerprint.py --model sigmadock --code_dir "$ARC_SIGMADOCK"
+python audits/so3_trivialisation_audit.py        # 16 Checks, Frame-Kette
+```
+
+`make_model_fingerprint.py` bricht mit Rückgabecode 1 ab, wenn der Frame-Fix
+fehlt — die Gegenprobe gegen `archive/SigmaFlow_MinimalChange` bestätigt, dass
+er das erkennt.
+
+### Referenz-Commits dieses Stands
+
+| Commit | Zweck |
+|---|---|
+| `267fb69` | SigmaFlow-Minimal eingefroren (der Modellcode selbst) |
+| `0fdd9f5` | EXP-100 Zustandsreparametrisierung, vollständig angebunden |
+| `a0d318e` | Theorie abgeschlossen (286 Seiten) |
+| `31fdc78` | ARC-Infrastruktur: 72h-Jobs, Snapshots, Fingerprints |
+| `siehe git log` | Modell-Fingerprints auf den Modell-Commit eingegrenzt |
 
 ---
 

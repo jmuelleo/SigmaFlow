@@ -2,20 +2,21 @@
 # Felder mit UNVERIFIED sind bewusst offen gelassen, nicht geschaetzt.
 model_name: sigmaflow_minimal
 code_dir: C:\Users\julia\Documents\SigmaFlow\SigmaFlow_Minimal
-git_commit: a225029685eefe6aca5fac326f7546564d3a058f
+git_commit_repo_head: 31fdc78c38ee64b7ecd27f544d324a1411073c2d
+git_commit_code_dir: 267fb693f13175f3badbe0db629e98f231a322d3 2026-08-13   # letzte Aenderung an DIESEM Modellcode
 git_clean: true
 backbone_hash: 3ce51d27aed3e8cfd35a9ab90dcf78648a0d164381a897d6638c55082fb54ead
 n_behaviour_files: 10/10
 frame_fix: PRESENT   # adjungierter Transport Welt -> Koerper vorhanden
 rotation_target_R1: identity   # R_1 = I; R_t ist Delta-Rotation gegen die Kristallorientierung von pos_0
 rotation_convention: >-
-    Rdot = R * Omega  (KOERPER / linkstrivialisiert). Ziel log(R_t^T R_1)/(1-t); Integrator R_next = R_t @ exp(v dt); Netzausgabe wird per R_t^T w R_t transportiert. Numerisch verifiziert: audits/frame_convention_audit.py
+    Rdot = R * Omega  (KOERPER / linkstrivialisiert). Ziel log(R_t^T R_1)/(1-t); Integrator R_next = R_t @ exp(v dt); Netzausgabe wird per R_t^T w R_t transportiert. Numerisch verifiziert: audits/so3_trivialisation_audit.py
 training_objective: conditional flow matching, MSE auf u_t (trans) und u_t_R (rot)
 source_distribution: trans_0 ~ N(0, I) (taschenzentriert, /2.7 A); R_0 ~ Haar auf SO(3)
 config: arc/final_config.sh   # batch_size, seed, precision, max_epochs
 batch_size: FROM_final_config.sh
 seed: FROM_final_config.sh
-written_utc: 2026-08-16T15:25:22Z
+written_utc: 2026-08-16T15:29:09Z
 known_caveats:
   - so3_utils.Log ist nahe 180 Grad begrenzt genau (Omega-Clamp auf +-(1-1e-7)). Relativer Fehler auf dem Trainingsziel: median 5e-7, p99 3e-4, max 5e-3. Gegen einen Rotationsfehler von 145 Grad belanglos - Caveat, kein Blocker.
   - Der Docstring in calc_rot_vector_field nennt die Groesse 'right trivialised'. Nach ueblicher Konvention ist sie LINKS-trivialisiert (Koerperframe). Reine Benennungsfrage, Mathematik und Code sind konsistent.
