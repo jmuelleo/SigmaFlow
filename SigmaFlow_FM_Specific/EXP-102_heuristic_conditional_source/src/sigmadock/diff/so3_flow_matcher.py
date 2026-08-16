@@ -1,0 +1,76 @@
+import torch
+from sigmadock.diff import so3_utils
+
+
+# We accept the convention used in so3_utils.expmap that we use righttrivialisation (work in the local tangent space instead of global tangent space)
+class SO3_FlowMatcher:
+
+
+    def __init__(self):
+        pass # pass as we currently don't need any constructor arguments
+
+    def sample_init(self, n: int, device: str,
+                    R_centre: torch.Tensor | None = None,
+                    median_deg: float | None = None) -> torch.Tensor:
+        """EXP-102: optional konzentrierte Quelle statt Haar.
+
+        `R_centre=None` zieht BIT-IDENTISCH zu EXP-100/Minimal - dasselbe
+        so3_utils.sample_uniform, derselbe Cast. Damit ist die Kontrollbedingung
+        exakt und nicht nur "praktisch gleich".
+        """
+        if R_centre is None:
+            return so3_utils.sample_uniform(n).to(device, dtype = torch.float32)
+        from sigmadock.diff.conditional_source import sample_conditional_init
+        if median_deg is None:
+            raise ValueError("median_deg muss gesetzt sein, wenn R_centre gegeben ist.")
+        return sample_conditional_init(n, R_centre, median_deg, device)
+
+    def conditional_probability_path(self, R_1: torch.Tensor, t: torch.Tensor,
+                                     R_centre: torch.Tensor | None = None,
+                                     median_deg: float | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+        n = R_1.shape[0]
+        device = R_1.device
+
+        R_0 = self.sample_init(n, device, R_centre, median_deg) # Quelle: Haar oder konzentriert
+        Delta = R_0.transpose(-1, -2) @ R_1 #.transpose(-1,-2) transposes a matrix (if the last 2 dimensions of the tensor are rows and columns of the matrix)
+        log_Delta = so3_utils.log(Delta)
+        u_t = log_Delta # Equivalent parametrisation to log(...)/(1-t) <- this is numerically more stable for t near 1
+        R_t = R_0 @ so3_utils.exp(t[:, None, None] * log_Delta) #Geodesic Interpolation
+        return R_t, u_t
+    
+    # Note: the original SigmaDock so3_utils.py had a numerical bug here:
+    # Omega() clamped arccos to [-0.99, 0.99], giving wrong angles for true
+    # angles between 172-180 degrees (~9% of uniformly sampled rotations).
+    # Fine for diffusion (never needs an exact exp(log(R))==R round trip),
+    # but breaks our exact geodesic interpolation. Fixed in this so3_utils.py
+    # (clamp narrowed to [-1+1e-7, 1-1e-7]) - see SigmaDock/ for the original.
+
+    def euler_step(self, R_t: torch.Tensor, v_t: torch.Tensor, dt: float) -> torch.Tensor:
+        R_next = R_t @ so3_utils.exp(v_t*dt)
+        return R_next
+    
+
+    def calc_rot_vector_field(self, R_t: torch.Tensor, R_1: torch.Tensor, t: torch.Tensor) -> torch.Tensor:
+        """
+        R_t: [n, 3, 3] current position
+        R_1: [n, 3, 3] final position
+        t: [n] time per fragment: in (0,1) due to singularity at t = 1
+        Returns:
+        u_t_R: [n, 3, 3] right trivialised vector field (skew symmetric) brings (R_t,t) to R_1
+        """
+        u_t_R = so3_utils.log(R_t.transpose(-1,-2)@R_1)/(1-t[:, None, None])
+        return u_t_R
+
+
+
+    
+
+
+    
+
+
+
+
+
+
+

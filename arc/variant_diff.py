@@ -45,7 +45,14 @@ SKIP_SUFFIX = {".pyc", ".pyo", ".ckpt", ".pt", ".log", ".out", ".err",
 # ausserhalb sind meist Infrastruktur; innerhalb sind sie immer erklaerungs-
 # beduerftig.
 CRITICAL = ("src/sigmadock/diff/", "src/sigmadock/net/", "src/sigmadock/trainer.py",
-            "src/sigmadock/data.py", "src/sigmadock/oracle.py", "src/sigmadock/chem/")
+            "src/sigmadock/data.py", "src/sigmadock/oracle.py", "src/sigmadock/chem/",
+            # config.py fehlte hier zunaechst. Es haelt die Trainings-Defaults
+            # (Loss-Gewichte, Optimizer, und in EXP-102 die Quellparameter) --
+            # eine Aenderung dort ist so verhaltensrelevant wie eine im Modell,
+            # sieht aber nach blosser Konfiguration aus. Genau solche Dateien
+            # sind die, die ein Diff-Werkzeug uebersehen darf am wenigsten.
+            "src/sigmadock/config.py", "src/sigmadock/sampling_setup.py",
+            "scripts/train.py", "scripts/sample.py")
 
 
 def rel_files(root: Path) -> dict[str, Path]:

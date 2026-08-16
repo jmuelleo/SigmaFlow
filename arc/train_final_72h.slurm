@@ -102,8 +102,15 @@ case "$MODEL" in
       conda activate "$ARC_SF_ENV"
       PYTHON="${ARC_SF_ENV}/bin/python"
       export PYTHONPATH="${CODE_DIR}/src:${PYTHONPATH:-}"
-      METHOD_FLAGS=()
+      # Die EINE Aenderung des Experiments. Alles andere kommt aus
+      # final_config.sh und ist mit den uebrigen Varianten identisch.
+      METHOD_FLAGS=(--source_mode "${SOURCE_MODE}" --source_median_deg "${SOURCE_MEDIAN_DEG}")
       EXPECT_IN_PATH="EXP-102"
+      echo "[cfg] EXP-102 Quelle: mode=${SOURCE_MODE} median=${SOURCE_MEDIAN_DEG} Grad"
+      if [ "${SOURCE_MEDIAN_DEG%%.*}" = "132" ] && [ "${SOURCE_MODE}" != "haar" ]; then
+          echo "[cfg] WARNUNG: Medianwinkel steht noch auf dem Haar-Default 132.3."
+          echo "[cfg]          Er soll aus exp101_distance_audit.py kommen."
+      fi
       ;;
   sigmaflow_conf)
       RUN_ID="SF_CONF_INT_72H"

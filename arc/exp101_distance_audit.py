@@ -162,6 +162,8 @@ def main() -> None:
 
     d_haar, d_ident, d_pax, dt_zero, dt_haar = [], [], [], [], []
     all_trans_1, all_R_1 = [], []
+    d_pax_leak = []            # Kontrollzeile mit geleakter Geometrie
+    n_pax_fail, last_pax_error = 0, ""
     n_ok = n_skip = 0
 
     for i in range(min(args.max_complexes, len(ds))):
@@ -191,20 +193,46 @@ def main() -> None:
         d_ident.append(so3_angle_deg(R_1).numpy())
 
         # --- H1: globale Hauptachsenausrichtung Ligand -> Tasche ------------
-        # Eine Rotation fuer ALLE Fragmente. Alles Feinere braucht Wissen
-        # ueber die Fragmentposition, das bei t=0 nicht existiert (siehe Kopf).
+        # Eine Rotation fuer ALLE Fragmente. Alles Feinere braucht Wissen ueber
+        # die Fragmentposition, das bei t=0 nicht existiert (siehe Kopf).
+        #
+        # LEAKAGE - der Punkt, an dem diese Messung wertlos werden kann:
+        #   Die Ligandenachsen MUESSEN aus `ref_conf_pos` kommen, dem
+        #   ETKDG-Konformer im eigenen Frame. Eine frueherer Fassung nahm
+        #   `pos_0`. Das sieht harmlos aus, ist es aber nicht: EXP-100 baut
+        #   `pos_0` als zentriertes Konformerfragment, VERSCHOBEN AN DEN
+        #   KRISTALL-COM (`pos_0[j] - trans_1[f] = C_F[j]`). Die globale Form
+        #   dieser Punktwolke traegt damit die kristallographische Anordnung der
+        #   Fragmente zueinander -- also genau das, was vorhergesagt werden soll.
+        #   H1 haette dadurch systematisch zu gut ausgesehen und das Gate
+        #   moeglicherweise faelschlich geoeffnet.
         try:
             lig = (b.frag_idx_map >= 0) & (b.node_entity != LIG_VIRT) & b.mask
             prot = b.frag_idx_map < 0
-            V_lig = principal_axes(pos_0[lig].numpy())
+            if not hasattr(b, "ref_conf_pos") or b.ref_conf_pos is None:
+                raise ValueError(
+                    "ref_conf_pos fehlt. H1 ist ohne den leakage-freien Konformer "
+                    "nicht messbar; pos_0 ist KEIN Ersatz (siehe Kommentar).")
+            V_lig = principal_axes(b.ref_conf_pos[lig].numpy())
             V_pkt = principal_axes(b.ref_pos[prot].numpy())
             Q = torch.tensor(V_pkt @ V_lig.T, dtype=R_1.dtype)
             if torch.linalg.det(Q) < 0:
                 Q[:, 2] = -Q[:, 2]
             R_pax = Q.unsqueeze(0).expand_as(R_1)
             d_pax.append(so3_angle_deg(R_pax.transpose(-1, -2) @ R_1).numpy())
-        except Exception:
-            pass
+
+            # Kontrollzeile: dieselbe Heuristik MIT der geleakten Geometrie.
+            # Sie ist keine zulaessige Quelle, zeigt aber, wie gross der
+            # Unterschied ist -- und belegt, dass die Korrektur oben noetig war.
+            V_leak = principal_axes(pos_0[lig].numpy())
+            Ql = torch.tensor(V_pkt @ V_leak.T, dtype=R_1.dtype)
+            if torch.linalg.det(Ql) < 0:
+                Ql[:, 2] = -Ql[:, 2]
+            d_pax_leak.append(
+                so3_angle_deg(Ql.unsqueeze(0).expand_as(R_1).transpose(-1, -2) @ R_1).numpy())
+        except Exception as exc:                          # noqa: BLE001
+            n_pax_fail += 1
+            last_pax_error = f"{type(exc).__name__}: {exc}"
 
         # --- Translation zum Vergleich -------------------------------------
         all_trans_1.append(trans_1.numpy())
@@ -221,9 +249,23 @@ def main() -> None:
     print("=" * 96)
     rows = [
         report("H0  Haar (uninformiert)", np.concatenate(d_haar)),
-        report("H1  Hauptachsen Ligand->Tasche", np.concatenate(d_pax)) if d_pax else None,
+        report("H1  Hauptachsen Konformer->Tasche", np.concatenate(d_pax)) if d_pax else None,
         report("Hid R_0 = I  (KONTROLLE)", np.concatenate(d_ident)),
     ]
+    if d_pax_leak:
+        print()
+        print("  KONTROLLE (keine zulaessige Quelle - benutzt die Kristallanordnung):")
+        r_leak = report("Hx  Hauptachsen MIT Leakage", np.concatenate(d_pax_leak))
+        if d_pax:
+            gap = r_leak["median"] - rows[1]["median"] if rows[1] else 0.0
+            print(f"      Unterschied leakagefrei minus geleakt: {-gap:+.1f} Grad")
+            print("      Ist er gross, war die Korrektur auf ref_conf_pos entscheidend.")
+    else:
+        r_leak = None
+    if n_pax_fail:
+        print()
+        print(f"  H1 nicht berechenbar bei {n_pax_fail} Komplexen. "
+              f"Letzter Grund: {last_pax_error}")
     print()
     print("  Erwartung fuer H0: median ~132.3, mean ~126.5 (Haar auf SO(3)).")
     print("  Weicht H0 davon ab, stimmt etwas an der Messung nicht - nicht an der Heuristik.")
@@ -308,6 +350,7 @@ def main() -> None:
             "n_skipped": int(n_skip),
             "rotation_deg": {r["name"]: r for r in rows if r is not None},
             "best_constant_rotation_deg": r_const,
+            "leaked_control_deg": r_leak,
             "gate": {
                 "median_haar_deg": float(h0),
                 "median_best_admissible_deg": float(best),

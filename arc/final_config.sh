@@ -90,6 +90,19 @@ export FINAL_SNAPSHOT_HOURS="${FINAL_SNAPSHOT_HOURS:-6 12 18 24 30 36 42 48 54 6
 # Der Rest bekommt nur die billige Auswertung auf dem festen Subset.
 export FINAL_FULL_EVAL_HOURS="${FINAL_FULL_EVAL_HOURS:-6 24 48 72}"
 
+# --- EXP-102: Quellverteilung (nur MODEL=sigmaflow_source) --------------------
+# "haar"       Kontrollbedingung, bit-identisch zu EXP-100
+# "pocket_pca" Zentrum aus Hauptachsen Konformer -> Tasche  (die Hypothese)
+# "constant"   festes Zentrum: misst KONZENTRATION ohne Konditionierung
+export SOURCE_MODE="${SOURCE_MODE:-pocket_pca}"
+
+# Medianwinkel der Quelle zum Zentrum. Haar hat 132.3 Grad.
+# WIRD AUS arc/exp101_distance_audit.py GESETZT, NICHT GERATEN:
+# sinnvoll ist der dort gemessene Median von H1. Ist H1 z.B. 110 Grad, waere
+# eine Quelle mit Median 110 genau so breit wie die Heuristik verlaesslich ist.
+# Enger zu waehlen heisst, der Heuristik mehr zu glauben als die Messung hergibt.
+export SOURCE_MEDIAN_DEG="${SOURCE_MEDIAN_DEG:-132.3}"
+
 # --- Screening-Modus ----------------------------------------------------------
 # Ein 6h-Screening ist NICHT ein eigenstaendiges 6h-Training, sondern die
 # ERSTEN 6 STUNDEN DESSELBEN Trainingsprogramms, das ein langer Lauf haette.
