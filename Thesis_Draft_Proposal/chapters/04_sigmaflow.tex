@@ -1,0 +1,143 @@
+\chapter{SigmaFlow: The Minimal Conversion}
+\label{ch:sigmaflow}
+
+\section{Design principle and what actually changed}
+\label{sec:minimal-change}
+
+The comparison in Chapter~\ref{ch:results} is only interpretable if the
+substitution is confined to the generative mechanism. This was treated as a
+constraint on the implementation rather than an aspiration, and the resulting
+partition is given in Table~\ref{tab:minimal-change}.
+
+\begin{table}[htbp]
+\centering
+\caption{Partition of the system under the minimal-change constraint.
+``Identical'' was verified by file hash over the relevant source trees.}
+\label{tab:minimal-change}
+\small
+\begin{tabular}{@{}p{0.30\textwidth} p{0.16\textwidth} p{0.46\textwidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Status} & \textbf{Note} \\
+\midrule
+EquiformerV2 backbone      & identical & all backbone source files hash-identical between arms \\
+Featurisation, graph construction & identical & inherited \\
+Data pipeline, fragmentation & identical & same conformers, same splits \\
+Output block ($\ell=1$ head) & identical & one field $f_i$; Eq.~\eqref{eq:force-field} \\
+Newton--Euler reduction     & identical & Eqs.~\eqref{eq:reduce-trans}--\eqref{eq:reduce-rot} \\
+Optimiser, LR schedule      & identical & AdamW \citep{loshchilov2019adamw}, same cosine schedule \\
+Loss weights                & identical & SigmaDock production values \\
+\midrule
+Forward process             & \textbf{removed} & no noising process; replaced by a probability path \\
+Score interpretation and rescaling & \textbf{removed} & the scalar apparatus converting scores to displacements is deleted, not modified \\
+Probability path            & \textbf{new} & Eqs.~\eqref{eq:sf-trans}--\eqref{eq:sf-rot} \\
+Training target             & \textbf{new} & conditional velocity in place of score \\
+Sampler                     & \textbf{new} & deterministic Euler, Eq.~\eqref{eq:euler}, in place of reverse SDE \\
+\midrule
+Logarithmic map clamp       & \textbf{corrected} & \S\ref{sec:log-defect} \\
+Rotational frame convention & \textbf{corrected} & \S\ref{sec:frame-defect} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two residual confounders should be recorded rather than glossed. The two arms
+run in separate software environments with different interpreter versions, and
+the SigmaDock arm is invoked with its own rotational-score configuration
+flags. Neither touches the backbone, but neither is strictly nothing, and
+\S\ref{sec:controlled} returns to them.
+
+\section{A frame defect in the rotational field}
+\label{sec:frame-defect}
+
+The convention fixed in \S\ref{sec:trivialisation} requires that the network's
+rotational output be a \emph{body-frame} quantity, since the integrator
+right-multiplies by its exponential. The Newton--Euler reduction
+\eqref{eq:reduce-rot}, however, computes a torque from atom positions
+expressed in the global frame, and therefore returns a spatial-frame vector.
+In the original implementation this spatial quantity was passed directly to
+the integrator, mixing \eqref{eq:body-frame} with \eqref{eq:spatial-frame}.
+
+The correction is the adjoint transport \eqref{eq:adjoint}: the predicted
+rotational velocity must be conjugated into the body frame,
+\begin{equation}
+  \skewm{\Omega}_{\mathrm{body}} \;=\; \Rot_t^\top\,\skewm{w}_{\mathrm{spatial}}\,\Rot_t ,
+  \label{eq:frame-fix}
+\end{equation}
+before it enters $\Exp(\cdot\,\Delta t)$. Two facts make this worth a section
+rather than a footnote. First, the error is invisible to any check that does
+not vary $\Rot_t$: at $\Rot_t = I$ the two frames agree exactly, so a unit
+test at the identity passes. Second, the error is not small --- taking an
+Euler step of length $1-t$ under the correct convention reaches $\Rot_1$ to
+within $5\times10^{-4}$ degrees, whereas the incorrect left-multiplication
+misses by roughly $\Ang{179.5}$.
+
+A terminological hazard contributed to the defect and is worth stating,
+because the literature is not consistent. The implementation's own comments
+describe the construction as ``right-trivialised'' while implementing
+$\dot{\Rot} = \Rot\skewm{\Omega}$, which is the \emph{left}-trivialised or
+body convention in the sense of \citet{marsden1999introduction}. The
+mathematics was correct; the label was not. \S\ref{sec:diagnostics} reports
+the behavioural signature of the correction, and
+Appendix~\ref{app:numerics} the numerical verification.
+
+\section{A clamping defect in the logarithmic map}
+\label{sec:log-defect}
+
+The inherited implementation of \eqref{eq:so3-log} clamped the argument of
+$\arccos$ to $[-0.99,\,0.99]$, a guard intended to avoid a domain error. The
+effect is to misreport every angle above roughly $\Ang{172}$ --- close to one
+in ten draws from the Haar measure, by the cut-locus remark in
+\S\ref{sec:so3}.
+
+For diffusion this is harmless, because the reverse SDE never requires an
+exact round trip $\Exp(\Log(\Rot)) = \Rot$. For the geodesic construction
+\eqref{eq:sf-rot} it is not, because the interpolant is defined by exactly
+that round trip: a misreported $\Log$ places $\Rot_t$ off the intended
+geodesic and corrupts the regression target for a non-negligible fraction of
+training pairs. The clamp was narrowed to $[-1+10^{-7},\,1-10^{-7}]$.
+
+This is an instance of a general point worth making once: numerical guards
+inherited from one generative formulation are not automatically valid in
+another, because the two formulations exercise the geometry differently.
+
+\section{Deterministic integration}
+
+Sampling integrates \eqref{eq:euler} from $t=0$ to $t=1$ over a fixed number
+of steps. On the translational factor this is ordinary explicit Euler; on the
+rotational factor the update is a retraction, meaning the step is taken along
+the manifold rather than in an ambient space followed by a projection. Because
+$\Exp$ maps into $\SOthree$ exactly, every iterate is a rotation matrix by
+construction and no re-orthogonalisation is required --- a small but real
+advantage of working in the group rather than with a matrix parameterisation.
+
+Three properties distinguish this from the reverse-time SDE it replaces.
+Sampling is \emph{deterministic}, so the pose is a function of the source
+draw alone and the diversity of a $K$-sample set is entirely inherited from
+$p_0$; the sampler has no temperature or noise-scale to tune. The number of
+network evaluations equals the number of steps and is a free parameter at
+inference, decoupled from anything fixed at training time. And because the
+conditional paths are straight in $\R^3$ and geodesic on $\SOthree$, the
+marginal field they induce is expected to be nearly straight, so few Euler
+steps should suffice --- a prediction of the construction rather than a hope.
+\S\ref{sec:nfe} tests it over a forty-fold range of step counts.
+
+The step count inherited from SigmaDock is $25$, a value tuned there for a
+\emph{stochastic} reverse process. There is no reason for that number to
+transfer, and \S\ref{sec:nfe} shows that it does not.
+
+\figplaceholder{fig:paths}
+{Conditional probability paths on the two factors of $\Mfd$. Left: the
+straight-line translational path. Right: the geodesic rotational path, with
+the conditional target drawn at three times.}
+{Two panels.
+\textbf{Left:} $\R^3$ (drawn as $\R^2$). Source sample $x_0$ from a Gaussian
+centred at the pocket origin; data point $x_1$; the straight interpolant with
+the constant target $x_1-x_0$ drawn as equal arrows at $t=0.2,0.5,0.8$.
+\textbf{Right:} $\SOthree$ drawn as a schematic curved surface (a
+three-sphere-quotient cartoon is acceptable and standard). $\Rot_0$ sampled
+Haar-uniformly, $\Rot_1$ the crystal orientation, the geodesic between them,
+and the body-frame target $\vfield_t^{\mathrm{rot}}$ drawn at the same three
+times --- \emph{drawn with identical length at every $t$}, since that is the
+content of Proposition~\ref{prop:t-invariance}.
+The visual point of the figure is that the right-hand arrows do not shrink as
+$t \to 1$. This replaces roughly 250 words and is the figure the reader should
+remember when reaching Chapter~\ref{ch:asymmetry}.}

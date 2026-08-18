@@ -1,0 +1,444 @@
+\chapter{Results}
+\label{ch:results}
+
+\section{Early matched-budget behaviour}
+\label{sec:early-results}
+
+Table~\ref{tab:12h} reports the matched $12$\,h pair. Both models are far from
+the accuracies reported in the literature, which is expected at this budget
+(\S\ref{ch:design}); the comparison of interest is between the columns.
+
+\begin{table}[htbp]
+\centering
+\caption{Matched $12$\,h comparison on PoseBusters ($209$ complexes,
+$10$ sampling seeds per complex). ``Single seed'' averages the per-seed rate;
+``best of $10$'' is the oracle over seeds and is an upper bound on what any
+ranking function could achieve.}
+\label{tab:12h}
+\small
+\begin{tabular}{@{}lcc@{}}
+\toprule
+ & SigmaFlow & SigmaDock \\
+\midrule
+RMSD $<2$\,\AA, single seed      & $4.4\%$  & $\mathbf{9.8\%}$ \\
+RMSD $<2$\,\AA, best of $10$     & $29.2\%$ & $\mathbf{45.9\%}$ \\
+Median RMSD, single seed         & $4.78$\,\AA & $\mathbf{4.48}$\,\AA \\
+Median RMSD, best of $10$        & $2.62$\,\AA & $\mathbf{2.10}$\,\AA \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+SigmaDock leads on every entry. This is the honest starting point of the
+empirical account, and it is stated before any interpretation.
+
+Two features of the table deserve comment. First, the gap between the
+single-seed and best-of-$10$ rows is very large for both arms: for SigmaFlow,
+$4.4\%$ against $29.2\%$. Most of the achievable accuracy at this budget is
+present in the sample set and lost at selection --- a fact that motivates
+\S\ref{sec:confidence-results}. Second, the two arms differ by roughly a
+factor of two throughout, rather than by a constant offset, which suggests a
+difference in kind rather than in degree. \S\ref{sec:trans-vs-rot} localises
+it.
+
+\section{Training trajectory at matched compute}
+\label{sec:traj-results}
+
+\begin{reserved}{Training trajectory, $72$\,h matched pair}
+\textbf{Experiment.} Two runs, SigmaFlow and SigmaDock, identical schedule
+annealed to the full budget, checkpointed at $6,12,18,24,36,48,60,72$\,h.
+Cheap evaluation on a fixed $60$-complex subset at every snapshot; full
+$209$-complex, $3$-seed evaluation at $24$, $48$ and $72$\,h.
+
+\textbf{Expected output.} Figure~\ref{fig:trajectory} (four panels) and a
+table of annealed endpoints with bootstrap intervals.
+
+\textbf{Metrics.} Median fragment rotation error against the Haar reference;
+enrichment below $\Ang{30}$; median centroid displacement; median RMSD raw and
+aligned; rotational and translational validation loss separately.
+
+\textbf{Question answered.} Prediction~P3 of \S\ref{sec:predictions}: does the
+rotational deficit narrow, persist, or vanish with additional training?
+
+\textbf{Interpretation rules, fixed in advance.}
+(i) If SigmaFlow's rotational enrichment rises towards SigmaDock's, P3 is
+refuted and the correct reading is \emph{slower convergence}; the mechanism of
+Chapter~\ref{ch:asymmetry} then explains the rate rather than a limit, and
+\S\ref{sec:verdict} says so.
+(ii) If SigmaFlow's enrichment stays flat at the Haar level while SigmaDock's
+rises, P3 is supported and the deficit is attributed to the construction.
+(iii) If both stay near Haar, no claim about the mechanism is licensed at this
+budget and the honest reading is that neither model has learned orientation;
+\S\ref{sec:limits} must then lead with that.
+Reserved: \(\approx 700\) words.
+\end{reserved}
+
+\figplaceholder{fig:trajectory}
+{Training trajectory at matched compute. Curves are snapshots from a single
+annealed schedule; isolated markers are independently annealed endpoints
+(\S\ref{sec:snapshot-caveat}).}
+{Four panels sharing an $x$-axis of optimisation step (secondary axis:
+wall-clock hours). Both arms on every panel, distinguished by colour.
+\textbf{(a)} median fragment rotation error, with the Haar reference
+$\Ang{132.3}$ as a horizontal dashed line;
+\textbf{(b)} fraction of fragments with rotation error below $\Ang{30}$, with
+the Haar rate ($\approx 2\%$) as a dashed line;
+\textbf{(c)} median fragment centroid displacement;
+\textbf{(d)} median RMSD, raw and after superposition.
+Bands: bootstrap intervals over complexes. Annealed endpoints ($12$\,h pair,
+$72$\,h endpoint) as filled markers \emph{not} joined to the curves.
+Panel (b) is the decisive one: it shows whether SigmaFlow ever separates from
+the null.}
+
+\section{Translation versus rotation}
+\label{sec:trans-vs-rot}
+
+The factor-wise decomposition of the $12$\,h models localises the gap
+unambiguously. Table~\ref{tab:rotation} reports per-fragment rotation error
+against the Haar null of \S\ref{sec:metrics}.
+
+\begin{table}[htbp]
+\centering
+\caption{Per-fragment rotational accuracy at $12$\,h ($711$ fragments over
+$209$ complexes, seed $0$), against a uniformly random orientation.}
+\label{tab:rotation}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+ & SigmaFlow & SigmaDock & Haar (random) \\
+\midrule
+Median rotation error       & $\Ang{138.2}$ & $\mathbf{\Ang{123.8}}$ & $\Ang{132.3}$ \\
+Fraction below $\Ang{30}$   & $2.1\%$ & $\mathbf{5.8\%}$ & ${\approx}\,2\%$ \\
+Fraction below $\Ang{60}$   & $8.4\%$ & $\mathbf{15.8\%}$ & ${\approx}\,10\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+SigmaFlow's rotational channel is not merely weaker than SigmaDock's: it is
+not distinguishable from guessing. Its enrichment below $\Ang{30}$ matches the
+random rate, whereas SigmaDock achieves roughly a threefold enrichment at
+identical architecture, data and budget.
+
+The translational channel behaves quite differently. The fraction of fragments
+placed within $2$\,\AA{} is $22.6\%$ for SigmaFlow against $29.3\%$ for
+SigmaDock, and within $1$\,\AA{} $8.2\%$ against $9.2\%$ --- a modest deficit,
+but signal in both cases rather than its absence. The difference between the
+two factors is therefore qualitative, not a matter of degree, which is what
+Chapter~\ref{ch:asymmetry} sets out to explain.
+
+\figplaceholder{fig:rotdist}
+{Distribution of per-fragment rotation error at $12$\,h, against the
+random-orientation null.}
+{Three overlaid kernel density estimates on $[0,\Ang{180}]$: SigmaFlow,
+SigmaDock, and the analytic Haar density. Vertical lines at the three medians.
+Inset: zoom on $[0,\Ang{60}]$ where the enrichment differences live.
+The point of the figure is immediate legibility --- the SigmaFlow density
+should be seen to sit on top of the Haar density while SigmaDock's is shifted
+left. Replaces roughly 300 words. Requires the per-fragment error arrays,
+which exist for the $12$\,h models; regenerate for the $72$\,h models.}
+
+\begin{reserved}{Mechanism diagnostics over training}
+\textbf{Experiment.} Evaluate predictions P1 and P2 of \S\ref{sec:predictions}
+at each checkpoint of the long runs: the ratio
+$\|\pred^{\mathrm{rot}}\|/\|\vfield_t^{\mathrm{rot}}\|$ and the cosine between
+predicted and target rotational fields, both stratified by $t$.
+
+\textbf{Prior evidence.} On the $12$\,h model the magnitude ratio is
+approximately $0.47$ and the cosine at $t<0.1$ approximately $0.025$, both
+consistent with the shrinkage argument of \S\ref{sec:shrinkage}.
+
+\textbf{Question answered.} Whether shrinkage is an early-training artefact
+that resolves, or a stable property of the optimum.
+
+\textbf{Interpretation.} A magnitude ratio rising towards $1$ with training
+refutes P1 and points to under-training; a ratio stable well below $1$
+supports the identifiability reading. Reserved: \(\approx 300\) words within
+\S\ref{sec:trans-vs-rot} (total for the section: \(\approx 600\)).
+\end{reserved}
+
+\section{Integration efficiency}
+\label{sec:nfe}
+
+The conditional paths of \S\ref{sec:sigmaflow-objective} are straight in the
+translational factor and geodesic in the rotational one, so the marginal field
+they induce should be nearly straight and few integration steps should
+suffice. Table~\ref{tab:nfe} tests this over a forty-fold range.
+
+\begin{table}[htbp]
+\centering
+\caption{SigmaFlow accuracy against the number of Euler steps
+($209$ complexes, $3$ seeds). The inherited default is $25$.}
+\label{tab:nfe}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Steps & Median RMSD ($\pm$SD over seeds) & $<2$\,\AA & $<5$\,\AA & Aligned RMSD \\
+\midrule
+$5$   & $4.61 \pm 0.06$ & $3.7\%$ & $54.9\%$ & $2.11$ \\
+$10$  & $4.78 \pm 0.22$ & $3.5\%$ & $53.0\%$ & $1.97$ \\
+$15$  & $4.88 \pm 0.11$ & $4.0\%$ & $51.8\%$ & $1.95$ \\
+$25$  & $4.76 \pm 0.19$ & $4.1\%$ & $53.3\%$ & $2.01$ \\
+$50$  & $5.08 \pm 0.05$ & $4.0\%$ & $49.1\%$ & $1.91$ \\
+$100$ & $5.17 \pm 0.18$ & $4.8\%$ & $48.8\%$ & $1.99$ \\
+$200$ & $4.93 \pm 0.24$ & $3.7\%$ & $50.7\%$ & $1.99$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The curve is flat. Paired per complex against the default of $25$ steps, the
+largest effect is at $5$ steps ($-0.199$\,\AA, $95\%$ CI $[-0.391, -0.007]$);
+the upper limit is essentially at zero, and with six comparisons against a
+common reference this does not survive any correction for multiplicity. The
+defensible statement is therefore that \emph{no step count between $5$ and
+$200$ is demonstrably better than any other}. For scale, a single complex
+varies across three sampling seeds with a standard deviation of $1.36$\,\AA,
+whereas its seed-averaged range across all seven step counts is $1.66$\,\AA{}
+--- less than would be expected from pure noise over seven draws.
+
+Two readings follow, and both are needed. Positively, SigmaFlow reaches at $5$
+steps what it reaches at $25$, so sampling can be made five times cheaper at no
+measurable cost --- the signature predicted for near-straight conditional
+paths, and the clearest advantage of the substitution observed so far.
+Negatively, integration resolution is thereby \emph{excluded} as an
+explanation for the accuracy gap: the model integrates its field faithfully;
+the field points in the wrong direction.
+
+The claim licensed by this table is ``SigmaFlow does not need the inherited
+$25$ steps'', not ``SigmaFlow needs fewer steps than SigmaDock''. The latter
+requires the matching sweep on the diffusion arm.
+
+\begin{reserved}{Diffusion-arm step sweep}
+\textbf{Experiment.} The same seven step counts and three seeds on the
+SigmaDock arm, run strictly serially so that wall-clock is interpretable.
+\textbf{Expected output.} A second series in Figure~\ref{fig:nfe}, and a
+two-sided efficiency claim. \textbf{Question answered.} Whether the
+few-step property is specific to flow matching or shared.
+\textbf{Interpretation.} If SigmaDock also tolerates $5$ steps, the efficiency
+argument for flow matching collapses and must be withdrawn; if it degrades,
+the advantage is established. Reserved: \(\approx 150\) words.
+\end{reserved}
+
+\figplaceholder{fig:nfe}
+{Accuracy against number of function evaluations, both arms.}
+{Median RMSD (left axis) against integration steps on a log $x$-axis, $5$ to
+$200$. Bands from three seeds. Two series once the diffusion sweep exists.
+A second panel may show wall-clock per pose against steps, but \emph{only}
+from serially executed jobs --- the existing array was run with five
+concurrent tasks and its timings are contaminated by resource contention.}
+
+\section{Diagnostics and ablations}
+\label{sec:diagnostics}
+
+\subsection{The frame correction and its signature}
+
+The defect of \S\ref{sec:frame-defect} was identified analytically, but its
+behavioural signature confirms that the evaluation is sensitive to a known
+real intervention. We measure a \emph{locality gap}: the difference between
+the rotation error of a fragment and that of its neighbours, negative when a
+model places neighbouring fragments more coherently than chance.
+
+\begin{table}[htbp]
+\centering
+\caption{Locality gap before and after the frame correction
+($n \approx 133$ complexes, bootstrap intervals over complexes).}
+\label{tab:framefix}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Run & Locality gap & $95\%$ CI & Fraction $<0$ \\
+\midrule
+SigmaFlow $6$\,h, uncorrected & $+\Ang{1.1}$  & $[-4.2, +6.6]$   & $53\%$ \\
+SigmaFlow $6$\,h, corrected   & $-\Ang{12.8}$ & $[-18.3, -7.2]$  & $68\%$ \\
+SigmaFlow $12$\,h, corrected  & $-\Ang{15.0}$ & $[-21.6, -8.1]$  & $69\%$ \\
+SigmaDock $12$\,h             & $-\Ang{20.4}$ & $[-26.0, -14.5]$ & $71\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The uncorrected model is indistinguishable from no local coherence; the
+correction moves it decisively. This licenses the use of the same metric
+elsewhere.
+
+\subsection{What does not explain the gap}
+\label{sec:excluded}
+
+Three candidate explanations were tested and none survives.
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item \textbf{Integration resolution} --- excluded by \S\ref{sec:nfe}.
+\item \textbf{Molecular symmetry.} Symmetry-equivalent atom assignments could
+      in principle inflate apparent rotation errors. Measured directly, they
+      do not account for the observed distribution.
+\item \textbf{Loss weighting and objective variants.} Three single-change
+      ablations off the same baseline --- a time-weighted flow loss, a
+      rotational loss in data space rather than tangent space, and an
+      anchor-atom distance term --- all returned a locality gap of
+      $-\Ang{12.8}$, statistically indistinguishable from the unmodified
+      baseline. Table~\ref{tab:ablations} summarises.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{Single-change ablations, each branched from the same baseline.}
+\label{tab:ablations}
+\small
+\begin{tabular}{@{}llc@{}}
+\toprule
+Variant & Single change & Locality gap \\
+\midrule
+Baseline (corrected)   & --- & $-\Ang{15.0}$ \\
+(a) time weighting     & $w(t)\|\pred - \vfield\|^2$ & $-\Ang{12.8}$ \\
+(b) rotational loss in data space & loss on $\Rot$ rather than $\Log \Rot$ & $-\Ang{12.8}$ \\
+(c) anchor-atom distance & auxiliary distance term & $-\Ang{12.8}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+That three independent modifications of the objective produce no change is
+itself evidence: it is consistent with a model whose rotational channel has no
+signal to reweight. One caveat is recorded --- the reconstructed fragmentation
+differs between runs for a substantial minority of complexes, so bond-level
+comparisons across these variants are less reliable than the fragment-level
+rotational statistics used here.
+
+\section{Flow-specific source distribution}
+\label{sec:source-results}
+
+\S\ref{sec:source-theory} established that $p_0$ is free under flow matching
+and fixed under diffusion, and \S\ref{sec:shrinkage} argued that the
+uninformativeness of $\Haar$ is what starves the rotational channel.
+Prediction~P4 follows: concentrating the rotational source should improve
+rotation specifically.
+
+Two constraints shape the construction. It must be \emph{sampleable} and
+tractable, for which a wrapped Gaussian on $\SOthree$ about a centre
+$\Rot_{\mathrm{c}}$ suffices,
+\begin{equation}
+  \Rot_0 \;=\; \Rot_{\mathrm{c}} \Exp(\skewm{\xi}),
+  \qquad \xi \sim \mathcal{N}(0, \sigma^2 I_3),
+  \label{eq:conc-source}
+\end{equation}
+with right-multiplication chosen to match the body-frame convention of
+\S\ref{sec:trivialisation}. And it must not leak: $\Rot_{\mathrm{c}}$ may
+depend only on the receptor and the ligand graph, never on the crystallographic
+pose. This is not a formality --- an earlier variant in this project was found
+to place conformer fragments at crystal centroids, which supplies the answer
+through the source, and the constraint is therefore enforced explicitly and
+tested by a control in which \eqref{eq:conc-source} reduces to $\Haar$ and
+must reproduce the baseline bit-for-bit.
+
+\begin{reserved}{Informative-source experiment}
+\textbf{Gate.} A CPU-only audit measures whether receptor pocket geometry
+carries orientational information at all, by comparing the rotational distance
+under a candidate heuristic centre against the Haar reference of
+$\Ang{132.3}$. \emph{Pre-registered rule:} if the median distance is not below
+the Haar reference by more than its bootstrap interval, the experiment is not
+run and this section reports the audit as a negative result in
+\(\approx 350\) words.
+
+\textbf{Experiment, if gated through.} A $6$\,h screen with
+\eqref{eq:conc-source} against a bit-identical $6$\,h Haar control from the
+same code path, the two differing only in $p_0$.
+
+\textbf{Expected output.} Table~\ref{tab:source} completed;
+Figure~\ref{fig:source}.
+
+\textbf{Metrics.} Median rotation error and enrichment below $\Ang{30}$
+(primary, since P4 predicts a rotation-specific effect); centroid displacement
+and RMSD (secondary, expected approximately unchanged).
+
+\textbf{Interpretation.} A rotation-specific improvement supports the
+mechanism causally rather than correlationally and is the strongest available
+evidence for Chapter~\ref{ch:asymmetry}. An improvement in \emph{both} factors
+would instead suggest a generic optimisation benefit and would weaken the
+specific claim. No improvement refutes P4.
+Reserved: \(\approx 600\) words.
+\end{reserved}
+
+\begin{table}[htbp]
+\centering
+\caption{Effect of the source distribution on the rotational channel, at
+matched budget.}
+\label{tab:source}
+\small
+\begin{tabular}{@{}lccc@{}}
+\toprule
+Source $p_0$ on $\SOthree$ & Median rotation error & $<\Ang{30}$ & Median RMSD \\
+\midrule
+Haar (baseline)         & \tbd & \tbd & \tbd \\
+Wrapped Gaussian, $\sigma$ = \tbd & \tbd & \tbd & \tbd \\
+\midrule
+Haar reference (random) & $\Ang{132.3}$ & ${\approx}\,2\%$ & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\figplaceholder{fig:source}
+{Source distributions on $\SOthree$ and their effect on the conditional
+target.}
+{Two panels. \textbf{(a)} Distribution of the initial geodesic distance
+$\|\Log(\Rot_0^\top\Rot_1)\|$ under the Haar source and under
+\eqref{eq:conc-source}, with the Haar mean $\Ang{126.5}$ marked. By
+Proposition~\ref{prop:t-invariance} this is also the distribution of the
+target magnitude at every $t$, which is the point of the panel.
+\textbf{(b)} Rotation-error densities for the two trained variants, as in
+Figure~\ref{fig:rotdist}, with the Haar null. Contingent on the gate.}
+
+\section{Confidence and pose ranking}
+\label{sec:confidence-results}
+
+Table~\ref{tab:12h} shows that selection, not generation, is where most
+achievable accuracy is lost at this budget: $4.4\%$ against a $29.2\%$ oracle.
+A ranking function that recovered even a third of that difference would exceed
+any architectural effect measured in this thesis.
+
+\begin{reserved}{Confidence head}
+\textbf{Experiment.} A small head on the $\ell=0$ (rotation-invariant)
+channel of the existing backbone, trained in a second stage to predict
+$\Prob(\mathrm{RMSD} < 2\,\text{\AA})$ for a generated pose. Two-stage rather
+than joint, because during generative training the network sees only $x_t$,
+which at $t=1$ is exactly the crystal pose; there are no poses of varying
+quality to learn from.
+
+\textbf{Expected output.} Table~\ref{tab:confidence}; Figure~\ref{fig:conf}.
+
+\textbf{Metrics.} AUROC, AUPRC, Brier score, expected calibration error;
+Spearman correlation against RMSD; and the operational quantity, top-$1$-of-$K$
+accuracy against random-of-$K$ and the oracle.
+
+\textbf{Question answered.} Whether the inherited backbone's invariant
+features carry pose-quality information at all.
+
+\textbf{Scope note.} The comparison against SigmaDock's published heuristic
+ranker requires an external scoring binary that is not currently available in
+the compute environment; if it remains unavailable, this section reports
+calibration and top-$1$-of-$K$ only, and says so. \emph{This extension is not
+flow-specific} --- an equivalent head could be attached to SigmaDock --- and
+must be presented as a property of the system, not of flow matching.
+Reserved: \(\approx 300\) words; drops to a Future Work paragraph if the head
+is not trained.
+\end{reserved}
+
+\begin{table}[htbp]
+\centering
+\caption{Confidence-head calibration and ranking performance.}
+\label{tab:confidence}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+ & AUROC & Brier & Spearman vs.\ RMSD & Top-$1$-of-$10$ $<2$\,\AA \\
+\midrule
+Random selection    & $0.50$ & --- & $0$ & \tbd \\
+Confidence head     & \tbd & \tbd & \tbd & \tbd \\
+Oracle (best of $10$) & --- & --- & --- & $29.2\%$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\figplaceholder{fig:conf}
+{Confidence-head behaviour.}
+{Three panels: (a) reliability diagram with the diagonal and per-bin counts;
+(b) top-$k$ accuracy against $k$, for random selection, the confidence head,
+and the oracle, showing how much of the oracle gap is recovered;
+(c) mean predicted confidence against integration time $t$ along the sampling
+trajectory, testing whether confidence becomes informative before $t=1$ and
+could in principle support early termination. Contingent.}

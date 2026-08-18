@@ -1,0 +1,101 @@
+\chapter{Experimental Design}
+\label{ch:design}
+
+\section{Data, training, and the matched-budget protocol}
+
+Both arms train on the PDBbind general set \citep{liu2017pdbbind} and are
+evaluated on the PoseBusters benchmark \citep{buttenschoen2024posebusters},
+$209$ complexes after the filtering inherited from the parent codebase. Splits,
+fragmentation, conformer generation and featurisation are shared, so the two
+arms consume byte-identical inputs.
+
+\emph{Matched budget} here means identical wall-clock allocation on identical
+hardware, identical batch size, identical optimiser and identical annealing
+schedule --- not identical loss values or identical numbers of epochs, which
+are outcomes rather than controls. Table~\ref{tab:configs} records the
+configurations.
+
+\begin{table}[htbp]
+\centering
+\caption{Training configurations. The $12$\,h pair is the matched comparison
+available at the time of writing; the long pair is the primary experiment.}
+\label{tab:configs}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Run & Arm & Wall-clock & Hardware & Batch & Status \\
+\midrule
+Early pair & SigmaFlow & $12$\,h & $1\times$L40S & 8 & complete \\
+Early pair & SigmaDock  & $12$\,h & $1\times$L40S & 8 & complete \\
+Long pair  & SigmaFlow & $72$\,h & $1\times$L40S & \tbd & \dnote{RESULT PENDING}{queued} \\
+Long pair  & SigmaDock  & $72$\,h & $1\times$L40S & \tbd & \dnote{RESULT PENDING}{queued} \\
+Source screen & SigmaFlow-informative & $6$\,h & $1\times$L40S & \tbd & \dnote{RESULT PENDING}{gated} \\
+Source screen & SigmaFlow-Haar control & $6$\,h & $1\times$L40S & \tbd & \dnote{RESULT PENDING}{gated} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For calibration against the literature: SigmaDock's published results were
+obtained with roughly $384$ GPU-hours, whereas the early pair here used about
+$12$ each. This thesis therefore operates at a small fraction of the compute
+behind the published numbers, and absolute accuracies are correspondingly low
+for \emph{both} arms. The comparison remains valid because the budget is
+matched; the benchmark comparison is not attempted.
+
+\section{Trajectory snapshots are not independently annealed endpoints}
+\label{sec:snapshot-caveat}
+
+The long runs checkpoint at fixed wall-clock intervals, and it is tempting to
+read the resulting sequence as performance ``at $12$\,h, at $24$\,h, and so
+on''. That reading is wrong and the distinction is maintained throughout
+Chapter~\ref{ch:results}.
+
+The learning rate follows a cosine schedule whose length is set by the total
+step budget. A snapshot taken part-way through a $72$\,h schedule is therefore
+a model \emph{mid-anneal}, at a learning rate far above its terminal value,
+and it is not the model one would obtain by training for that shorter budget
+with a schedule annealed to it. Two distinct objects follow:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+\item a \textbf{training trajectory} --- metrics against optimisation step for
+      a \emph{fixed} schedule, with both arms sharing that schedule. This is a
+      controlled comparison and it answers whether the rotational deficit
+      narrows as training proceeds;
+\item \textbf{annealed endpoints} --- separately scheduled runs, each having
+      completed its own anneal. The $12$\,h pair and the $72$\,h endpoint are
+      of this kind.
+\end{itemize}
+
+Trajectories are plotted as curves; annealed endpoints are plotted as isolated
+markers and never joined to them. No claim of the form ``performance scales
+with compute as \ldots'' is made, since establishing that would require a
+separate fully annealed run per budget.
+
+\section{Metrics, nulls, and statistical treatment}
+\label{sec:stats}
+
+Primary quantities are chosen for low sampling variance, so that a trajectory
+is readable rather than noisy:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+\item median per-fragment rotation error, against the Haar reference
+      \eqref{eq:haar-null}, and the enrichment below $\Ang{30}$;
+\item median fragment centroid displacement;
+\item median RMSD, raw and after optimal superposition;
+\item validation loss, separately for the rotational and translational terms;
+\item the diagnostic ratios of \S\ref{sec:predictions}: predicted-to-target
+      magnitude ratio, and predicted-target cosine stratified by $t$.
+\end{itemize}
+
+Threshold success rates --- the fraction below $2$\,\AA{} --- are reported in
+tables with confidence intervals but are \emph{not} plotted over training. At
+the rates observed so far and $n = 209$, their standard error is of the same
+order as any plausible change, so a curve would display sampling noise.
+
+All paired comparisons are computed per complex, with bootstrap confidence
+intervals over complexes. Where several step counts or variants are compared
+against a common reference, the multiplicity is stated and no individual
+comparison is claimed significant on the strength of an uncorrected interval.
+Stochasticity across sampling seeds is reported separately from stochasticity
+across complexes, since the two have been observed to be of comparable size
+and conflating them would overstate precision.

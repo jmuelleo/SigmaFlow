@@ -1,0 +1,121 @@
+% ============================================================================
+%  SigmaFlow thesis draft -- preamble
+%  Draft annotations are toggled by \draftmodetrue / \draftmodefalse in main.tex
+% ============================================================================
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}          % scalable outline fonts; microtype needs these
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathmorphing,fit,backgrounds}
+\usepackage[most]{tcolorbox}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=NavyBlue,urlcolor=NavyBlue]{hyperref}
+
+\definecolor{NavyBlue}{RGB}{20,60,120}
+\definecolor{DraftBlue}{RGB}{28,72,138}
+\definecolor{DraftGrey}{RGB}{120,120,120}
+\definecolor{PanelGrey}{RGB}{246,246,248}
+
+\onehalfspacing
+\setlength{\parskip}{0.25em}
+
+% ---------------------------------------------------------------- theorems
+\theoremstyle{plain}
+\newtheorem{proposition}{Proposition}[chapter]
+\newtheorem{lemma}[proposition]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[proposition]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[proposition]{Remark}
+
+% ============================================================================
+%  DRAFT ANNOTATION SYSTEM
+%  Set \draftmodefalse in main.tex to remove every annotation from the build.
+% ============================================================================
+\newif\ifdraftmode
+\draftmodetrue
+
+% --- Reserved-result placeholder -------------------------------------------
+% #1 short title  #2 body: experiment / expected output / metrics /
+%                          question answered / how interpretation depends on it
+% In non-draft mode the body is typeset into a discarded box, so the final
+% build contains no trace of it. This needs no extra package; the only
+% requirement is that reserved blocks contain no \label and no float.
+\ifdraftmode
+  \newenvironment{reserved}[1]{%
+    \begin{tcolorbox}[
+      enhanced, breakable,
+      colback=PanelGrey, colframe=DraftBlue,
+      boxrule=0.5pt, left=6pt,right=6pt,top=5pt,bottom=5pt,
+      fonttitle=\bfseries\small\sffamily,
+      title={RESERVED \textendash\ #1}]
+      \small\sffamily
+  }{%
+    \end{tcolorbox}
+  }
+\else
+  \newenvironment{reserved}[1]{\setbox0=\vbox\bgroup}{\egroup}
+\fi
+
+% --- Short inline annotation ------------------------------------------------
+% #1 tag (e.g. RESULT PENDING)   #2 text
+\newcommand{\dnote}[2]{\ifdraftmode{\sffamily\small\color{DraftBlue}\textbf{[#1]}\ #2}\fi}
+
+% --- Figure placeholder -----------------------------------------------------
+% #1 label  #2 caption  #3 specification of what the final figure must contain
+\newcommand{\figplaceholder}[3]{%
+  \begin{figure}[htbp]
+  \centering
+  \ifdraftmode
+    \begin{tcolorbox}[
+      width=0.92\textwidth, colback=PanelGrey, colframe=DraftGrey,
+      boxrule=0.5pt, sharp corners, halign=flush left]
+      \small\sffamily
+      \textbf{\color{DraftBlue}FIGURE PLACEHOLDER}\\[3pt]
+      #3
+    \end{tcolorbox}
+  \else
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{2cm}[figure]\vspace{2cm}}}
+  \fi
+  \caption{#2}
+  \label{#1}
+  \end{figure}}
+
+% --- "value to be filled in" ------------------------------------------------
+\newcommand{\tbd}{\ifdraftmode{\color{DraftBlue}\sffamily\textsc{tbd}}\else--\fi}
+
+% ============================================================================
+%  NOTATION
+% ============================================================================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sph}{\mathbb{S}}
+\newcommand{\SOthree}{\mathrm{SO}(3)}
+\newcommand{\SEthree}{\mathrm{SE}(3)}
+\newcommand{\sothree}{\mathfrak{so}(3)}
+\newcommand{\Mfd}{\mathcal{M}}
+\newcommand{\Exp}{\operatorname{Exp}}
+\newcommand{\Log}{\operatorname{Log}}
+\newcommand{\Ad}{\operatorname{Ad}}
+\newcommand{\Tr}{\operatorname{tr}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\dif}{\mathrm{d}}
+\newcommand{\Loss}{\mathcal{L}}
+\newcommand{\vfield}{u}
+\newcommand{\pred}{v_\theta}
+\newcommand{\Haar}{\mathcal{U}_{\SOthree}}
+\newcommand{\ctx}{c}                 % conditioning context (protein, ligand graph)
+\newcommand{\skewm}[1]{\widehat{#1}} % hat map R^3 -> so(3)
+\newcommand{\Rot}{R}
+\newcommand{\Ang}[1]{\ensuremath{#1^{\circ}}}
+\DeclareMathOperator*{\argmin}{arg\,min}

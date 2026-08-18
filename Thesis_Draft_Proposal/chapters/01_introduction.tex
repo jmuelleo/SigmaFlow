@@ -1,0 +1,105 @@
+\chapter{Introduction}
+\label{ch:intro}
+
+\section{Docking as a generative problem}
+
+Molecular docking asks where a small molecule --- the \emph{ligand} --- sits
+when bound to a protein, and in what orientation and internal conformation.
+The answer determines whether a candidate compound is worth synthesising, and
+computational prediction has been a central tool of structure-based drug
+design for decades. Classical docking programs pose this as optimisation:
+define a scoring function that approximates binding free energy, then search
+the space of poses for its minimum. The weakness is well known --- the scoring
+function is a crude surrogate, and the search returns a single point estimate
+with no calibrated notion of how much to trust it.
+
+Generative modelling reframes the task. Instead of minimising a surrogate
+energy, one learns to \emph{sample} from the conditional distribution
+$p(\text{pose} \mid \text{protein}, \text{ligand})$ implied by experimentally
+determined structures. Drawing $K$ samples then yields a set of hypotheses
+whose spread is itself informative. DiffDock \citep{corso2023diffdock}
+established that this works at scale, and a line of subsequent work has
+refined the state space, the architecture and the noising process.
+
+What makes the problem geometrically interesting is that a pose is not a
+vector. Placing a rigid body in space requires a rotation and a translation:
+an element of the special Euclidean group $\SEthree$. Treating a ligand as a
+small number of rigid fragments makes the configuration space a product
+$(\SEthree)^N$, a compact-times-Euclidean manifold on which the usual
+machinery of Gaussian noise and linear interpolation does not directly apply.
+Generative models on such spaces must be built with the geometry, not
+retrofitted to it.
+
+\section{Research question and scope}
+
+SigmaDock \citep{prat2026sigmadock} is a recent docking model that combines an
+$\SEthree$-equivariant EquiformerV2 backbone \citep{liao2024equiformerv2} with
+a score-based diffusion process over rigid-fragment poses. It is the starting
+point of this thesis. Diffusion is not the only way to learn a transport
+between a tractable source distribution and the data; flow matching
+\citep{lipman2023flow} learns a velocity field directly by regression, without
+simulating a stochastic process at training time, and its Riemannian extension
+\citep{chen2024riemannian} carries the construction to manifolds. The two
+approaches are closely related --- diffusion admits a deterministic
+probability-flow ODE \citep{song2021sde} --- but they differ in what the
+network is asked to predict, in how the source distribution is chosen, and in
+how many network evaluations sampling requires.
+
+This thesis asks:
+
+\begin{quote}
+\itshape
+What changes when SigmaDock's score-based diffusion is replaced by Riemannian
+flow matching on the protein--ligand pose manifold, while architecture, data
+and computational budget are held fixed --- and which flow-specific design
+choices are required before the substitution becomes competitive?
+\end{quote}
+
+The design principle throughout is \emph{minimal intervention}. The backbone,
+featurisation, data pipeline, optimiser and evaluation protocol are inherited
+unchanged; only the generative mechanism is replaced. This is what makes the
+comparison interpretable, and Chapter~\ref{ch:sigmaflow} documents the extent
+to which it was achieved, including where it was not.
+
+Two limitations are stated at the outset rather than buried. First, all
+experiments in this thesis are run at a fraction of the compute used to
+produce SigmaDock's published numbers; absolute performance is therefore well
+below the literature and no benchmark claim is made. What is claimed is a
+\emph{matched-budget} comparison between two generative engines. Second, the
+ligand is treated as a set of rigid fragments, so torsional flexibility enters
+only through the fragmentation and not as a modelled degree of freedom. Both
+constraints are inherited from SigmaDock and are shared by both arms of the
+comparison.
+
+\section{Contributions}
+\label{sec:contributions}
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+\item A controlled replacement of the generative mechanism in a
+      state-of-the-art docking system by Riemannian flow matching, with the
+      network backbone verified byte-identical between arms
+      (\S\ref{sec:minimal-change}). The construction itself applies known
+      theory; the \emph{control} is what makes the comparison usable.
+\item Identification and correction of two defects in the rotational
+      machinery: a frame inconsistency in the predicted vector field
+      (\S\ref{sec:frame-defect}) and a clamping error in the logarithmic map
+      inherited from the parent codebase (\S\ref{sec:log-defect}). Both are
+      documented with the behavioural signature of the fix.
+\item A derivation showing that the geodesic conditional target on $\SOthree$
+      is independent of time, and the resulting shrinkage argument for why
+      this removes the implicit curriculum a diffusion noise schedule provides
+      (Chapter~\ref{ch:asymmetry}). This is the principal theoretical
+      contribution.
+\item An empirical programme testing that mechanism against training compute,
+      together with the exclusion of three competing explanations ---
+      integration resolution, molecular symmetry and loss weighting
+      (\S\ref{sec:excluded}).
+\item A leakage-controlled construction for an informative source
+      distribution on $\SOthree$, motivated directly by the mechanism rather
+      than imported from elsewhere (\S\ref{sec:source-results}).
+\end{enumerate}
+
+\dnote{UPDATE AFTER FINAL RUNS}{Re-rank this list once
+Chapters~\ref{ch:results} and \ref{ch:discussion} are complete. If the
+informative-source experiment succeeds, item 5 moves up; if the rotational
+deficit persists under longer training, item 3 becomes the headline.}

@@ -14,7 +14,144 @@ User dort weitermachen will.
 
 ---
 
-# ⏭️ HIER WEITERMACHEN (Stand 2026-08-15)
+# ⏭️ HIER WEITERMACHEN (Stand 2026-08-17)
+
+## Aktuelle Arbeitsphase: **72h-Endläufe sind LAUNCH-READY — warten auf ARC**
+
+Alle Korrektheitsfragen sind geschlossen. Es fehlt nur noch verfügbare
+GPU-Kapazität. **Nichts mehr auditieren, keine neuen Blocker suchen** — der
+User hat die Entscheidungsregel ausdrücklich gesetzt: Gate bestanden ⇒ GREEN.
+
+### 🟢 Launch-Verdikt: GREEN
+
+| Gate | Stand |
+|---|---|
+| Rotationsmathematik (11 Angriffsvektoren, 16 Checks) | sauber |
+| Frame-Kette / adjungierter Transport | exakt bis 6.7e-16 |
+| J1 Checkpoint-Provenienz | **geschlossen** |
+| J2 Code-Baum-Identität | **geschlossen** — nur CRLF/LF |
+| **Gradient-Erreichbarkeit Rotation** | **geschlossen, GREEN** |
+| EMA-Politik | entschieden, deckt sich mit dem Paper |
+
+### Der Gradient-Gate (neu, 2026-08-17)
+
+`audits/test_rotation_gradient_reachability.py` — 15/15 Checks, Exit 0.
+
+- `‖∂L_rot/∂f‖ = 2.41e+01` gegen `‖∂L_trans/∂f‖ = 7.85e+00`
+  → Rotationsgradient ist **größer**, nicht kleiner. Kein AMBER.
+- 100 % der Atome erhalten Rotationsgradient; `‖∂L_rot/∂W‖ = 5.29e+01` an
+  einem echten linearen Kopf, alle 3 Ausgabezeilen.
+- `cos(∂L_rot/∂f, ∂L_trans/∂f) = +0.0000` → **numerische Bestätigung**, dass
+  Translation und Rotation orthogonale Projektionen desselben Feldes sind.
+- `max|ω| = 2.01` gegen Clamp 1e3 → keine Sättigung.
+- Gegenprobe mit künstlichem `detach()` liefert Gradient null ✓
+
+**Konsequenz:** H-dead (strukturell abgetrennter Rotationskopf) ist
+ausgeschlossen. Die drei Null-Ablationen sind als „kein Signal zum
+Umgewichten" zu lesen, **nicht** als „kein Gradient".
+
+### Gültige Referenzläufe (endgültig)
+
+| | SigmaFlow 6h | SigmaFlow 12h | SigmaDock 6h | SigmaDock 12h |
+|---|---|---|---|---|
+| Job | 8530243 | **8541310** | 8512922 | **8541439** |
+| Checkpoint | `0-08-10_10-04-41/last.ckpt` | `0-08-11_18-00-41/last.ckpt` | n.g. | n.g. |
+| Step | 7050 (Epoche 2) | **13750** (Epoche 5) | — | — |
+| Gewichte beim Sampling | **EMA** | **EMA** | vermutlich EMA | vermutlich EMA |
+
+⚠️ **8512798 ist NICHT verwendbar** — 6h **ohne** Frame-Fix.
+⚠️ `posebusters_ligandonly_SigmaDock_12h.csv` ist die **veraltete** Datei
+(0 Treffer). Immer `..._12h_lrfix.csv` benutzen (17 Treffer).
+Per-Komplex nachgezählt: SigmaFlow 6/209, SigmaDock 17/209, **Schnittmenge
+leer** — die beiden Modelle lösen disjunkte Komplexe.
+
+### 📄 SigmaDock-Paper-Audit (Paper liegt in `papers/`, NICHT `paper/`)
+
+*Prat, Zhang, Deane, Teh, Morris — ICLR 2026, arXiv:2511.04854v2*
+
+| Punkt | Wert |
+|---|---|
+| **Headline 79.9 %** | Top-1 **(RMSD < 2 Å UND PB-valid)**, N_seeds = **40** |
+| bei N_seeds = 10 | 74.7 % (RMSD) / 72.2 % (kombiniert) |
+| Benchmark | PoseBusters v2, **308** Komplexe (wir: 209) |
+| RMSD | symmetriekorrigiert (Meli & Biggin 2020) |
+| Top-k | mind. eine der Top-k Posen aus N_seeds unter 2 Å |
+| Ranking | `s_i = −b_i·p_i^4`, Vinardo + 5 PB-Checks, **kein trainiertes Confidence-Modell** |
+| Sampling | **20** Schritte (wir haben 25 geerbt), Batch 64 |
+| Training | 256 Epochen, Batch **32**, AdamW, Warmup+Cosine 1e-6→1e-4→1e-5, **EMA 0.999** |
+| Compute | **4× A100 80GB, 4 Tage ≈ 384 GPU-h** (wir: 12 GPU-h) |
+| Nicht berichtet | Median-RMSD, RMSD < 5 Å |
+
+**Vergleichsregel für die Thesis:** unsere Zahlen nie gegen 79.9 % stellen
+ohne alle vier Unterschiede im selben Satz zu nennen (209 vs 308, 12 vs 384
+GPU-h, Batch 8 vs 32, 1 Seed ohne Ranking vs 40 mit Ranking). Und 79.9 % ist
+eine **Konjunktion** — unsere 1.9 % ist RMSD allein, also nicht dasselbe
+Ereignis.
+
+### EMA-Politik für 72h (entschieden)
+
+Training mit EMA, Validierung mit EMA, **Sampling und Report mit EMA** — für
+**beide** Arme. Deckt sich mit Appendix E.3 des Papers. Im Repo:
+`EMAWithRampup`, Halbwertszeit 2 Epochen, Rampup 1/8, Schattenmodell, in
+`ckpt["ema_state_dict"]` persistiert. `use_ema: true` in
+`conf/sampling/base.yaml:79`.
+
+Ins Fingerprint aufnehmen: `use_ema, ema_halflife, ema_rampup_ratio,
+checkpoint_path, checkpoint_sha256, global_step, epoch,
+weights_used_for_sampling=EMA`.
+
+### ⏭️ NÄCHSTE SCHRITTE, sobald ARC läuft
+
+```bash
+cd /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow
+git pull origin main
+bash arc/00_preflight.sh                                    # READY erwarten
+python audits/test_rotation_gradient_reachability.py        # Exit 0 erwarten
+
+# FINAL_MAX_EPOCHS=36 in arc/final_config.sh setzen.
+# Herleitung: 13.750 Steps in 11,1 h bei Batch 8 -> 2,78 Beispiele/s
+#             -> ~90k Steps in 72 h -> ~36 Epochen.
+# NICHT höher setzen: unvollendeter Cosine-Anneal hat schon die Läufe
+# vom 2026-08-07 entwertet.
+
+DRY_RUN=1 bash arc/submit_final.sh sigmaflow_minimal
+DRY_RUN=1 bash arc/submit_final.sh sigmadock
+bash arc/submit_final.sh sigmaflow_minimal
+bash arc/submit_final.sh sigmadock
+
+sbatch arc/exp101_distance_audit.slurm    # CPU-only, umgeht die GPU-Queue
+```
+
+⚠️ **Bei Resume `FINAL_MAX_EPOCHS` NICHT erhöhen** — `configure_optimizers`
+baut den Scheduler aus dem aktuellen Wert neu und wendet den
+wiederhergestellten Step-Zähler auf eine gestreckte Kurve an
+(ungeplanter Warm Restart).
+
+### Offene Punkte (keine Blocker)
+
+1. SigmaDock-Checkpoint/EMA-Provenienz noch nicht per `torch.load` geprüft.
+2. Fragmentzahl-Histogramm fehlt. Bekannt: `D = 6·F`, Median D 24, q90 42,
+   max 66 → **Median 4, q90 7, max 11 Fragmente**. Die gewünschten
+   10–15/20+/30–40-Liganden **existieren nicht**.
+3. Trajektorien-Export nicht implementiert. SigmaFlow sammelt bereits
+   `all_pos` (`sampling.py:380/464/478`), `sample.py` gibt
+   `trajectory: [T, N_lig, 3]` heraus. Nur ein Writer fehlt; `R_t`/`trans_t`
+   je Schritt müssten append-only ergänzt werden. SigmaDock-Seite ungeprüft.
+4. Thesis-Draft (`Thesis_Draft_Proposal/`) nennt 209 Komplexe ohne Hinweis
+   auf die 308 des Papers, und die RMSD∧PB-Konjunktion fehlt noch.
+5. `texprobe/` im Repo-Root ist Müll aus einer Werkzeugprüfung, untracked.
+
+### Neue Dateien dieser Sitzung
+
+- `audits/test_rotation_gradient_reachability.py` — der Gate, 15 Checks
+- `INFORMATIVE_SOURCE_ROADMAP.md` — Leiter IS-0…IS-6, Leakage-Regeln,
+  SO(3)-Familien, gelernte Quellen, Priorisierung
+- `Thesis_Draft_Proposal/` — kompilierender LaTeX-Entwurf, 46 S.,
+  8.021 Wörter Prosa, 0 undefinierte Referenzen
+
+---
+
+# 📁 HISTORISCH — Theory-Phase (Stand 2026-08-15)
 
 ## Aktuelle Arbeitsphase: **Theory Summary `Texte/theory.tex`**
 

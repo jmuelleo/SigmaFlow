@@ -1,0 +1,39 @@
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+This thesis replaced the score-based diffusion mechanism of a rigid-fragment
+protein--ligand docking model with Riemannian flow matching on
+$(\SEthree)^N$, holding the equivariant backbone, the data pipeline and the
+computational budget fixed so that the substitution itself could be measured.
+
+Three results are established independently of the longer training runs. The
+substitution simplifies the model's interface, replacing a score that requires
+noise-dependent rescaling with a velocity that does not. It permits a fivefold
+reduction in integration steps at no measurable cost in accuracy, the
+signature expected of near-straight conditional paths. And it exposes an
+asymmetry between the factors of the state space: at matched budget the
+translational channel carries signal while the rotational channel is
+statistically indistinguishable from uniform guessing.
+
+The principal theoretical contribution is a candidate explanation for that
+asymmetry. The geodesic conditional target on $\SOthree$ is independent of
+time (Proposition~\ref{prop:t-invariance}), so flow matching demands the
+complete rotational answer at every $t$, including $t=0$ where the state is
+uninformative; the $L^2$-optimal response is then a contracting conditional
+mean. Translation escapes this because its source is centred on the binding
+pocket and therefore informative, whereas the Haar measure has no distinguished
+orientation to hedge towards. Diffusion's noise schedule supplies, incidentally,
+the graded curriculum that the flow-matching construction discards.
+
+\dnote{RESULT PENDING}{The remaining two paragraphs state the verdict on
+predictions P1--P4 and on the informative-source intervention, and are written
+only once Chapter~\ref{ch:results} is complete. The four candidate shapes are
+set out in \S\ref{sec:verdict}. Reserved: \(\approx 150\) words.}
+
+Beyond docking, the analysis suggests a general point. When a conditional
+generative model is built on a homogeneous space, the invariant measure is the
+obvious source distribution and is often the only one considered --- but
+invariance is precisely the property that makes it uninformative. Flow
+matching, unlike diffusion, leaves that choice open. Whether exploiting it
+repairs the rotational channel here is the question the remaining experiments
+are designed to answer.

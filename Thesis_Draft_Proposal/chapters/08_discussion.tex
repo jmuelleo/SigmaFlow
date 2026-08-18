@@ -1,0 +1,151 @@
+\chapter{Discussion}
+\label{ch:discussion}
+
+\section{What the substitution changed}
+\label{sec:what-changed}
+
+Replacing score-based diffusion by Riemannian flow matching, with everything
+else held fixed, changed three things that can be stated independently of the
+outcome of the longer runs.
+
+It changed \emph{what the network is asked to predict}. A score has units of
+inverse state and must be rescaled by noise-level-dependent factors before it
+can move a pose; a velocity is already in the units of the state. The entire
+scalar apparatus that performed that conversion was deleted rather than
+adapted (\S\ref{sec:minimal-change}), which is a genuine simplification of the
+model's interface, not merely a reorganisation.
+
+It changed \emph{the cost of sampling}. The conditional paths are straight or
+geodesic by construction, and \S\ref{sec:nfe} confirms that accuracy is flat
+from $5$ to $200$ integration steps --- a fivefold reduction against the
+inherited default at no measurable cost. Whether this is an advantage
+\emph{over diffusion} awaits the matching sweep on the other arm, and the claim
+is stated in the weaker form until then.
+
+And it changed \emph{what is a free parameter}. Under diffusion the source is
+determined by the forward process; under flow matching it is a modelling
+choice (\S\ref{sec:source-theory}). This is the degree of freedom that
+Chapter~\ref{ch:asymmetry} identifies as consequential and
+\S\ref{sec:source-results} exploits.
+
+\section{Verdict on the asymmetry hypothesis}
+\label{sec:verdict}
+
+\begin{reserved}{Verdict, written against the final evidence}
+This section states which of P1--P4 (\S\ref{sec:predictions}) survived. It is
+deliberately left unwritten: writing it now would mean committing to a
+conclusion before the test. The four anticipated readings and the shape each
+would take:
+
+\textbf{(A) Rotation catches up with compute.} P3 refuted. The mechanism is
+then a statement about \emph{convergence rate}, not a structural limit: the
+time-invariant target makes the rotational problem harder to optimise early,
+but not unlearnable. The efficiency result of \S\ref{sec:nfe} becomes the
+headline, and the thesis argues that flow matching is competitive above a
+compute threshold that should be quantified.
+
+\textbf{(B) The deficit persists.} P3 supported. The thesis argues that the
+geodesic path with a Haar source is structurally deficient for
+\emph{conditional} generation on $\SOthree$, and that the diffusion noise
+schedule functions as an implicit curriculum that the flow-matching
+construction discards. \S\ref{sec:source-results} then becomes the causal test
+of that claim.
+
+\textbf{(C) Minimal remains worse, informative source repairs it.} P3 and P4
+both supported, and the strongest available form of the argument: the
+deficiency is diagnosed \emph{and} located in a specific, replaceable
+component, with the repair following from the mathematics rather than from
+search. Source design is then the thesis's main methodological claim.
+
+\textbf{(D) Accuracy parity, advantage elsewhere.} The asymmetry was a
+transient; the substitution is accuracy-neutral but cheaper to sample and, if
+\S\ref{sec:confidence-results} succeeds, better equipped for selection. The
+thesis then argues on cost and calibration rather than accuracy, with the
+explicit caveat that confidence estimation is not flow-specific.
+
+Reserved: \(\approx 400\) words.
+\end{reserved}
+
+\section{Is the comparison genuinely controlled?}
+\label{sec:controlled}
+
+The strength of any claim here rests on the substitution being isolated, so
+the residual differences must be stated rather than assumed away.
+
+In favour: the backbone source is byte-identical between arms, verified by
+hash; featurisation, splits, fragmentation, optimiser, schedule and loss
+weights are shared; both arms were trained on the same hardware for the same
+wall-clock time with the same batch size; and evaluation used one pipeline for
+both.
+
+Against: the two arms execute in separate software environments with different
+interpreter versions, so a difference attributable to library behaviour cannot
+be excluded outright. The diffusion arm is invoked with its own
+rotational-score configuration, which is required for it to function but is
+nonetheless a difference. And the reconstructed fragmentation differs between
+runs for a substantial minority of complexes, which is why the analysis relies
+on fragment-level rotational statistics rather than bond-level geometry.
+
+None of these plausibly produces a threefold difference in rotational
+enrichment, but they are recorded so the reader can weigh them.
+
+\section{Conceptual differences independent of accuracy}
+
+Some consequences of the substitution do not depend on which model scores
+higher. Training is simulation-free and requires no noise schedule to tune, so
+one hyperparameter family disappears. Sampling is a deterministic map from
+source sample to pose, which makes the sample set a function of $\{x_0^{(k)}\}$
+alone and simplifies reasoning about diversity. The learned object is a
+well-defined ODE, so exact likelihood is available in principle through the
+instantaneous change-of-variables formula --- with the caveat that the
+divergence on $\SOthree$ requires care that this thesis has not verified, and
+which is therefore listed as future work rather than claimed. And the source
+is explicit, which is what makes \S\ref{sec:source-results} possible at all.
+
+\section{Limitations}
+\label{sec:limits}
+
+\textbf{Compute.} All runs here are far below the budget behind SigmaDock's
+published results. Absolute accuracies are correspondingly low for both arms,
+and no statement about benchmark-level performance is made. The comparison is
+internally matched, which is the claim that is actually defended.
+
+\textbf{A single training seed per arm.} Run-to-run variability in training is
+not characterised, so a difference of the size seen between the two arms
+cannot be formally separated from seed variation in training. Sampling-seed
+variability \emph{is} characterised and is reported throughout.
+
+\textbf{Evaluation.} PoseBusters is a single benchmark; RMSD-centric metrics
+are known to be imperfect proxies for binding-mode correctness; and the
+torsional-fingerprint metric explored as a complement proved essentially
+uncorrelated with RMSD and failed to compute for a substantial fraction of
+molecules, so it is not reported.
+
+\textbf{Inherited design.} The rigid-fragment approximation, the fragmentation
+algorithm, and the single-head Newton--Euler reduction are all inherited. In
+particular, the last of these means translation and rotation are two
+functionals of one output, and a genuinely separate rotational head might
+behave differently --- an intervention deliberately excluded here because it is
+not flow-specific and would have confounded the comparison.
+
+\textbf{Scope of the mechanism.} The argument of \S\ref{sec:shrinkage} is a
+statement about $L^2$ regression under weak conditioning. It predicts that
+small fragments, whose rotational readout is most poorly conditioned, should
+rotate worst. That prediction is \emph{not} visible in the data
+($\Ang{135.8}$ for small fragments against $\Ang{141.7}$ for large ones in
+SigmaFlow). With a rotational channel already at chance there is little
+dynamic range in which to detect such a trend, so the sub-prediction is
+recorded as unconfirmed rather than as supporting evidence.
+
+\section{Future work}
+
+Three directions follow directly. A separate equivariant rotational head would
+test whether the two channels compete through their shared readout; this is
+the intervention with the largest expected effect and the least flow
+specificity, and that combination should be stated plainly. Exact ODE
+likelihood is attractive for ranking, but requires first validating the
+divergence computation on the manifold against an analytically known test
+field. And source design generalises: the argument of
+Chapter~\ref{ch:asymmetry} applies to any conditional generative model on a
+homogeneous space whose natural invariant measure is uninformative, which
+includes several problems in structural biology beyond docking.

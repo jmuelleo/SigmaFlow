@@ -1,0 +1,80 @@
+% ============================================================================
+%  SigmaFlow: Riemannian Flow Matching for Generative Protein--Ligand Docking
+%  MSc Statistical Science -- PROPOSED THESIS DRAFT
+%
+%  This is a working draft whose STRUCTURE is designed for the intended final
+%  thesis. Sections whose results do not yet exist appear as clearly marked
+%  reserved blocks stating what will fill them.
+%
+%  Draft annotations: set \draftmodefalse in preamble.tex to remove all of
+%  them from the build.
+%
+%  Build:  latexmk -pdf main.tex
+% ============================================================================
+\documentclass[11pt,a4paper]{report}
+\input{preamble}
+
+\title{\textbf{SigmaFlow}\\[0.3em]
+       \large Riemannian Flow Matching for Generative Protein--Ligand Docking}
+\author{Julian M\"uller}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+% ---------------------------------------------------------------------------
+\begin{abstract}
+\noindent
+Molecular docking predicts the bound geometry of a small molecule in a protein
+binding site. Recent generative approaches cast this as sampling from a
+conditional distribution over rigid-body poses, a space that is not Euclidean:
+a pose is an element of a product of special Euclidean groups. SigmaDock
+attacks this with score-based diffusion. This thesis replaces that generative
+mechanism with Riemannian flow matching while holding the network
+architecture, the data pipeline, and the computational budget fixed, so that
+the substitution itself --- rather than a confounded collection of changes ---
+is what is measured.
+
+The resulting system, SigmaFlow, is compared to its diffusion parent at
+matched training compute. Early experiments reveal a sharp asymmetry between
+the two factors of the state space: the translational channel carries signal
+while the rotational channel is, at this budget, statistically
+indistinguishable from uniform guessing. We derive a candidate mechanism from
+the geometry of the construction. The geodesic conditional path on
+$\SOthree$ has a regression target that is \emph{independent of time}, so flow
+matching demands the complete answer at $t=0$, where it is not identifiable
+from the state; the $L^2$-optimal response is then a conditional mean of
+rotation vectors, which contracts. Translation escapes this because its source
+distribution is informative and rotation's, being Haar, is not.
+
+\dnote{RESULT PENDING}{The abstract closes with the verdict of the
+matched-compute experiments and the source-distribution intervention. Rewrite
+the final two sentences once Chapter~7 is complete; the framing above is
+deliberately compatible with all four anticipated outcomes.}
+\end{abstract}
+
+\dnote{CHECK WITH SUPERVISOR}{Whether the abstract counts towards the
+12{,}000-word limit, and whether appendices are excluded. The budget in this
+draft assumes both are excluded. This assumption materially changes
+Chapter~3's allocation and should be confirmed against the MSc Statistical
+Science handbook before the final build.}
+
+\tableofcontents
+
+\input{chapters/01_introduction}
+\input{chapters/02_problem}
+\input{chapters/03_theory}
+\input{chapters/04_sigmaflow}
+\input{chapters/05_asymmetry}
+\input{chapters/06_design}
+\input{chapters/07_results}
+\input{chapters/08_discussion}
+\input{chapters/09_conclusion}
+
+\bibliographystyle{plainnat}
+\bibliography{refs}
+
+\appendix
+\input{chapters/A_appendix}
+
+\end{document}

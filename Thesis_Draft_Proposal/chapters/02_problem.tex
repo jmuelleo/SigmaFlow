@@ -1,0 +1,165 @@
+\chapter{Docking as Conditional Generation on a Product Manifold}
+\label{ch:problem}
+
+\section{Poses, rigid fragments, and the state space}
+\label{sec:state-space}
+
+Let a ligand consist of $N_a$ atoms. A \emph{pose} is an assignment of
+positions to those atoms consistent with the molecule's covalent geometry.
+Modelling the full conformational space couples bond lengths, angles and
+torsions; SigmaDock instead partitions the ligand into $N$ rigid
+\emph{fragments}, treats internal fragment geometry as fixed at a
+precomputed conformer, and generates only the rigid-body placement of each
+fragment. Torsional flexibility survives implicitly, as the relative placement
+of neighbouring fragments, but is not itself a modelled coordinate.
+
+A single fragment's placement is an element of the special Euclidean group,
+\begin{equation}
+  \SEthree \;=\; \bigl\{\, (\Rot, x) : \Rot \in \SOthree,\; x \in \R^3 \,\bigr\},
+\end{equation}
+acting on a body-frame atom offset $y$ by $y \mapsto \Rot y + x$. The full
+state is therefore a point on the product manifold
+\begin{equation}
+  \Mfd \;=\; \bigl(\SEthree\bigr)^{N}
+  \;\cong\; \bigl(\SOthree\bigr)^{N} \times \bigl(\R^{3}\bigr)^{N},
+  \qquad \dim \Mfd = 6N .
+  \label{eq:state-space}
+\end{equation}
+
+Two remarks matter for what follows. First, $\Mfd$ is a \emph{product} of a
+compact factor and a Euclidean one, and the implementation treats it as a
+direct product: rotations and translations are given independent probability
+paths and independent vector fields, with no cross terms. This is a modelling
+choice, not a property of $\SEthree$, and it is stated explicitly here because
+the thesis's central finding is precisely an asymmetry \emph{between} the two
+factors. Second, $N$ is small: over the 209 evaluation complexes the median
+fragment count gives $\dim\Mfd = 24$, with a ninetieth percentile of $42$ and
+a maximum of $66$. The state space is low-dimensional; the difficulty lies in
+its geometry and in the conditioning, not in dimension.
+
+Translations are expressed relative to the binding-pocket centroid, so the
+origin of the $\R^3$ factor is a chemically meaningful point. This apparently
+minor convention becomes important in Chapter~\ref{ch:asymmetry}.
+
+\section{The conditional generative formulation}
+
+Write $\ctx$ for the conditioning context: the protein pocket, the ligand's
+molecular graph, and the precomputed fragment conformers. The learning target
+is the conditional law of the crystallographic pose,
+\begin{equation}
+  p_{\mathrm{data}}(\,\cdot \mid \ctx\,) \quad\text{on}\quad \Mfd ,
+\end{equation}
+from which we wish to draw samples at inference. Two features distinguish this
+from unconditional generative modelling on a manifold. The conditioning is
+strong --- given a pocket, the plausible poses occupy a small region --- and
+the training data provide exactly \emph{one} sample per context, namely the
+deposited structure. There is no set of ground-truth poses per complex to
+match in distribution, only a single point. Every generative construction
+below must therefore be conditional on $\ctx$ and trained from single
+observations.
+
+\section{SigmaDock: the score-based baseline}
+\label{sec:sigmadock}
+
+SigmaDock defines a forward noising process that carries the data pose towards
+a tractable reference: an isotropic Gaussian on each translational factor and
+the heat kernel on each rotational factor, whose density is the
+$\mathrm{IGSO}(3)$ distribution obtained by solving the diffusion equation on
+$\SOthree$ \citep{leach2022so3, yim2023se3}. A network is trained by denoising
+score matching \citep{vincent2011connection, song2019ncsn} to estimate the
+Stein score $\nabla \log p_\tau$ of the perturbed marginals at noise level
+$\tau$, and sampling integrates the reverse-time stochastic differential
+equation \citep{song2021sde}. Poses are generated in batches of $K$ and ranked
+by a fixed heuristic combining a Vinardo binding energy
+\citep{quiroga2016vinardo} with a stereochemical validity fraction; the
+published headline numbers are post-ranking.
+
+\subsection{The inherited backbone, and how much of it the reader needs}
+\label{sec:backbone}
+
+The network is an EquiformerV2 \citep{liao2024equiformerv2}, and it is
+inherited by SigmaFlow \emph{without modification}. Rather than reproduce its
+internals, this section states only the interface, which is what the argument
+of this thesis actually requires. Appendix~\ref{app:equivariance} gives the
+representation-theoretic background for readers who want it.
+
+Physical correctness demands that the model be equivariant: rotating the
+entire complex must rotate the predicted pose update identically, and
+permuting atom indices must permute the outputs. A network built purely from
+distances and other invariant scalars satisfies the first requirement
+trivially but cannot then \emph{emit} a vector, since any function of
+invariants is itself invariant. The resolution is to carry features that
+transform in a controlled way --- so-called steerable features, decomposed
+into components indexed by degree $\ell$, where $\ell=0$ components are scalars
+invariant under rotation and $\ell=1$ components transform as vectors. Message
+passing is then designed so that this transformation law is preserved through
+every layer.
+
+The consequence for this thesis is narrow and concrete. The backbone maps the
+conditioning context and the current state to a per-atom steerable feature
+tensor. A single output block reads from it and emits \emph{one} $\ell=1$
+vector per ligand atom,
+\begin{equation}
+  f_i \in \R^3, \qquad i = 1,\dots,N_a ,
+  \label{eq:force-field}
+\end{equation}
+which we refer to as the force field by analogy with rigid-body mechanics.
+Both rigid-body degrees of freedom of a fragment $F$ are then obtained from
+this single field by the Newton--Euler reduction
+\begin{align}
+  \text{translation:}\quad & \textstyle F_{\mathrm{net}} = \sum_{i \in F} f_i ,
+  \label{eq:reduce-trans}\\
+  \text{rotation:}\quad & \textstyle \tau = \sum_{i \in F} (r_i - c_F) \times f_i ,
+  \label{eq:reduce-rot}
+\end{align}
+where $c_F$ is the fragment centroid and $r_i$ the atom position. There is no
+separate rotational head; the two channels are two \emph{linear functionals of
+the same output}. Since $\sum_{i \in F} (r_i - c_F) = 0$, a spatially constant
+component of $f$ produces net force but zero torque, and a purely rotational
+pattern produces torque but zero force: the functionals are orthogonal.
+Chapter~\ref{ch:asymmetry} and \S\ref{sec:trans-vs-rot} return to the very
+different \emph{conditioning} of these two readouts.
+
+\figplaceholder{fig:architecture}
+{Inherited architecture and the interface to the generative mechanism.
+Components shaded grey are byte-identical between SigmaDock and SigmaFlow;
+only the shaded-blue block is replaced.}
+{Schematic in three columns.
+\textbf{Left (inherited, grey):} protein pocket and ligand graph
+$\rightarrow$ featurisation $\rightarrow$ EquiformerV2 backbone
+$\rightarrow$ per-atom steerable features.
+\textbf{Middle (inherited, grey):} single $\ell=1$ output block emitting
+$f_i \in \R^3$ per atom; Newton--Euler reduction to
+$(F_{\mathrm{net}}, \tau)$ per fragment, Eqs.~(2.4)--(2.5).
+\textbf{Right (replaced, blue):} interpretation layer. SigmaDock reads
+$(F_{\mathrm{net}},\tau)$ as a \emph{score} and integrates a reverse SDE;
+SigmaFlow reads them as a \emph{velocity} and integrates an ODE.
+Annotate the right column with the two objectives, Eq.~(3.20) and the
+diffusion counterpart. The figure must make visually obvious that the
+substitution is confined to one block --- this is the evidence for the
+controlled comparison and should replace roughly 400 words of prose.}
+
+\section{Evaluation and the random-rotation null}
+\label{sec:metrics}
+
+Docking accuracy is reported as the root-mean-square deviation (RMSD) between
+predicted and crystallographic ligand atoms, with the fraction of complexes
+below $2$\,\AA{} the conventional success criterion. Because RMSD mixes
+placement error with internal geometry error, we also report RMSD after
+optimal rigid superposition \citep{kabsch1976solution}, which isolates
+internal geometry, and the centroid displacement, which isolates placement.
+Physical plausibility is assessed with the PoseBusters battery
+\citep{buttenschoen2024posebusters}.
+
+For the rotational channel a null model is essential. If fragment
+orientations were drawn uniformly (Haar) on $\SOthree$, the expected geodesic
+angle to the truth would be
+\begin{equation}
+  \E\bigl[\theta\bigr] \;=\; \frac{\pi^2/2 + 2}{\pi}
+  \;\approx\; \Ang{126.5},
+  \label{eq:haar-null}
+\end{equation}
+with a median of about $\Ang{132.3}$ under the sampling protocol used here.
+Every rotational number in Chapter~\ref{ch:results} is reported against this
+reference, because a rotation error of $\Ang{130}$ is not a poor prediction ---
+it is no prediction at all.

@@ -1,0 +1,83 @@
+\chapter{Equivariance and the Inherited Backbone}
+\label{app:equivariance}
+
+\S\ref{sec:backbone} states only the interface between the backbone and the
+generative mechanism, on the grounds that the backbone is inherited unchanged
+and is not a contribution of this thesis. This appendix supplies the
+representation-theoretic background for readers who want it.
+
+\dnote{DRAFT}{Compress from the corresponding chapters of the project's
+theory document. Target $\approx 900$ words. Cover, in this order:
+group actions and the formal definitions of invariance and equivariance;
+irreducible representations of $\SOthree$ and the Wigner-$D$ matrices;
+spherical harmonics as the basis in which steerable features are expressed;
+tensor products and Clebsch--Gordan coefficients as the mechanism by which
+features of different degree interact; the $\mathrm{SO}(2)$ reduction of
+\citet{passaro2023escn} that makes EquiformerV2 tractable
+\citep{liao2024equiformerv2}; and the architecture's hyperparameters and
+parameter count. No derivations --- statements, one worked shape example, and
+citations. Nothing here is needed to follow the main argument, and the
+appendix should say so in its first sentence.}
+
+\chapter{Diffusion Background}
+\label{app:diffusion}
+
+\dnote{DRAFT}{Compress to $\approx 600$ words. Stochastic differential
+equations and the Euler--Maruyama scheme; denoising score matching
+\citep{vincent2011connection}; the variance-preserving and variance-exploding
+families \citep{song2021sde}; Brownian motion on a Riemannian manifold and the
+heat kernel on $\SOthree$, i.e.\ $\mathrm{IGSO}(3)$ \citep{leach2022so3};
+and the probability-flow ODE with the affine relation between score and
+velocity that connects the two formulations. Statements and citations, no
+derivations: \S\ref{sec:sigmadock} and \S\ref{sec:score-vs-velocity} carry
+everything the argument uses.}
+
+\chapter{Derivations}
+\label{app:derivations}
+
+\dnote{DRAFT}{Full versions of the three results stated compactly in the main
+text: the marginalisation theorem (Proposition~\ref{prop:marginalisation})
+with the Riemannian case treated explicitly rather than by remark; the
+adjoint-transport identity \eqref{eq:adjoint} with the derivation of both
+trivialisations from the group action; and the Haar expected-angle
+computation \eqref{eq:haar-null}, which is a short integral against the
+$\SOthree$ angle density and is worth doing in full because every rotational
+claim in Chapter~\ref{ch:results} is measured against it.}
+
+\chapter{Numerical Verification}
+\label{app:numerics}
+
+\dnote{DRAFT}{Tabulate the geometric verification suite that supports
+Chapter~\ref{ch:sigmaflow}. Contents already exist as executable checks and
+should be reported as a table of quantity, expected value, observed value:
+the frame convention identified from the imported code rather than from
+comments; the Euler step of length $1-t$ reaching $\Rot_1$ (observed
+$5\times10^{-4}$ degrees) against the incorrect left-multiplication (observed
+$\approx\Ang{179.5}$); the adjoint identity to machine precision; accuracy of
+the logarithmic map before and after the clamp correction of
+\S\ref{sec:log-defect}; and the Haar null verified both analytically and over
+$20{,}000$ samples. Include the note on catastrophic cancellation in the
+chord-form angle computation, which is a genuine numerical trap and cost real
+debugging time.}
+
+\chapter{Extended Results}
+\label{app:results}
+
+\dnote{DRAFT}{Material displaced from Chapter~\ref{ch:results} for space:
+per-seed breakdowns of Table~\ref{tab:12h}; the full step sweep with all
+paired intervals; seed-variance analysis; the PoseBusters check-by-check
+breakdown; and the complete experiment registry, including variants that were
+specified and rejected on mathematical grounds without being run. The last of
+these is worth including --- rejecting an experiment for a stated reason is
+part of the work, and the registry records why optimal-transport coupling
+cannot apply when the target is a single fixed pose per complex.}
+
+\chapter{Implementation Reference}
+\label{app:implementation}
+
+\dnote{DRAFT}{Short. Numerical safeguards and their justification (clamps,
+epsilons, the float64 islands in otherwise float32 code); masking, batching
+and scatter conventions; and a table mapping each mathematical object in
+Chapter~\ref{ch:theory} to the module that implements it. This is the only
+place in the thesis where file and function names belong; the main text refers
+to equations, not to code.}

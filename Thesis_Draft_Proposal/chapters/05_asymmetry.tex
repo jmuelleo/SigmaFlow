@@ -1,0 +1,139 @@
+\chapter{A Testable Rotation--Translation Asymmetry}
+\label{ch:asymmetry}
+
+The experiments of Chapter~\ref{ch:results} report a pronounced difference
+between the two factors of $\Mfd$: the translational channel carries signal
+while the rotational channel, at the budgets examined so far, does not. This
+chapter derives a candidate mechanism from the construction of
+\S\ref{sec:sigmaflow-objective}. It is presented as a \emph{hypothesis with
+explicit falsifiers}, not as an established conclusion; \S\ref{sec:predictions}
+states what would refute it and \S\ref{sec:traj-results} carries out the test.
+
+\section{The geodesic target does not depend on time}
+\label{sec:t-invariance}
+
+\begin{proposition}[Time-invariance of the conditional rotational target]
+\label{prop:t-invariance}
+Let $\Rot_t = \Rot_0\Exp\!\bigl(t\Log(\Rot_0^\top\Rot_1)\bigr)$ be the geodesic
+interpolant of \eqref{eq:sf-rot}, with $\Log$ taken on the principal branch.
+Then for all $t \in [0,1)$,
+\begin{equation}
+  \vfield_t^{\mathrm{rot}}
+  \;=\; \frac{\Log\!\bigl(\Rot_t^\top \Rot_1\bigr)}{1-t}
+  \;=\; \Log\!\bigl(\Rot_0^\top\Rot_1\bigr) ,
+  \label{eq:t-invariance}
+\end{equation}
+which is independent of $t$. In particular
+$\bigl\|\vfield_t^{\mathrm{rot}}\bigr\|$ is constant along each conditional
+trajectory and equals the full initial geodesic distance.
+\end{proposition}
+
+\begin{proof}
+Write $\Delta = \Rot_0^\top \Rot_1$ and $\xi = \Log\Delta$. Then
+$\Rot_t^\top \Rot_1 = \Exp(-t\xi)\,\Rot_0^\top \Rot_1 = \Exp(-t\xi)\Exp(\xi)$.
+Both factors are exponentials of multiples of the same Lie algebra element and
+therefore commute, so the product is $\Exp\bigl((1-t)\xi\bigr)$. Taking
+logarithms gives $\Log(\Rot_t^\top\Rot_1) = (1-t)\xi$, and dividing by $1-t$
+yields \eqref{eq:t-invariance}.
+\end{proof}
+
+The identity is not an artefact of the analysis: it is present in the
+implementation, where the training target is computed as $\Log(\Rot_0^\top
+\Rot_1)$ directly and the code comments justify this as a numerically stabler
+form of $\Log(\Rot_t^\top\Rot_1)/(1-t)$ near $t=1$. The property was exploited
+as a convenience before it was recognised as a mechanism.
+
+The corresponding translational statement is the same, and equally standard:
+the target $x_1 - x_0$ of \eqref{eq:sf-trans} is likewise constant in $t$. The
+asymmetry therefore cannot come from time-invariance alone. It comes from what
+the model can \emph{infer} at each time, and that is a property of the source.
+
+\section{Shrinkage of the conditional mean}
+\label{sec:shrinkage}
+
+By \eqref{eq:marginal-as-cexp}, the minimiser of the training objective is not
+the conditional target but its expectation given the current state:
+\begin{equation}
+  \pred^\star(t, \Rot_t) \;=\;
+  \E\bigl[\,\Log(\Rot_0^\top\Rot_1) \,\big|\, \Rot_t,\, \ctx \,\bigr].
+  \label{eq:rot-cond-mean}
+\end{equation}
+Consider $t$ near zero. Then $\Rot_t \approx \Rot_0 \sim \Haar$, and by the
+bi-invariance of the Haar measure $\Rot_0$ is independent of $\Rot_1$;
+the state supplies no information about the target beyond what $\ctx$ already
+provides. The expectation in \eqref{eq:rot-cond-mean} is then an average of
+rotation vectors over the whole conditional law of $\Rot_1$ given $\ctx$, and
+averaging vectors contracts:
+\begin{equation}
+  \bigl\|\E[\,\xi\,]\bigr\| \;\le\; \E\bigl[\|\xi\|\bigr],
+  \label{eq:jensen}
+\end{equation}
+with equality only if the directions of $\xi$ coincide almost surely. For a
+conditional law that is at all diffuse in orientation the inequality is
+strict, and the optimal prediction is systematically shorter than the targets
+it is regressing on. A field of deficient magnitude integrates, through
+\eqref{eq:euler}, to a rotation smaller than required; the sample ends near
+$\Rot_0$, that is, near Haar.
+
+Nothing in this argument is special to flow matching \emph{per se} --- it is
+the ordinary behaviour of an $L^2$ regression under weak conditioning. What is
+specific is the combination: because the target is time-invariant, there is no
+regime in which the model is asked for a small, easy correction. It is asked
+for the entire answer at every $t$, including at $t=0$ where the answer is
+least identifiable.
+
+\subsection{Why translation escapes, and what diffusion does differently}
+
+The translational source is $\mathcal{N}(0, I)$ in pocket-centred coordinates,
+so $x_0$ is concentrated near the origin and the data $x_1$ are concentrated
+near the pocket as well. The conditional mean $\E[x_1 - x_0 \mid x_t]$ is
+therefore a useful, non-degenerate answer even at $t=0$: ``move towards the
+pocket centre'' is approximately correct for every complex. The rotational
+source admits no analogue. The Haar measure on $\SOthree$ is invariant under
+the full group action, so it has no distinguished mean orientation --- every
+point is as central as every other. There is no direction in which the model
+can usefully hedge.
+
+Diffusion differs in a way that is easy to state once
+Proposition~\ref{prop:t-invariance} is in hand. The score $\nabla\log p_\tau$
+of a heavily noised marginal is small in magnitude and smooth, so at high noise
+the model is asked for a small correction, and the difficult, sharply
+conditioned regime arises only at low noise. The noise schedule thereby acts
+as an implicit curriculum. The geodesic flow-matching construction discards
+that curriculum, and it is exactly the curriculum that the rotational channel,
+lacking an informative prior, appears to require.
+
+\section{Predictions and falsification criteria}
+\label{sec:predictions}
+
+The mechanism above is only useful if it can be wrong. It implies:
+
+\begin{enumerate}[label=\textbf{P\arabic*},leftmargin=*,itemsep=2pt]
+\item \textbf{Magnitude deficit.} The ratio
+      $\|\pred^{\mathrm{rot}}\| / \|\vfield_t^{\mathrm{rot}}\|$ is below unity,
+      most severely at small $t$. \emph{Refuted if} the ratio is at or above
+      unity across $t$.
+\item \textbf{Directional collapse at small $t$.} The cosine between predicted
+      and target rotational fields is near zero for $t \to 0$ and increases
+      with $t$. \emph{Refuted if} early alignment is already substantial.
+\item \textbf{Persistence under compute.} Because the deficit is attributed to
+      identifiability rather than to under-training, it should not disappear
+      merely with a longer schedule. \emph{Refuted if} rotational enrichment
+      rises to the diffusion baseline given more compute --- in which case the
+      correct reading is slower convergence, not a structural obstruction.
+\item \textbf{Responsiveness to the source.} Replacing $\Haar$ by a
+      concentrated, context-dependent source should improve the rotational
+      channel specifically, and should not be required for translation.
+      \emph{Refuted if} an informative source leaves rotation unchanged.
+\end{enumerate}
+
+P1 and P2 are measurable on an existing checkpoint and are reported in
+\S\ref{sec:trans-vs-rot}. P3 requires the matched-compute trajectory of
+\S\ref{sec:traj-results}. P4 is the subject of \S\ref{sec:source-results} and
+is the only one of the four that is also a candidate remedy.
+
+\dnote{CHECK WITH SUPERVISOR}{Whether to state P1--P4 as a formal
+pre-registration, with the reading rules fixed before the longer runs
+complete. The experiments were designed before the results existed, so the
+claim would be honest, and it strengthens the negative-result case
+considerably.}
