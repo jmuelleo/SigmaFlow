@@ -40,15 +40,49 @@ export FINAL_PRECISION="${FINAL_PRECISION:-32}"
 # "highest" schaltet TF32 AB (train.py:72). "high" schaltet es an.
 export FINAL_CUDA_PRECISION="${FINAL_CUDA_PRECISION:-high}"
 
-# Aus dem gemessenen Durchsatz abzuleiten, NICHT zu raten.
-#   Original (Paper E.3): max 256 Epochen.
-#   Ziel: 128 = 50 % des Originalbudgets, falls der Durchsatz es hergibt.
-#   Rechnung: max_epochs = floor(72h * samples_per_s * 3600 / 19443)
-# Der Scheduler wird hierauf kalibriert (max_steps -> LR-Verlauf), deshalb
-# darf der Wert NICHT grosszuegig hoch gesetzt werden: ein nie abgeschlossener
-# Cosine-Anneal ist genau der Fehler, der die Laeufe vom 2026-08-07 entwertet
-# hat (STATUS.md, "KONFIGURATIONSFEHLER GEFUNDEN").
-export FINAL_MAX_EPOCHS="${FINAL_MAX_EPOCHS:-128}"
+# --- Trainingshorizont: EINZIGE QUELLE DER WAHRHEIT ---------------------------
+#
+# HIER STEHT BEWUSST KEINE ZAHL.
+#
+# Frueher stand hier ein Default (zuletzt 128), und im Runbook stand
+# unabhaengig davon 36. Beide waren aus einem ANDEREN Durchsatzregime
+# abgeleitet (Batch 8, --debug, ohne TF32) und beide waren fuer die finale
+# Konfiguration falsch. Ein plausibel aussehender Default ist hier
+# gefaehrlicher als gar keiner: er wird uebernommen, ohne dass jemand die
+# Herleitung nachrechnet.
+#
+# Der Horizont kommt deshalb ausschliesslich aus arc/final_horizon.env,
+# das von arc/calculate_final_epochs.py aus einer GEMESSENEN Stufe-2-
+# Durchsatzzahl erzeugt wird. Fehlt die Datei, bleibt FINAL_MAX_EPOCHS leer
+# und submit_final.sh verweigert den Start.
+#
+# Asymmetrie, die die ganze Sorgfalt begruendet (numerisch bestaetigt in
+# arc/test_scheduler_horizon.py):
+#   Horizont zu GROSS  -> Lauf endet bei ~5.5x der Ziel-Lernrate. UNGUELTIG.
+#   Horizont zu KLEIN  -> Lernrate clampt am Minimum. Gueltig, nur weniger
+#                         effizient. Deshalb wird konsequent abgerundet.
+HORIZON_FILE="${HORIZON_FILE:-$(dirname "${BASH_SOURCE[0]}")/final_horizon.env}"
+if [ -f "$HORIZON_FILE" ]; then
+    # shellcheck source=/dev/null
+    source "$HORIZON_FILE"
+    export FINAL_HORIZON_SOURCE="$HORIZON_FILE"
+else
+    export FINAL_HORIZON_SOURCE="FEHLT"
+fi
+
+# Armspezifische Horizonte. Ob beide Arme dieselbe Epochenzahl bekommen,
+# entscheidet arc/calculate_final_epochs.py anhand des gemessenen
+# Durchsatzunterschieds (Regel: <= 5 % -> gemeinsame Zahl aus dem
+# langsameren Arm; > 5 % -> getrennte Zahlen bei gleichem Zeitbudget).
+# resolve_horizon_for_model() unten setzt FINAL_MAX_EPOCHS und FINAL_MAX_STEPS
+# auf die Werte des jeweiligen Arms.
+export FINAL_MAX_EPOCHS="${FINAL_MAX_EPOCHS:-}"
+export FINAL_MAX_STEPS="${FINAL_MAX_STEPS:-}"
+
+# Echte Laenge der Trainings-Datafront. NICHT die Paper-Zahl 19443 -- die gilt
+# fuer PDBBind v2020 vor unserer Filterung. Wird vom Throughput-Sweep Stufe 2
+# gemessen und in final_horizon.env geschrieben.
+export FINAL_N_TRAIN="${FINAL_N_TRAIN:-}"
 
 # --- Fest, nicht nach dem Sweep zu aendern ------------------------------------
 
@@ -120,11 +154,87 @@ export SCREEN_SNAPSHOT_HOURS="${SCREEN_SNAPSHOT_HOURS:-1 2 3 4 5 6}"
 # --- Abgeleitete Groessen (nur informativ, nicht editieren) -------------------
 export FINAL_EFFECTIVE_BATCH=$(( FINAL_BATCH_SIZE * FINAL_ACCUM ))
 
+# -----------------------------------------------------------------------------
+# resolve_horizon_for_model <modelname>
+#
+# Setzt FINAL_MAX_EPOCHS und FINAL_MAX_STEPS auf die Werte des gewaehlten Arms
+# und prueft, dass der gespeicherte Horizont zur AKTUELLEN Konfiguration passt.
+#
+# Der Staleness-Guard ist der eigentliche Zweck. Ein Horizont, der unter
+# Batch 32 gemessen wurde, ist unter Batch 16 + accum 2 numerisch ein anderer;
+# ohne diese Pruefung wuerde eine spaetere Aenderung an FINAL_BATCH_SIZE eine
+# alte Zahl still weiterverwenden. Genau diese Klasse von Fehler soll hier
+# unmoeglich werden.
+#
+# Rueckgabe: 0 wenn alles stimmt, 1 sonst (mit Meldung auf stderr).
+# -----------------------------------------------------------------------------
+resolve_horizon_for_model() {
+    local model="$1"
+    local key ep st
+
+    case "$model" in
+        sigmadock)          key="SIGMADOCK" ;;
+        sigmaflow_minimal)  key="SIGMAFLOW_MINIMAL" ;;
+        sigmaflow_source)   key="SIGMAFLOW_SOURCE" ;;
+        sigmaflow_conf)     key="SIGMAFLOW_CONF" ;;
+        *) echo "[horizon] unbekanntes Modell: $model" >&2; return 1 ;;
+    esac
+
+    if [ "$FINAL_HORIZON_SOURCE" = "FEHLT" ]; then
+        {
+            echo "[horizon] FEHLER: arc/final_horizon.env fehlt."
+            echo "[horizon] Der Trainingshorizont MUSS aus einer gemessenen"
+            echo "[horizon] Stufe-2-Durchsatzzahl kommen. Vorgehen:"
+            echo "[horizon]   1) MODEL=<arm> STAGE=2 BATCH=<gewaehlt> sbatch arc/throughput_sweep.slurm"
+            echo "[horizon]   2) python arc/calculate_final_epochs.py ... --write-env arc/final_horizon.env"
+        } >&2
+        return 1
+    fi
+
+    # Indirekte Variablenexpansion: aus dem Namen einen Wert lesen.
+    eval "ep=\${FINAL_MAX_EPOCHS_${key}:-}"
+    eval "st=\${FINAL_MAX_STEPS_${key}:-}"
+
+    if [ -z "$ep" ] || [ -z "$st" ]; then
+        echo "[horizon] FEHLER: FINAL_MAX_EPOCHS_${key} / FINAL_MAX_STEPS_${key} fehlen in ${FINAL_HORIZON_SOURCE}" >&2
+        return 1
+    fi
+
+    # Staleness-Guard: passt der gespeicherte Horizont zur aktuellen Batch?
+    if [ -n "${FINAL_HORIZON_EFFECTIVE_BATCH:-}" ] &&
+       [ "${FINAL_HORIZON_EFFECTIVE_BATCH}" -ne "${FINAL_EFFECTIVE_BATCH}" ]; then
+        {
+            echo "[horizon] FEHLER: gespeicherter Horizont gilt fuer effektive Batch"
+            echo "[horizon]         ${FINAL_HORIZON_EFFECTIVE_BATCH}, aktuell konfiguriert ist ${FINAL_EFFECTIVE_BATCH}."
+            echo "[horizon]         Durchsatz neu messen und final_horizon.env neu erzeugen."
+        } >&2
+        return 1
+    fi
+
+    # Konsistenzprobe: der gespeicherte Horizont muss zur Formel passen.
+    local expect=$(( (FINAL_N_TRAIN / FINAL_EFFECTIVE_BATCH) * ep ))
+    if [ "$st" -ne "$expect" ]; then
+        {
+            echo "[horizon] FEHLER: FINAL_MAX_STEPS_${key}=${st} passt nicht zu"
+            echo "[horizon]         floor(${FINAL_N_TRAIN}/${FINAL_EFFECTIVE_BATCH}) * ${ep} = ${expect}."
+            echo "[horizon]         Datei von Hand editiert? Neu erzeugen lassen."
+        } >&2
+        return 1
+    fi
+
+    export FINAL_MAX_EPOCHS="$ep"
+    export FINAL_MAX_STEPS="$st"
+    return 0
+}
+
 print_final_config() {
     cat <<EOF
 [final_config] effektive Batch   = ${FINAL_EFFECTIVE_BATCH}  (${FINAL_BATCH_SIZE} x ${FINAL_ACCUM})
 [final_config] precision         = ${FINAL_PRECISION}  (cuda_precision=${FINAL_CUDA_PRECISION})
-[final_config] max_epochs        = ${FINAL_MAX_EPOCHS}   -> LR-Schedule wird hierauf kalibriert
+[final_config] max_epochs        = ${FINAL_MAX_EPOCHS:-<NICHT GESETZT>}
+[final_config] max_steps         = ${FINAL_MAX_STEPS:-<NICHT GESETZT>}   -> LR-Schedule wird hierauf kalibriert
+[final_config] n_train (gemessen)= ${FINAL_N_TRAIN:-<NICHT GESETZT>}
+[final_config] Horizontquelle    = ${FINAL_HORIZON_SOURCE}
 [final_config] val               = alle ${FINAL_VAL_EVERY_N_EPOCHS} Epoche(n)
 [final_config] seed              = ${FINAL_SEED}
 [final_config] walltime/part.    = ${FINAL_WALLTIME} auf ${FINAL_PARTITION}, ${FINAL_GPU}

@@ -34,6 +34,15 @@ case "$MODE" in
   *) echo "MODE unbekannt: $MODE (full|screen)"; exit 1 ;;
 esac
 
+# Horizont fuer DIESEN Arm aufloesen. Schlaegt fehl, wenn final_horizon.env
+# fehlt, der Arm dort nicht steht, oder die gespeicherte effektive Batch nicht
+# mehr zur aktuellen Konfiguration passt. Ohne gueltigen Horizont wird nicht
+# submittiert -- ein geratener Wert kostet 72 GPU-Stunden.
+if ! resolve_horizon_for_model "$MODEL"; then
+    echo "[submit] ABBRUCH: kein gueltiger Trainingshorizont fuer '${MODEL}'." >&2
+    exit 1
+fi
+
 print_final_config
 echo "[submit] MODEL=${MODEL}  SEED=${SEED}  MODE=${MODE}"
 echo "[submit] Partition=${USE_PART}  Walltime=${USE_TIME}"
@@ -49,7 +58,7 @@ CMD=(sbatch
      --cpus-per-task="${FINAL_CPUS}"
      --mem="${FINAL_MEM}"
      --job-name="${MODEL}${TAG}_s${SEED}"
-     --export="ALL,MODE=${MODE},MODEL=${MODEL},FINAL_SEED=${SEED},FINAL_BATCH_SIZE=${FINAL_BATCH_SIZE},FINAL_ACCUM=${FINAL_ACCUM},FINAL_PRECISION=${FINAL_PRECISION},FINAL_CUDA_PRECISION=${FINAL_CUDA_PRECISION},FINAL_MAX_EPOCHS=${FINAL_MAX_EPOCHS},RESUME=${RESUME:-}"
+     --export="ALL,MODE=${MODE},MODEL=${MODEL},FINAL_SEED=${SEED},FINAL_BATCH_SIZE=${FINAL_BATCH_SIZE},FINAL_ACCUM=${FINAL_ACCUM},FINAL_PRECISION=${FINAL_PRECISION},FINAL_CUDA_PRECISION=${FINAL_CUDA_PRECISION},FINAL_MAX_EPOCHS=${FINAL_MAX_EPOCHS},FINAL_MAX_STEPS=${FINAL_MAX_STEPS},FINAL_N_TRAIN=${FINAL_N_TRAIN},RESUME=${RESUME:-}"
      "${HERE}/train_final_72h.slurm")
 
 if [ "${DRY_RUN:-0}" = "1" ]; then

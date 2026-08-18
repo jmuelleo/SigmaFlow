@@ -38,3 +38,20 @@ __pycache__/
 /SigmaFlow_Variants/**/*_pred/
 /SigmaFlow_Variants/**/stepsweep/
 /SigmaFlow_Variants/**/seeds10_*/
+
+# Erzeugt aus einer Messung, nie von Hand -- gehoert nicht in die Historie
+arc/final_horizon.env
+
+# --- Eingefroren 2026-08-18 -------------------------------------------------
+# Synthetische Visualisierungs-Demo. Erzeugt von visualization/build_case.py
+# aus KONSTRUIERTEN Trajektorien, nicht aus echtem Sampling. Sie darf nie in
+# einen Ergebnisbericht wandern, also gehoert sie auch nicht in die Historie.
+visualisations/
+# LaTeX-Bauartefakte
+*.aux
+*.bbl
+*.blg
+*.fls
+*.fdb_latexmk
+*.synctex.gz
+*.Rhistory

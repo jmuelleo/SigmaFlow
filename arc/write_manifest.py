@@ -24,13 +24,16 @@ ENTWURFSENTSCHEIDUNG
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
-N_TRAIN_PDBBIND_GENERAL = 19443   # Paper, Abschnitt "Datasets": PDBBind v2020
+# Die Paper-Zahl. Sie steht hier NUR noch als Vergleichswert fuer den Report;
+# als Default fuer Rechnungen ist sie bewusst entfernt worden (siehe --n_train).
+N_TRAIN_PAPER = 19443   # Paper, Abschnitt "Datasets": PDBBind v2020
 
 
 def _read(path: Path) -> str:
@@ -95,6 +98,59 @@ def parse_gpu(env_text: str) -> dict:
     }
 
 
+def snapshot_records(rd: Path) -> list[dict]:
+    """Ein Datensatz je Snapshot: Identitaet, Trainingsposition, EMA-Status.
+
+    WARUM SHA256
+        Ein Checkpoint ohne Pruefsumme laesst sich spaeter nicht mehr
+        zweifelsfrei einem Lauf zuordnen. Genau das war der Kern der
+        J1-Provenienzfrage.
+
+    WARUM NICHT torch.load
+        Das Manifest wird direkt nach dem Training geschrieben, wo unter
+        Umstaenden noch GPU-Speicher belegt ist, und es soll auch ohne
+        Torch-Umgebung laufen. Step/Epoche kommen deshalb aus den
+        .meta.txt-Dateien, die das Jobskript neben jeden Snapshot legt.
+    """
+    snap_dir = rd / "snapshots"
+    if not snap_dir.is_dir():
+        return []
+
+    records = []
+    for ckpt in sorted(snap_dir.glob("*.ckpt")):
+        h = hashlib.sha256()
+        try:
+            with open(ckpt, "rb") as fh:
+                for chunk in iter(lambda: fh.read(1 << 20), b""):
+                    h.update(chunk)
+            digest = h.hexdigest()
+        except OSError:
+            digest = None
+
+        rec = {
+            "name": ckpt.name,
+            "path": str(ckpt),
+            "size_bytes": ckpt.stat().st_size if ckpt.exists() else None,
+            "sha256": digest,
+            # Ein Snapshot aus diesem Lauf ist ein Zwischenstand eines langen
+            # Schedules, kein ausannealter Endpunkt. Die Unterscheidung steht
+            # explizit hier, damit sie eine spaetere Auswertung nicht raten muss.
+            "snapshot_kind": "mid_schedule_snapshot",
+            "is_annealed_endpoint": False,
+        }
+
+        meta_file = ckpt.with_suffix("").with_suffix(".meta.txt")
+        if not meta_file.exists():
+            meta_file = snap_dir / (ckpt.stem + ".meta.txt")
+        if meta_file.exists():
+            for line in meta_file.read_text(encoding="utf-8", errors="replace").splitlines():
+                if "=" in line:
+                    k, v = line.split("=", 1)
+                    rec[k.strip()] = v.strip()
+        records.append(rec)
+    return records
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--run_dir", required=True, type=Path)
@@ -107,7 +163,20 @@ def main() -> int:
     p.add_argument("--max_epochs", type=int, required=True)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--train_rc", type=int, default=None)
-    p.add_argument("--n_train", type=int, default=N_TRAIN_PDBBIND_GENERAL)
+    # PFLICHTANGABE. Frueher fiel das Skript stillschweigend auf die Paper-Zahl
+    # zurueck; eine abweichende reale Datafront waere damit unbemerkt in
+    # examples_seen und in jede abgeleitete Groesse eingegangen.
+    p.add_argument("--n_train", type=int, required=True,
+                   help="GEMESSENE Laenge der Trainings-Datafront (arc/probe_datafront_size.py)")
+    p.add_argument("--max_steps", type=int, default=None, help="Scheduler-Horizont")
+    p.add_argument("--train_status", default=None,
+                   help="COMPLETED | CRASHED_rcN | WALLTIME_INTERRUPTED | KILLED_SIGNAL_N")
+    p.add_argument("--world_size", type=int, default=1)
+    p.add_argument("--cuda_precision", default=None)
+    p.add_argument("--partition", default=None)
+    p.add_argument("--requested_walltime", default=None)
+    p.add_argument("--horizon_source", default=None)
+    p.add_argument("--samples_per_s", type=float, default=None)
     args = p.parse_args()
 
     rd: Path = args.run_dir
@@ -157,7 +226,9 @@ def main() -> int:
         "dataset": {
             "train": "pdbbind-general (PDBBind v2020)",
             "val": "posebusters",
-            "n_train_assumed": args.n_train,
+            "n_train_measured": args.n_train,
+            "n_train_paper": N_TRAIN_PAPER,
+            "n_train_matches_paper": args.n_train == N_TRAIN_PAPER,
         },
         "config": {
             "batch_size_per_step": args.batch_size,
@@ -165,6 +236,14 @@ def main() -> int:
             "effective_batch": eff_batch,
             "precision": args.precision,
             "max_epochs": args.max_epochs,
+            "max_steps_scheduler_horizon": args.max_steps,
+            "steps_per_epoch_safe": args.n_train // eff_batch if eff_batch else None,
+            "microbatches_per_epoch": -(-args.n_train // args.batch_size) if args.batch_size else None,
+            "world_size": args.world_size,
+            "cuda_precision": args.cuda_precision,
+            "tf32_enabled": (args.cuda_precision in ("high", "medium")) if args.cuda_precision else None,
+            "horizon_source": args.horizon_source,
+            "measured_samples_per_s": args.samples_per_s,
             "seed": args.seed,
             "optimizer": "AdamW",
             "scheduler": "LinearLR warmup (1/16 of max_steps) + cosine annealing, stepwise",
@@ -172,6 +251,11 @@ def main() -> int:
         "hardware": parse_gpu(envt),
         "result": {
             "train_return_code": args.train_rc,
+            "train_status": args.train_status,
+            "anneal_completed": (
+                progress["optimizer_steps"] >= args.max_steps
+                if progress["optimizer_steps"] is not None and args.max_steps else None
+            ),
             **progress,
             "examples_seen": examples_seen,
             "walltime_s": walltime_s,
@@ -186,13 +270,23 @@ def main() -> int:
                 if progress["epochs_completed"] is not None else None
             ),
         },
+        "runtime": {
+            "partition": args.partition or meta.get("partition"),
+            "requested_walltime": args.requested_walltime,
+            "start_utc": meta.get("start_utc"),
+            "end_utc": meta.get("end_utc"),
+        },
         "checkpoints": {
             "experiment_dir": _read(rd / "experiment_dir.txt").strip() or None,
-            "snapshots": snaps,
+            "snapshots": snapshot_records(rd),
+            "snapshot_names": snaps,
         },
         "notes": [
             "Werte, die sich nicht eindeutig aus dem Log lesen liessen, stehen als null.",
             "epochs_completed/optimizer_steps stammen aus Lightnings stdout, nicht aus dem Checkpoint.",
+            "n_train ist GEMESSEN (probe_datafront_size.py), nicht aus dem Paper uebernommen.",
+            "Snapshots sind Zwischenstaende EINES langen Schedules, keine eigenstaendig "
+            "ausannealten Endpunkte. Nicht mit den alten 6h/12h-Laeufen in eine Kurve mischen.",
         ],
     }
 

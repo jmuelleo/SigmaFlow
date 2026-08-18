@@ -85,7 +85,7 @@ write_run_metadata "THROUGHPUT-${MODEL}" "$CODE_DIR" "$PYTHON"
 cd "$CODE_DIR" || exit 1
 
 CSV="${RUN_DIR}/throughput_${MODEL}.csv"
-echo "model,stage,config,dataset,batch,precision,cuda_precision,debug,val_interval,status,wall_s,steps,steps_per_s,samples_per_s,peak_vram_mib" > "$CSV"
+echo "model,stage,config,dataset,batch,precision,cuda_precision,debug,val_interval,status,wall_s,steps,steps_per_s,samples_per_s,peak_vram_mib,accum,effective_batch" > "$CSV"
 
 # ---------------------------------------------------------------- VRAM-Poller
 # nvidia-smi im Hintergrund; Maximum wird nach jedem Lauf ausgelesen.
@@ -144,6 +144,10 @@ run_one() {
         status="FAIL_rc${rc}"
     fi
 
+    # ACHTUNG: samples_per_s in DIESER Spalte enthaelt noch den konstanten
+    # Overhead (Datafront-Aufbau). Sie taugt nur zum VERGLEICH zwischen
+    # Konfigurationen. Der absolute Anker kommt aus der Zweipunktmessung
+    # in Stufe 2, siehe unten.
     # Nur bei OK sind Durchsatzzahlen sinnvoll. Der Datafront-Aufbau steckt in
     # wall_s mit drin -- deshalb ist NUR der Vergleich zwischen Konfigurationen
     # auf DEMSELBEN Datensatz aussagekraeftig, nicht der Absolutwert.
@@ -153,10 +157,11 @@ run_one() {
         samp=$(awk -v s="$STEPS" -v b="$batch" -v w="$wall" 'BEGIN{printf "%.3f", s*b/w}')
     fi
 
-    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
+    printf '%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s\n' \
         "$MODEL" "$STAGE" "$cfg_name" "$dataset" "$batch" \
         "${PREC:-32}" "${CUDA_PREC:-highest}" "${DBG:-yes}" "$val_int" \
-        "$status" "$wall" "$STEPS" "$sps" "$samp" "$peak" >> "$CSV"
+        "$status" "$wall" "$STEPS" "$sps" "$samp" "$peak" \
+        "${ACCUM:-1}" "$(( batch * ${ACCUM:-1} ))" >> "$CSV"
 
     echo "  -> ${status}  wall=${wall}s  peak_vram=${peak} MiB"
 }
@@ -205,12 +210,120 @@ done
 # ============================================================================
 else
 # ============================================================================
-# Stufe 2 — absoluter Anker auf pdbbind-general, EINE Konfiguration.
+# Stufe 2 — ABSOLUTER Anker auf pdbbind-general.
+#
+# DAS PROBLEM, DAS HIER GELOEST WIRD
+#   wall_s eines einzelnen Laufs enthaelt den Datafront-Aufbau, den
+#   Modellaufbau und den Abbau. Auf pdbbind-general sind das laut Kopf dieses
+#   Skripts 10-35 min, waehrend 120 Schritte bei Batch 32 nur rund 13 min
+#   reines Training sind. Ein Einzellauf wuerde den Durchsatz also um einen
+#   Faktor 2-4 UNTERSCHAETZEN -- und diese Zahl geht direkt in
+#   FINAL_MAX_EPOCHS ein. Ein zu niedriger Durchsatz erzeugt einen zu kurzen
+#   Trainingsplan; das ist zwar die sichere Richtung, verschenkt aber
+#   moeglicherweise die halbe Rechenzeit.
+#
+# DIE LOESUNG: ZWEIPUNKTMESSUNG
+#   Zwei Laeufe DERSELBEN Konfiguration, die sich nur in der Schrittzahl
+#   unterscheiden. Der konstante Overhead C faellt heraus:
+#
+#       wall_A = C + S_A / r          wall_B = C + S_B / r
+#       =>  r  = (S_B - S_A) / (wall_B - wall_A)          [Steps/s]
+#       =>  samples/s = r * B_eff
+#
+#   Vorher laeuft ein Priming-Lauf, dessen Ergebnis verworfen wird. Er sorgt
+#   dafuer, dass beide Messpunkte denselben Cache-Zustand des Dateisystems
+#   sehen -- sonst waere C nicht konstant und die Differenz waere Unsinn.
 BATCH="${BATCH:?BATCH setzen}"
+ACCUM="${ACCUM:-1}"
 EXTRA_STR="${EXTRA:-}"
 read -r -a EXTRA_ARR <<< "$EXTRA_STR"
+S_A="${S_A:-150}"
+S_B="${S_B:-450}"
+EFF_BATCH=$(( BATCH * ACCUM ))
+
+echo
+echo "############################################################"
+echo "# Stufe 2: Zweipunktmessung auf pdbbind-general"
+echo "#   Batch ${BATCH} x accum ${ACCUM} = effektiv ${EFF_BATCH}"
+echo "#   Messpunkte: ${S_A} und ${S_B} Schritte"
+echo "############################################################"
+
+# --- 0) Priming: nur um Dateisystem und Datafront warm zu bekommen ----------
+STEPS=30
 PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
-  run_one "anchor_general_b${BATCH}" pdbbind-general "$BATCH" 500 "${EXTRA_ARR[@]}"
+  run_one "s2_priming_DISCARD" pdbbind-general "$BATCH" 500 \
+    --accum_grad_batches "$ACCUM" "${EXTRA_ARR[@]}"
+
+# --- 1) Messpunkt A ---------------------------------------------------------
+STEPS="$S_A"
+PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
+  run_one "s2_pointA_s${S_A}" pdbbind-general "$BATCH" 500 \
+    --accum_grad_batches "$ACCUM" "${EXTRA_ARR[@]}"
+WALL_A="$(awk -F, -v n="s2_pointA_s${S_A}" '$3==n {print $11}' "$CSV" | tail -1)"
+
+# --- 2) Messpunkt B ---------------------------------------------------------
+STEPS="$S_B"
+PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
+  run_one "s2_pointB_s${S_B}" pdbbind-general "$BATCH" 500 \
+    --accum_grad_batches "$ACCUM" "${EXTRA_ARR[@]}"
+WALL_B="$(awk -F, -v n="s2_pointB_s${S_B}" '$3==n {print $11}' "$CSV" | tail -1)"
+
+# --- 3) Echte Laenge der Trainings-Datafront --------------------------------
+# Reiner Verzeichnis-Scan, kein Torch, keine GPU (datafronts.py:71-108).
+N_TRAIN="$("$PYTHON" "${ARC_REPO}/arc/probe_datafront_size.py" \
+    --data-dir "${ARC_DATA}" --train pdbbind-general \
+    --val posebusters --test posebusters \
+    --json-out "${RUN_DIR}/datafront_sizes.json" 2>&1 | tee -a "${RUN_DIR}/probe.log" \
+    | awk '/^GEMESSEN: n_train/ {gsub(/,/,"",$4); print $4}')"
+
+# --- 4) Auswertung ----------------------------------------------------------
+RESULT_JSON="${RUN_DIR}/stage2_${MODEL}.json"
+if [ -n "${WALL_A:-}" ] && [ -n "${WALL_B:-}" ] && [ "$WALL_B" -gt "$WALL_A" ]; then
+    STEPS_PER_S="$(awk -v sa="$S_A" -v sb="$S_B" -v wa="$WALL_A" -v wb="$WALL_B" \
+        'BEGIN{printf "%.6f", (sb-sa)/(wb-wa)}')"
+    SAMPLES_PER_S="$(awk -v r="$STEPS_PER_S" -v b="$EFF_BATCH" 'BEGIN{printf "%.4f", r*b}')"
+    OVERHEAD_S="$(awk -v sa="$S_A" -v wa="$WALL_A" -v r="$STEPS_PER_S" \
+        'BEGIN{printf "%.1f", wa - sa/r}')"
+    STATUS=OK
+else
+    STEPS_PER_S=NA; SAMPLES_PER_S=NA; OVERHEAD_S=NA; STATUS=FAILED
+fi
+
+cat > "$RESULT_JSON" <<EOJ
+{
+  "model": "${MODEL}",
+  "stage": 2,
+  "status": "${STATUS}",
+  "dataset": "pdbbind-general",
+  "physical_batch": ${BATCH},
+  "accum": ${ACCUM},
+  "effective_batch": ${EFF_BATCH},
+  "precision": "${PREC:-32}",
+  "cuda_precision": "${CUDA_PREC:-high}",
+  "debug": false,
+  "steps_A": ${S_A},
+  "steps_B": ${S_B},
+  "wall_A_s": ${WALL_A:-null},
+  "wall_B_s": ${WALL_B:-null},
+  "constant_overhead_s": ${OVERHEAD_S},
+  "steps_per_s": ${STEPS_PER_S},
+  "samples_per_s": ${SAMPLES_PER_S},
+  "n_train": ${N_TRAIN:-null},
+  "slurm_job_id": "${SLURM_JOB_ID:-manual}"
+}
+EOJ
+
+echo
+echo "############################################################"
+echo "# STUFE-2-ERGEBNIS  (${STATUS})"
+echo "#   wall(${S_A} Schritte) = ${WALL_A:-?} s"
+echo "#   wall(${S_B} Schritte) = ${WALL_B:-?} s"
+echo "#   herausgerechneter konstanter Overhead = ${OVERHEAD_S} s"
+echo "#   -> ${STEPS_PER_S} Optimizer-Steps/s"
+echo "#   -> ${SAMPLES_PER_S} Beispiele/s   <-- DIESE ZAHL geht in den Epochenrechner"
+echo "#   n_train (gemessen) = ${N_TRAIN:-?}"
+echo "#   ${RESULT_JSON}"
+echo "############################################################"
 fi
 
 kill $POLLER_PID 2>/dev/null

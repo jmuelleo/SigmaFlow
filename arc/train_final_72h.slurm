@@ -50,6 +50,15 @@ setup_wandb_hardening
 MODEL="${MODEL:?MODEL setzen: sigmadock | sigmaflow_minimal | sigmaflow_source | sigmaflow_conf}"
 RESUME="${RESUME:-}"
 
+# Horizont aufloesen, falls submit_final.sh ihn nicht schon exportiert hat
+# (direkter `sbatch arc/train_final_72h.slurm` muss ebenso abgesichert sein).
+if [ -z "${FINAL_MAX_STEPS:-}" ] || [ -z "${FINAL_MAX_EPOCHS:-}" ]; then
+    resolve_horizon_for_model "$MODEL" || {
+        echo "ABBRUCH: kein gueltiger Trainingshorizont fuer '${MODEL}'." >&2
+        exit 1
+    }
+fi
+
 # ---------------------------------------------------------------- Screening
 # MODE=screen laesst DASSELBE Trainingsprogramm laufen wie MODE=full und
 # beendet es nur frueher. max_epochs, LR-Schedule, Batch, Seed, Datensatz und
@@ -138,6 +147,62 @@ fi
 cd "$CODE_DIR" || exit 1
 print_final_config
 
+# ---------------------------------------------------------------- Training
+#
+# SCHRITT-SEMANTIK. Drei Groessen, die man nicht verwechseln darf:
+#
+#   MICROBATCHES_PER_EPOCH = ceil(N_train / B_phys)
+#       Was der DataLoader liefert. drop_last ist NICHT gesetzt
+#       (data.py:736-747), der angebrochene letzte Batch zaehlt also mit.
+#       Lightning misst `val_check_interval` in DIESER Einheit.
+#
+#   STEPS_PER_EPOCH        = floor(N_train / B_eff)
+#       Optimizer-Steps je Epoche. Der LR-Scheduler laeuft in dieser Einheit
+#       ("interval": "step", trainer.py:158-161). Bewusst abgerundet: der
+#       Horizont soll eher zu klein als zu gross sein.
+#
+#   MAX_STEPS              = STEPS_PER_EPOCH * FINAL_MAX_EPOCHS
+#       Der Scheduler-Horizont, den wir EXPLIZIT uebergeben. Ohne ihn rechnet
+#       train.py:221 ohne Division durch accum und der Horizont waere um genau
+#       den Akkumulationsfaktor zu gross (numerisch belegt in
+#       arc/test_scheduler_horizon.py).
+#
+if [ -z "${FINAL_N_TRAIN:-}" ]; then
+    echo "FEHLER: FINAL_N_TRAIN ist nicht gesetzt."
+    echo "  Die echte Laenge der Trainings-Datafront kommt aus dem Stufe-2-"
+    echo "  Throughput-Lauf und steht in arc/final_horizon.env."
+    echo "  Die Paper-Zahl 19443 wird hier bewusst NICHT als Ersatz benutzt."
+    exit 1
+fi
+if [ -z "${FINAL_MAX_EPOCHS:-}" ] || [ -z "${FINAL_MAX_STEPS:-}" ]; then
+    echo "FEHLER: FINAL_MAX_EPOCHS / FINAL_MAX_STEPS fehlen."
+    echo "  Normalerweise setzt arc/submit_final.sh sie. Bei direktem sbatch:"
+    echo "  resolve_horizon_for_model ${MODEL} muss vorher erfolgreich sein."
+    exit 1
+fi
+
+MICROBATCHES_PER_EPOCH=$(( (FINAL_N_TRAIN + FINAL_BATCH_SIZE - 1) / FINAL_BATCH_SIZE ))
+STEPS_PER_EPOCH=$(( FINAL_N_TRAIN / FINAL_EFFECTIVE_BATCH ))
+VAL_INTERVAL=$(( MICROBATCHES_PER_EPOCH * FINAL_VAL_EVERY_N_EPOCHS ))
+MAX_STEPS="${FINAL_MAX_STEPS}"
+
+# Gegenprobe: der uebergebene Horizont muss zu den lokal berechneten
+# Groessen passen. Weicht er ab, ist final_horizon.env veraltet.
+EXPECTED_MAX_STEPS=$(( STEPS_PER_EPOCH * FINAL_MAX_EPOCHS ))
+if [ "$MAX_STEPS" -ne "$EXPECTED_MAX_STEPS" ]; then
+    echo "FEHLER: FINAL_MAX_STEPS=${MAX_STEPS} passt nicht zu"
+    echo "        floor(${FINAL_N_TRAIN}/${FINAL_EFFECTIVE_BATCH}) * ${FINAL_MAX_EPOCHS} = ${EXPECTED_MAX_STEPS}."
+    exit 1
+fi
+
+echo "[cfg] N_train (gemessen)   = ${FINAL_N_TRAIN}"
+echo "[cfg] Microbatches/Epoche  = ${MICROBATCHES_PER_EPOCH}   (Einheit von val_check_interval)"
+echo "[cfg] Optimizer-Steps/Ep.  = ${STEPS_PER_EPOCH}   (Einheit des LR-Schedulers)"
+echo "[cfg] max_epochs           = ${FINAL_MAX_EPOCHS}"
+echo "[cfg] max_steps (Horizont) = ${MAX_STEPS}"
+echo "[cfg] Validierung alle ${VAL_INTERVAL} Microbatches"
+
+
 # ---------------------------------------------------------------- Sanity-Gate
 # Faellt hier etwas durch, sind 72 GPU-Stunden gerettet.
 "$PYTHON" - "$EXPECT_IN_PATH" <<'PYCHECK'
@@ -202,6 +267,15 @@ snapshot_meta() {
         echo "epoch          = ${ep:-unknown}"
         echo "global_step    = ${st:-unknown}"
         echo "effective_batch= ${FINAL_EFFECTIVE_BATCH}"
+        # Ohne diese drei Zeilen ist spaeter nicht mehr entscheidbar, ob ein
+        # Checkpoint ein Zwischenstand oder ein ausannealter Endpunkt ist.
+        echo "schedule_max_epochs = ${FINAL_MAX_EPOCHS}"
+        echo "schedule_max_steps  = ${FINAL_MAX_STEPS}"
+        echo "snapshot_kind       = mid_schedule_snapshot"
+        echo "is_annealed_endpoint= false"
+        if [ -n "${st:-}" ] && [ -n "${FINAL_MAX_STEPS:-}" ] && [ "${FINAL_MAX_STEPS}" -gt 0 ]; then
+            echo "schedule_progress   = $(awk -v a="$st" -v b="$FINAL_MAX_STEPS" 'BEGIN{printf "%.4f", a/b}')"
+        fi
         # examples_seen bleibt leer, wenn global_step nicht lesbar war. Eine
         # geschaetzte Zahl waere hier schaedlicher als eine fehlende.
         if [ -n "${st:-}" ]; then
@@ -240,12 +314,26 @@ snapshot_now() {
 #   der letzte Snapshot waere nie gefallen, und die Lernkurve haette falsche
 #   Zeitachsen getragen, ohne dass irgendetwas fehlgeschlagen waere.
 #   Deshalb wird gegen die verstrichene Zeit seit JOB_START_S geschlafen.
+# BENENNUNG — die wichtigste Zeile dieses Blocks.
+#   Ein Snapshot bei 12 h aus diesem Lauf ist NICHT dasselbe wie der alte,
+#   eigenstaendige 12h-Lauf. Der alte hatte einen auf 12 h kalibrierten
+#   Cosine-Anneal und endete auf der minimalen Lernrate. Dieser hier sitzt
+#   mitten in einem auf ${FINAL_MAX_EPOCHS} Epochen kalibrierten Schedule und
+#   steht noch auf hoher Lernrate. Die beiden in eine Lernkurve zu mischen
+#   waere ein Kategorienfehler.
+#   Deshalb traegt jeder Snapshot den Schedule, zu dem er gehoert, im Namen:
+#       sched070ep_at_012h.ckpt      (Zwischenstand eines langen Schedules)
+#   gegenueber der alten Konvention
+#       annealed_endpoint_12h        (eigenstaendig ausannealter Lauf)
+SCHED_TAG="$(printf 'sched%03dep' "${FINAL_MAX_EPOCHS}")"
+echo "[snap] Namensschema: ${SCHED_TAG}_at_<hhh>h  (Zwischenstaende, KEINE annealten Endpunkte)"
+
 ( prev_s=0
   for H in ${SNAP_HOURS}; do
       target_s=$(awk -v h="$H" 'BEGIN{printf "%d", h*3600}')
       delta=$(( target_s - prev_s ))
       [ "$delta" -gt 0 ] && sleep "$delta"
-      snapshot_now "$(printf '%03dh' "$H")"
+      snapshot_now "$(printf '%s_at_%03dh' "$SCHED_TAG" "$H")"
       prev_s="$target_s"
   done ) &
 SNAP_PID=$!
@@ -255,10 +343,12 @@ SNAP_PID=$!
 # Wir sichern dann NUR den letzten Checkpoint und schreiben eine
 # Resume-Anleitung. Bewusst KEIN automatisches Requeue: ein still
 # fortgesetzter falscher Checkpoint waere teurer als ein manueller Neustart.
+USR1_RECEIVED=0
 on_timeout() {
+    USR1_RECEIVED=1
     echo
     echo "[trap] USR1 empfangen — Walltime laeuft in ~15 min ab."
-    snapshot_now "emergency"
+    snapshot_now "${SCHED_TAG:-sched}_emergency"
     {
         echo "# Notfall-Snapshot bei drohendem Timeout"
         echo "# Fortsetzen (Checkpointordner VORHER sichern, siehe Runbook 4):"
@@ -285,12 +375,73 @@ if [ -n "$RESUME" ]; then
     echo "[resume] setze fort ab: $RESUME"
 fi
 
-# ---------------------------------------------------------------- Training
-# Validierung 1x pro Epoche wie im Original: val_check_interval als Schrittzahl.
-STEPS_PER_EPOCH=$(( 19443 / FINAL_EFFECTIVE_BATCH ))
-VAL_INTERVAL=$(( STEPS_PER_EPOCH * FINAL_VAL_EVERY_N_EPOCHS ))
-echo "[cfg] steps/epoch ~ ${STEPS_PER_EPOCH}, val alle ${VAL_INTERVAL} Schritte"
-echo "[cfg] erwartete Gesamtschritte ~ $(( STEPS_PER_EPOCH * FINAL_MAX_EPOCHS ))"
+# ---------------------------------------------------------------- Resume-Guard
+# WARUM DIESER GUARD EXISTIERT
+#   configure_optimizers() baut den Scheduler beim Resume NEU auf, aus dem
+#   AKTUELLEN max_steps, und wendet darauf den wiederhergestellten
+#   Step-Zaehler an. Ein geaenderter Horizont erzeugt damit still einen
+#   ungeplanten Warm Restart -- die Lernrate springt zurueck nach oben, ohne
+#   dass irgendetwas fehlschlaegt.
+#
+#   Die Pruefung liest den Horizont direkt aus dem Checkpoint. Der
+#   LightningModule ruft save_hyperparameters() (trainer.py), damit stehen
+#   max_steps und die LR-Parameter in ckpt["hyper_parameters"]. Das ist
+#   belastbarer als eine Seitendatei, die verloren gehen kann.
+guard_resume_horizon() {
+    local ckpt="$1" want_steps="$2"
+    "$PYTHON" - "$ckpt" "$want_steps" <<'PYGUARD'
+import sys, torch
+
+ckpt_path, want = sys.argv[1], int(sys.argv[2])
+ck = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+hp = ck.get("hyper_parameters") or {}
+
+got = hp.get("max_steps")
+if got is None:
+    print("[resume-guard] WARNUNG: max_steps steht nicht im Checkpoint.")
+    print("[resume-guard] Der Horizont kann nicht verifiziert werden.")
+    sys.exit(3)
+
+print(f"[resume-guard] Checkpoint-Horizont : {got}")
+print(f"[resume-guard] Aktueller Horizont  : {want}")
+if int(got) != want:
+    print("[resume-guard] ABBRUCH: die Horizonte weichen ab. Ein Resume wuerde")
+    print("[resume-guard]          den LR-Verlauf umbauen (ungeplanter Warm Restart).")
+    print("[resume-guard]          Entweder den alten Horizont wiederherstellen")
+    print("[resume-guard]          oder den Lauf neu starten -- nicht fortsetzen.")
+    sys.exit(1)
+
+# Die uebrigen schedulerdefinierenden Groessen muessen ebenfalls stehen.
+for key, expected_env in (("num_warmup_steps", None),):
+    if key in hp:
+        print(f"[resume-guard] {key} = {hp[key]}")
+
+for key in ("max_lr_start", "max_lr_end", "min_lr_start", "min_lr_end",
+            "num_lr_cycles", "cycle_warmup_frac"):
+    if key in hp:
+        print(f"[resume-guard] {key} = {hp[key]}")
+
+print(f"[resume-guard] global_step im Checkpoint = {ck.get('global_step', 'unbekannt')}")
+print(f"[resume-guard] epoch im Checkpoint       = {ck.get('epoch', 'unbekannt')}")
+print(f"[resume-guard] EMA vorhanden             = {'ema_state_dict' in ck}")
+print("[resume-guard] OK")
+PYGUARD
+}
+
+
+
+if [ -n "$RESUME" ]; then
+    guard_resume_horizon "$RESUME" "$MAX_STEPS"
+    GUARD_RC=$?
+    if [ "$GUARD_RC" -eq 1 ]; then
+        echo "ABBRUCH: Resume-Guard hat den Lauf gestoppt."
+        exit 1
+    elif [ "$GUARD_RC" -eq 3 ]; then
+        echo "ABBRUCH: Horizont im Checkpoint nicht pruefbar. Bewusst kein"
+        echo "         Blindstart -- lieber neu beginnen als still zerstoeren."
+        exit 1
+    fi
+fi
 echo "[cfg] MODE=${MODE}; Snapshots bei (h): ${SNAP_HOURS}"
 if [ "$MODE" = "screen" ]; then
     echo "[cfg] SCREENING: max_epochs bleibt ${FINAL_MAX_EPOCHS} (identischer LR-Schedule);"
@@ -312,6 +463,7 @@ fi
     --precision "${FINAL_PRECISION}" \
     --cuda_precision "${FINAL_CUDA_PRECISION}" \
     --max_epochs "${FINAL_MAX_EPOCHS}" \
+    --max_steps "${MAX_STEPS}" \
     --val_check_interval "${VAL_INTERVAL}" \
     --early_stopping_patience 0 \
     --trans_score_weight "${FINAL_TRANS_WEIGHT}" \
@@ -320,14 +472,42 @@ fi
     --offline_run \
     "${METHOD_FLAGS[@]}" \
     "${RESUME_FLAGS[@]}" \
-  2>&1 | tee "${RUN_DIR}/train_stdout.log" &
+  > "${RUN_DIR}/train_stdout.log" 2>&1 &
 
+# WARUM KEIN `| tee` MEHR
+#   Frueher stand hier `python ... | tee log &`. In einer Pipeline ist `$!`
+#   die PID des LETZTEN Prozesses, also von `tee` -- und `tee` gelingt fast
+#   immer. Ein abgestuerztes Training waere damit als rc=0 im Manifest
+#   gelandet. Dieselbe Klasse Fehler wie das fehlende `set -e`, das schon
+#   einmal einen Fehlschlag als Erfolg gemeldet hat.
+#   Jetzt ist TRAIN_PID eindeutig der Python-Prozess. Mitlesen geht per
+#   `tail -f "${RUN_DIR}/train_stdout.log"`.
 TRAIN_PID=$!
 wait $TRAIN_PID          # `wait` laesst den Trap durch; ohne & und wait waere USR1 blockiert
 TRAIN_RC=$?
 
+# `wait` kann durch das USR1-Signal vorzeitig zurueckkehren, ohne dass das
+# Training beendet ist. Dann ist rc > 128 und wir warten erneut, sonst
+# stuende im Manifest der Signalcode statt des echten Ergebnisses.
+while [ "$TRAIN_RC" -gt 128 ] && kill -0 "$TRAIN_PID" 2>/dev/null; do
+    wait $TRAIN_PID
+    TRAIN_RC=$?
+done
+
+# Ergebnis klassifizieren, statt nur eine Zahl zu speichern.
+if [ "$TRAIN_RC" -eq 0 ]; then
+    TRAIN_STATUS="COMPLETED"
+elif [ "${USR1_RECEIVED:-0}" = "1" ]; then
+    TRAIN_STATUS="WALLTIME_INTERRUPTED"
+elif [ "$TRAIN_RC" -gt 128 ]; then
+    TRAIN_STATUS="KILLED_SIGNAL_$(( TRAIN_RC - 128 ))"
+else
+    TRAIN_STATUS="CRASHED_rc${TRAIN_RC}"
+fi
+echo "[status] TRAIN_RC=${TRAIN_RC}  TRAIN_STATUS=${TRAIN_STATUS}"
+
 kill $SNAP_PID 2>/dev/null
-snapshot_now "final"
+snapshot_now "${SCHED_TAG:-sched}_final"
 
 record_experiment_dir "$CODE_DIR" "$MARKER"
 
@@ -341,8 +521,16 @@ record_experiment_dir "$CODE_DIR" "$MARKER"
     --accum "$FINAL_ACCUM" \
     --precision "$FINAL_PRECISION" \
     --max_epochs "$FINAL_MAX_EPOCHS" \
+    --max_steps "$MAX_STEPS" \
+    --n_train "$FINAL_N_TRAIN" \
+    --world_size 1 \
+    --cuda_precision "$FINAL_CUDA_PRECISION" \
+    --partition "${SLURM_JOB_PARTITION:-unknown}" \
+    --requested_walltime "$FINAL_WALLTIME" \
+    --horizon_source "${FINAL_HORIZON_SOURCE:-unknown}" \
     --seed "$FINAL_SEED" \
     --train_rc "$TRAIN_RC" \
+    --train_status "$TRAIN_STATUS" \
   || echo "[manifest] Erzeugung fehlgeschlagen (Training bleibt gueltig)"
 
 echo

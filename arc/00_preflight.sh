@@ -100,10 +100,62 @@ echo "7. Partitionen und GPU-Klasse"
 if command -v sinfo >/dev/null 2>&1; then
     sinfo -o "%20P %10a %12l %8D %s" 2>/dev/null | head -12
     note "Erwartet: short<=12h, medium<=48h, long<=30d, interactive<=24h"
+
+    # Die 24h-Skripte brauchen 'medium'.
     if sinfo -h -o "%P" 2>/dev/null | grep -q "^medium"; then
         ok "Partition 'medium' existiert (fuer 24h noetig, short reicht nicht)"
     else
         bad "Partition 'medium' nicht gefunden - Zeitlimit der 24h-Skripte pruefen"
+    fi
+
+    # --- Die Partition der FINALEN Laeufe ------------------------------------
+    # Frueher wurde hier nur 'medium' geprueft, waehrend final_config.sh
+    # 'long' verlangt. Der Preflight meldete damit READY, ohne die Partition
+    # geprueft zu haben, auf der Phase B tatsaechlich laeuft.
+    FINAL_PART_CHECK="${FINAL_PARTITION:-long}"
+    FINAL_TIME_CHECK="${FINAL_WALLTIME:-72:00:00}"
+    if sinfo -h -o "%P" 2>/dev/null | sed 's/\*$//' | grep -qx "${FINAL_PART_CHECK}"; then
+        ok "Partition '${FINAL_PART_CHECK}' existiert (Ziel der finalen 72h-Laeufe)"
+
+        # Zeitlimit der Partition gegen die angeforderte Walltime pruefen.
+        PART_LIMIT="$(sinfo -h -p "${FINAL_PART_CHECK}" -o "%l" 2>/dev/null | head -1 | tr -d ' ')"
+        note "Zeitlimit von '${FINAL_PART_CHECK}': ${PART_LIMIT:-unbekannt} (angefordert: ${FINAL_TIME_CHECK})"
+        # SLURM-Zeiten als Sekunden, damit der Vergleich nicht an der
+        # Textform scheitert ("3-00:00:00" gegen "72:00:00").
+        slurm_time_to_s() {
+            local t="$1" d=0 h=0 m=0 s=0
+            case "$t" in
+                infinite|INFINITE|UNLIMITED) echo 999999999; return ;;
+            esac
+            if [[ "$t" == *-* ]]; then d="${t%%-*}"; t="${t#*-}"; fi
+            IFS=: read -r a b c <<< "$t"
+            if [ -n "${c:-}" ]; then h="$a"; m="$b"; s="$c"
+            elif [ -n "${b:-}" ]; then h=0; m="$a"; s="$b"
+            else m=0; s="$a"; fi
+            echo $(( 10#${d:-0} * 86400 + 10#${h:-0} * 3600 + 10#${m:-0} * 60 + 10#${s:-0} ))
+        }
+        if [ -n "${PART_LIMIT:-}" ] && [ "${PART_LIMIT}" != "unbekannt" ]; then
+            LIM_S="$(slurm_time_to_s "$PART_LIMIT")"
+            REQ_S="$(slurm_time_to_s "$FINAL_TIME_CHECK")"
+            if [ "$REQ_S" -le "$LIM_S" ]; then
+                ok "Angeforderte Walltime ${FINAL_TIME_CHECK} passt in das Limit ${PART_LIMIT}"
+            else
+                bad "Walltime ${FINAL_TIME_CHECK} UEBERSCHREITET das Limit ${PART_LIMIT} von '${FINAL_PART_CHECK}'"
+            fi
+        fi
+
+        # GPU-Klasse, Speicher und CPUs muss die Zielpartition anbieten.
+        WANT_GPU="${FINAL_GPU:-gpu:l40s:1}"
+        GPU_CLASS="$(echo "$WANT_GPU" | cut -d: -f2)"
+        if sinfo -h -p "${FINAL_PART_CHECK}" -o "%G" 2>/dev/null | grep -qi "${GPU_CLASS}"; then
+            ok "GPU-Klasse '${GPU_CLASS}' auf '${FINAL_PART_CHECK}' verfuegbar"
+        else
+            bad "GPU-Klasse '${GPU_CLASS}' auf '${FINAL_PART_CHECK}' NICHT gefunden"
+            echo "     angeboten:"; sinfo -h -p "${FINAL_PART_CHECK}" -o "%G" 2>/dev/null | sort -u | sed 's/^/       /'
+        fi
+    else
+        bad "Partition '${FINAL_PART_CHECK}' NICHT gefunden - die finalen 72h-Laeufe koennen so nicht starten"
+        echo "     vorhandene Partitionen:"; sinfo -h -o "%P" 2>/dev/null | sort -u | sed 's/^/       /'
     fi
     echo "  GPU-Typen laut sinfo:"
     sinfo -h -o "%G" 2>/dev/null | tr ',' '\n' | grep -i gpu | sort -u | sed 's/^/     /'
