@@ -66,3 +66,8 @@ visualisations/
 *.fdb_latexmk
 *.synctex.gz
 *.Rhistory
+
+# Regenerierbar aus fragments_vs_performance.csv via visualization/plot_fragments.py
+*_fragment_distribution.png
+*_fragments_vs_size.png
+*_fragments_vs_performance.png

@@ -1,0 +1,310 @@
+<title>Fragmentzahl und Dockingerfolg</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+:root{
+  --paper:#FAFBFC; --surface:#FFFFFF; --surface-2:#F1F4F7; --surface-3:#E8EDF2;
+  --ink:#1A2430; --muted:#5A6572; --faint:#8B95A1;
+  --line:#DFE5EB; --line-hard:#C4CDD6;
+  --struct:#3E6C8E; --struct-soft:#7BA7C7; --struct-wash:#EDF3F8;
+  --sf:#C1666B; --sd:#4F8A8B;
+  --ok:#3B7A55; --no:#A8524A;
+  --shadow:0 1px 2px rgba(26,36,48,.05), 0 6px 16px rgba(26,36,48,.05);
+  --r:6px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --paper:#111720; --surface:#19212C; --surface-2:#202A36; --surface-3:#28333F;
+    --ink:#E4E9EF; --muted:#9AA5B1; --faint:#6E7986;
+    --line:#2B3541; --line-hard:#3A4653;
+    --struct:#7BA7C7; --struct-soft:#4E7A9B; --struct-wash:#1D2A35;
+    --sf:#D9848B; --sd:#6FADAE;
+    --ok:#6BAA82; --no:#D07A72;
+    --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28);
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#111720; --surface:#19212C; --surface-2:#202A36; --surface-3:#28333F;
+  --ink:#E4E9EF; --muted:#9AA5B1; --faint:#6E7986;
+  --line:#2B3541; --line-hard:#3A4653;
+  --struct:#7BA7C7; --struct-soft:#4E7A9B; --struct-wash:#1D2A35;
+  --sf:#D9848B; --sd:#6FADAE;
+  --ok:#6BAA82; --no:#D07A72;
+  --shadow:0 1px 2px rgba(0,0,0,.35), 0 6px 18px rgba(0,0,0,.28);
+}
+
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--paper); color:var(--ink);
+  font-family:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  font-size:15px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px; margin:0 auto; padding:32px 22px 80px}
+
+/* ---------- header ---------- */
+header{border-bottom:1px solid var(--line); padding-bottom:22px; margin-bottom:26px}
+.eyebrow{
+  font-family:"IBM Plex Mono",ui-monospace,monospace; font-size:11px;
+  letter-spacing:.11em; text-transform:uppercase; color:var(--faint); margin:0 0 8px;
+}
+h1{font-size:clamp(24px,3.4vw,33px); line-height:1.16; margin:0 0 10px; font-weight:600; text-wrap:balance; letter-spacing:-.012em}
+.lede{margin:0; color:var(--muted); max-width:64ch}
+.lede b{color:var(--ink); font-weight:600}
+
+/* ---------- key numbers ---------- */
+.stats{display:grid; grid-template-columns:repeat(auto-fit,minmax(178px,1fr)); gap:12px; margin:24px 0 30px}
+.stat{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:13px 15px; box-shadow:var(--shadow)}
+.stat .k{font-family:"IBM Plex Mono",monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); display:block; margin-bottom:5px}
+.stat .v{font-family:"IBM Plex Mono",monospace; font-size:23px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.02em; display:block; line-height:1.15}
+.stat .n{font-size:12.5px; color:var(--muted); display:block; margin-top:3px}
+.v-sf{color:var(--sf)} .v-sd{color:var(--sd)} .v-st{color:var(--struct)}
+
+h2{font-size:15px; font-weight:600; margin:0 0 3px; letter-spacing:-.005em}
+.sub{font-size:13px; color:var(--muted); margin:0 0 14px}
+
+/* ---------- distribution ---------- */
+.panel{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px 20px; box-shadow:var(--shadow); margin-bottom:22px}
+.dist{display:grid; grid-template-columns:repeat(11,1fr); gap:5px; align-items:end; height:150px; margin-top:6px}
+.col{display:flex; flex-direction:column; justify-content:flex-end; height:100%; gap:4px; background:none; border:0; padding:0; cursor:pointer; font:inherit; color:inherit}
+.col .cnt{font-family:"IBM Plex Mono",monospace; font-size:10.5px; color:var(--faint); text-align:center; font-variant-numeric:tabular-nums}
+.bars{display:flex; gap:2px; align-items:flex-end; height:100%}
+.bar{flex:1; border-radius:2px 2px 0 0; min-height:2px; transition:opacity .12s}
+.bar.total{background:var(--struct-soft); opacity:.45}
+.bar.hit-sf{background:var(--sf)}
+.bar.hit-sd{background:var(--sd)}
+.col .lab{font-family:"IBM Plex Mono",monospace; font-size:12px; text-align:center; padding:4px 0 2px; border-top:2px solid transparent; font-variant-numeric:tabular-nums}
+.col:hover .lab{color:var(--struct)}
+.col[aria-pressed="true"] .lab{border-top-color:var(--struct); color:var(--struct); font-weight:600}
+.col:focus-visible{outline:2px solid var(--struct); outline-offset:2px; border-radius:3px}
+.legend{display:flex; flex-wrap:wrap; gap:16px; font-size:12.5px; color:var(--muted); margin-top:12px; align-items:center}
+.sw{display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; vertical-align:-1px}
+
+/* ---------- controls ---------- */
+.controls{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:12px}
+.chip{
+  font:inherit; font-size:13px; padding:5px 11px; border-radius:999px;
+  border:1px solid var(--line-hard); background:var(--surface); color:var(--muted); cursor:pointer;
+}
+.chip:hover{border-color:var(--struct); color:var(--struct)}
+.chip[aria-pressed="true"]{background:var(--struct); border-color:var(--struct); color:#fff}
+.chip:focus-visible{outline:2px solid var(--struct); outline-offset:2px}
+.spacer{flex:1}
+.count{font-family:"IBM Plex Mono",monospace; font-size:12.5px; color:var(--faint); font-variant-numeric:tabular-nums}
+
+/* ---------- table ---------- */
+.tablewrap{overflow-x:auto; border:1px solid var(--line); border-radius:var(--r); background:var(--surface); box-shadow:var(--shadow)}
+table{border-collapse:collapse; width:100%; min-width:760px; font-size:13.5px}
+th,td{padding:7px 11px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--line)}
+th:first-child,td:first-child{text-align:left}
+thead th{
+  position:sticky; top:0; z-index:2; background:var(--surface-2); color:var(--muted);
+  font-weight:500; font-size:11px; letter-spacing:.05em; text-transform:uppercase;
+  cursor:pointer; user-select:none; border-bottom:1px solid var(--line-hard);
+}
+thead th:hover{color:var(--struct)}
+thead th .arrow{opacity:.35; font-size:9px; margin-left:3px}
+thead th[data-dir] .arrow{opacity:1; color:var(--struct)}
+tbody tr:hover{background:var(--struct-wash)}
+tbody tr:last-child td{border-bottom:0}
+.cid{font-family:"IBM Plex Mono",monospace; font-weight:500; font-size:13px}
+.num{font-family:"IBM Plex Mono",monospace; font-variant-numeric:tabular-nums}
+.fragcell{font-family:"IBM Plex Mono",monospace; font-weight:600; font-variant-numeric:tabular-nums}
+.dot{display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:5px; vertical-align:0}
+.yes{color:var(--ok); font-weight:600}
+.no{color:var(--faint)}
+.grp{border-left:2px solid var(--line)}
+.empty{padding:34px; text-align:center; color:var(--muted); font-size:14px}
+
+/* ---------- notes ---------- */
+.notes{margin-top:26px; padding-top:20px; border-top:1px solid var(--line); font-size:13.5px; color:var(--muted)}
+.notes h3{font-size:13px; font-weight:600; color:var(--ink); margin:0 0 8px; letter-spacing:.01em}
+.notes p{margin:0 0 11px; max-width:74ch}
+.notes code{font-family:"IBM Plex Mono",monospace; font-size:12.5px; background:var(--surface-2); padding:1px 5px; border-radius:3px}
+.notes b{color:var(--ink)}
+@media (max-width:620px){
+  .dist{height:120px; gap:3px}
+  .col .lab{font-size:10.5px}
+  .col .cnt{display:none}
+}
+</style>
+
+<div class="wrap">
+<header>
+  <p class="eyebrow">PoseBusters · 208 Liganden · 12h-Checkpoints · Oracle@10</p>
+  <h1>Fragmentzahl und Dockingerfolg</h1>
+  <p class="lede">Jeder Ligand wird an seinen Torsionsbindungen in <b>F</b> starre Fragmente zerlegt; die Generierung arbeitet damit in <b>D&nbsp;=&nbsp;6F</b> Dimensionen. Jedes zusätzliche Fragment <b>halbiert die Erfolgs-Odds</b> — für beide Verfahren gleichermaßen.</p>
+</header>
+
+<section class="stats">
+  <div class="stat"><span class="k">Odds je Fragment</span><span class="v v-st">×0.53</span><span class="n">p &lt; 1e-4, beide Arme</span></div>
+  <div class="stat"><span class="k">SigmaFlow gesamt</span><span class="v v-sf">30.3&thinsp;%</span><span class="n">63 von 208 gelöst</span></div>
+  <div class="stat"><span class="k">SigmaDock gesamt</span><span class="v v-sd">47.6&thinsp;%</span><span class="n">99 von 208 gelöst</span></div>
+  <div class="stat"><span class="k">Beide lösen</span><span class="v">48</span><span class="n">Schnittmenge nicht leer</span></div>
+  <div class="stat"><span class="k">Interaktion Arm×F</span><span class="v">p&nbsp;0.85</span><span class="n">kein Skalierungsnachteil</span></div>
+</section>
+
+<section class="panel">
+  <h2>Verteilung und Trefferquote je Fragmentzahl</h2>
+  <p class="sub">Klick auf eine Spalte filtert die Tabelle. Nochmal klicken hebt den Filter auf.</p>
+  <div class="dist" id="dist"></div>
+  <div class="legend">
+    <span><span class="sw" style="background:var(--struct-soft);opacity:.45"></span>Liganden gesamt</span>
+    <span><span class="sw" style="background:var(--sf)"></span>SigmaFlow gelöst</span>
+    <span><span class="sw" style="background:var(--sd)"></span>SigmaDock gelöst</span>
+    <span style="color:var(--faint)">Balkenhöhe relativ zur größten Klasse</span>
+  </div>
+</section>
+
+<div class="controls">
+  <button class="chip" data-f="all" aria-pressed="true">Alle</button>
+  <button class="chip" data-f="both">Beide lösen</button>
+  <button class="chip" data-f="sfonly">Nur SigmaFlow</button>
+  <button class="chip" data-f="sdonly">Nur SigmaDock</button>
+  <button class="chip" data-f="none">Keiner löst</button>
+  <button class="chip" data-f="rigid">Starr (F&nbsp;=&nbsp;1)</button>
+  <span class="spacer"></span>
+  <span class="count" id="count"></span>
+</div>
+
+<div class="tablewrap">
+  <table id="tbl">
+    <thead><tr>
+      <th data-s="0">Komplex<span class="arrow">▼</span></th>
+      <th data-s="1" data-dir="desc">F<span class="arrow">▼</span></th>
+      <th data-s="2">Atome<span class="arrow">▼</span></th>
+      <th data-s="3">Torsionen<span class="arrow">▼</span></th>
+      <th data-s="4" class="grp">SF Seed&nbsp;0<span class="arrow">▼</span></th>
+      <th data-s="5">SF bester<span class="arrow">▼</span></th>
+      <th data-s="6">SF &lt;2&nbsp;Å<span class="arrow">▼</span></th>
+      <th data-s="7" class="grp">SD Seed&nbsp;0<span class="arrow">▼</span></th>
+      <th data-s="8">SD bester<span class="arrow">▼</span></th>
+      <th data-s="9">SD &lt;2&nbsp;Å<span class="arrow">▼</span></th>
+    </tr></thead>
+    <tbody id="tb"></tbody>
+  </table>
+  <div class="empty" id="empty" hidden>Keine Liganden in dieser Auswahl.</div>
+</div>
+
+<div class="notes">
+  <h3>Wie die Zahlen entstanden sind</h3>
+  <p><b>Fragmente</b> = minimale Schnittmenge der Torsionsbindungen plus eins. Die Zahl ist je Ligand deterministisch: obwohl das Training zufällig aus den minimalen Cut-Sets zieht, schwankt bei <b>keinem</b> der 208 Liganden die Fragmentzahl zwischen den Alternativen.</p>
+  <p><b>Erfolg</b> = Oracle@10, also mindestens eine der zehn Posen unter 2&nbsp;Å, symmetriekorrigiert und gegen die nächstgelegene kristallographische Kopie gerechnet. Das ist eine Obergrenze ohne Ranking — was ein Confidence-Modell davon zurückholen kann, ist offen.</p>
+  <p><b>Seed&nbsp;0</b> ist eine einzelne Ziehung. Das Ziehungsrauschen ist rund zehnmal so groß wie der Methodenunterschied, weshalb Einzelwerte nicht interpretiert werden sollten — genau daran ist die frühere Behauptung gescheitert, die beiden Verfahren lösten disjunkte Komplexe.</p>
+  <p>Ein Ligand von 209 fehlt: bei ihm lief die kombinatorische Aufzählung der Cut-Sets in das Zeitlimit. Es wurde <b>nichts</b> geschätzt.</p>
+  <p style="color:var(--faint)">Quelle: <code>fragments_vs_performance.csv</code> · Jobs 8554147 / 8554149 (Sampling), 8607523 (Fragmentzählung).</p>
+</div>
+</div>
+
+<script>
+const DATA = [["7U3J_L6U",11,38,17,7.93,3.08,0,5.98,3.76,0],["8DP2_UMA",11,49,17,9.67,5.08,0,6.73,3.64,0],["8EAB_VN2",10,49,12,4.7,2.97,0,4.96,3.71,0],["7EPV_FDA",9,53,13,13.78,5.16,0,8.25,5.55,0],["7F8T_FAD",9,53,13,5.94,5.06,0,4.99,3.0,0],["7MMH_ZJY",9,57,13,9.61,6.0,0,10.85,6.13,0],["7RUI_7QZ",9,51,12,4.56,4.56,0,6.66,3.89,0],["8C5D_GTB",9,30,15,7.26,4.18,0,7.98,2.07,0],["6VTA_AKN",8,40,11,8.22,4.15,0,5.74,3.51,0],["6YRV_PJ8",8,17,14,4.13,2.38,0,4.17,3.01,0],["7JGW_V9S",8,45,12,9.23,4.07,0,6.51,5.53,0],["7MFP_Z7P",8,50,13,5.64,2.67,0,8.77,5.03,0],["7NR8_UOE",8,45,10,8.63,5.56,0,9.96,6.84,0],["7OCB_V88",8,41,13,10.29,3.07,0,5.0,4.12,0],["7OEO_V9Z",8,32,10,6.49,3.07,0,5.8,3.25,0],["7OMX_CNA",8,44,11,9.84,2.65,0,3.22,3.22,0],["7REE_4LY",8,42,8,10.84,4.32,0,9.35,3.93,0],["7RH3_59O",8,34,9,6.07,3.39,0,6.11,4.59,0],["7SNE_9XR",8,45,12,5.96,4.01,0,8.9,2.2,0],["7UTW_NAI",8,44,11,10.36,6.41,0,1.87,1.87,1],["7VWF_K55",8,33,13,6.23,4.51,0,8.29,3.29,0],["8AEU_M0L",8,41,8,6.31,5.16,0,7.36,3.24,0],["8DHG_T78",8,35,9,6.95,2.76,0,7.74,2.92,0],["5SD5_HWI",7,29,9,5.59,2.67,0,6.47,4.32,0],["5SIS_JSM",7,32,9,2.63,2.63,0,3.27,2.61,0],["7L5F_XNG",7,18,13,7.08,2.91,0,7.91,1.66,1],["7NA4_1I9",7,38,8,7.28,4.84,0,7.67,4.49,0],["7OFK_VCH",7,35,8,8.78,3.81,0,7.28,2.82,0],["7T9O_GEI",7,41,10,7.65,6.51,0,6.61,5.74,0],["7TB0_UD1",7,39,11,7.76,4.03,0,4.23,2.74,0],["7TH4_FFO",7,34,11,9.69,2.0,0,6.1,3.43,0],["7U0U_FK5",7,57,7,7.58,5.87,0,7.65,2.94,0],["7UAS_MBU",7,40,8,5.1,3.24,0,6.17,3.75,0],["7WPW_F15",7,17,13,3.98,2.08,0,5.07,1.65,1],["7XFA_D9J",7,41,6,9.27,3.55,0,5.03,3.21,0],["7XIJ_EJ3",7,33,7,3.98,3.17,0,5.26,3.41,0],["8A2D_KXY",7,49,9,9.77,7.13,0,4.61,3.4,0],["8D5D_5DK",7,27,11,8.37,2.08,0,6.45,4.51,0],["8EAD_UY0",7,38,11,7.26,3.75,0,6.39,3.36,0],["6YDY_K73",6,28,9,6.5,2.85,0,2.97,1.66,1],["6ZCY_QF8",6,33,7,5.04,1.47,1,2.9,2.9,0],["7AVI_S2Q",6,27,6,4.17,4.17,0,4.16,3.81,0],["7BJ6_TVK",6,37,8,7.51,4.18,0,2.74,2.34,0],["7M6K_YRJ",6,33,10,7.97,3.81,0,8.5,1.57,1],["7MS7_ZQ1",6,29,7,6.51,2.21,0,5.56,3.3,0],["7MYU_ZR7",6,35,6,3.75,1.72,1,4.63,2.53,0],["7NTG_F6R",6,16,7,4.58,2.09,0,2.25,1.25,1],["7P2W_4QR",6,34,8,7.08,3.02,0,8.15,3.12,0],["7R3D_APR",6,36,9,4.78,2.47,0,2.68,2.1,0],["7UEY_N0R",6,27,7,11.53,4.86,0,7.92,6.43,0],["7V14_ORU",6,35,7,8.88,3.74,0,4.11,4.11,0],["7W6F_8I6",6,20,9,9.91,2.82,0,3.26,1.78,1],["7WQQ_5Z6",6,27,6,2.34,1.3,1,7.83,1.19,1],["8C7Y_TXV",6,34,6,3.57,2.01,0,2.65,1.76,1],["8DZT_G4P",6,36,10,6.49,1.91,1,8.47,2.26,0],["8EYE_X4I",6,33,9,2.54,2.54,0,7.88,3.24,0],["8HFN_XGC",6,24,7,5.33,3.1,0,5.14,3.17,0],["6TW5_9M2",5,31,7,3.6,3.3,0,4.88,3.15,0],["6XG5_TOP",5,21,5,5.11,2.82,0,6.06,2.19,0],["6XUM_30L",5,25,8,6.66,3.87,0,7.91,3.59,0],["6Y7L_QMG",5,25,5,3.53,3.53,0,3.71,2.38,0],["7AMC_73B",5,31,5,3.79,3.24,0,6.64,1.77,1],["7CIJ_G0C",5,21,8,5.7,2.66,0,5.16,1.31,1],["7EN7_J79",5,24,8,5.57,3.43,0,2.94,2.94,0],["7FRX_O88",5,30,6,7.92,1.67,1,10.02,2.94,0],["7K0V_VQP",5,32,8,3.49,2.25,0,4.48,1.68,1],["7KRU_ATP",5,31,8,2.42,2.33,0,3.71,2.0,0],["7L00_XCJ",5,27,6,1.75,1.75,1,9.82,1.33,1],["7L6D_BMF",5,28,7,7.69,3.1,0,4.93,2.01,0],["7LB3_XXS",5,29,4,5.93,5.66,0,3.98,3.02,0],["7LEV_0JO",5,21,6,5.06,1.47,1,5.3,1.39,1],["7LJN_GTP",5,32,8,8.88,2.8,0,3.56,2.02,0],["7M3H_YPV",5,24,7,7.47,2.34,0,4.78,1.93,1],["7N7H_CTP",5,29,8,1.97,1.75,1,8.71,2.26,0],["7NF3_4LU",5,36,7,4.72,3.54,0,4.39,1.35,1],["7NPL_UKZ",5,27,7,3.77,2.71,0,4.34,2.8,0],["7NXO_UU8",5,34,5,3.13,3.13,0,2.25,2.04,0],["7O1T_5X8",5,25,6,2.57,2.57,0,2.51,1.85,1],["7Q5I_I0F",5,27,6,8.12,1.63,1,2.37,2.37,0],["7QF4_RBF",5,27,5,6.88,1.75,1,5.03,1.35,1],["7QHL_D5P",5,30,8,8.34,2.55,0,8.18,2.28,0],["7R7R_AWJ",5,33,7,6.56,3.48,0,5.41,1.46,1],["7RC3_SAH",5,26,7,3.66,1.48,1,8.35,1.89,1],["7SCW_GSP",5,32,8,4.99,2.02,0,8.57,2.2,0],["7T0D_FPP",5,24,11,9.74,1.73,1,10.03,1.98,1],["7T1D_E7K",5,34,5,11.58,2.1,0,1.5,1.5,1],["7TUO_KL9",5,30,6,2.54,0.7,1,2.63,1.31,1],["7UF2_5SP",5,14,6,4.65,2.2,0,1.95,1.95,1],["7WCF_ACP",5,31,8,3.41,3.41,0,3.63,2.06,0],["7WL4_JFU",5,34,5,3.64,2.36,0,4.73,2.67,0],["7WUX_6OI",5,17,8,3.93,3.15,0,3.42,1.91,1],["7X5N_5M5",5,30,4,4.84,3.96,0,5.95,2.12,0],["7XBV_APC",5,31,8,4.31,3.25,0,3.27,2.96,0],["7XQZ_FPF",5,25,11,4.17,2.64,0,2.74,2.55,0],["7ZZW_KKW",5,29,4,8.8,2.72,0,4.32,3.62,0],["8AIE_M7L",5,23,8,4.38,2.51,0,5.47,2.54,0],["8F8E_XJI",5,29,7,5.86,2.75,0,5.03,2.83,0],["8FV9_80J",5,29,8,7.58,3.15,0,5.6,4.06,0],["8SLG_G5A",5,27,7,4.01,3.02,0,1.47,1.47,1],["6XAF_GDP",4,28,6,8.03,2.75,0,2.56,2.56,0],["6YSP_PAL",4,16,7,2.46,2.25,0,3.49,2.7,0],["6YT6_PKE",4,31,7,5.64,3.33,0,5.22,1.02,1],["7A1P_QW2",4,13,6,4.58,2.67,0,1.45,1.45,1],["7D8Q_GZF",4,28,6,7.38,3.29,0,7.23,4.29,0],["7ED2_A3P",4,27,6,4.47,1.56,1,4.71,1.56,1],["7F5D_EUO",4,21,3,6.28,5.06,0,4.43,2.22,0],["7JHQ_VAJ",4,18,3,4.96,2.65,0,1.92,1.48,1],["7K41_VUA",4,22,5,3.13,3.13,0,1.97,1.97,1],["7MRH_ZMJ",4,24,4,7.23,2.83,0,3.33,2.98,0],["7NLV_UJE",4,21,7,4.98,1.84,1,7.73,1.15,1],["7OFF_VCB",4,27,5,5.49,4.79,0,6.77,3.72,0],["7OZ9_NGK",4,19,5,3.88,3.19,0,2.59,2.59,0],["7P1M_4IU",4,24,5,7.82,5.34,0,6.39,2.31,0],["7P5T_5YG",4,23,6,9.01,1.62,1,3.3,1.04,1],["7QK0_EBL",4,38,4,10.55,5.44,0,9.7,6.63,0],["7RKW_5TV",4,25,6,3.62,3.21,0,3.19,2.38,0],["7WUY_76N",4,30,3,7.58,1.97,1,7.08,1.63,1],["7XEK_9YX",4,22,5,5.21,2.39,0,5.22,4.29,0],["7ZL5_IWE",4,23,5,6.51,2.68,0,5.22,1.79,1],["7ZTL_BCN",4,11,6,2.83,2.65,0,2.87,2.06,0],["8AP0_PRP",4,22,7,2.65,2.65,0,5.1,2.83,0],["8AUH_L9I",4,11,4,3.55,2.58,0,4.59,1.87,1],["8AY3_OE3",4,25,5,5.53,2.91,0,5.77,2.23,0],["8BRO_R7E",4,26,5,5.48,4.16,0,7.71,3.19,0],["8D39_QDB",4,17,3,3.83,2.4,0,1.52,1.51,1],["8ERS_WQO",4,23,4,6.77,2.37,0,2.63,1.36,1],["8EX2_Q2Q",4,26,3,5.23,3.42,0,7.35,1.34,1],["8FO5_Y4U",4,17,3,5.76,1.33,1,4.66,3.15,0],["6ZPB_3D1",3,18,2,5.89,2.63,0,5.82,1.33,1],["7C8Q_DSG",3,9,3,3.73,1.75,1,1.73,1.47,1],["7FT9_4MB",3,14,3,5.51,1.09,1,5.24,1.44,1],["7JG0_GAR",3,18,6,1.41,1.41,1,2.86,2.1,0],["7KQU_YOF",3,14,3,2.51,2.37,0,2.32,1.59,1],["7LZQ_YJV",3,22,4,4.66,2.57,0,6.89,3.46,0],["7NLK_UHK",3,16,5,5.55,1.55,1,2.78,1.48,1],["7NML_I7B",3,16,2,3.71,3.25,0,3.46,2.05,0],["7NU0_DCL",3,8,3,4.03,2.12,0,2.96,2.12,0],["7ODX_DGP",3,23,4,3.88,3.49,0,1.17,1.17,1],["7OLI_8HG",3,20,2,4.04,2.37,0,1.59,1.59,1],["7OPG_06N",3,19,4,3.46,1.18,1,2.88,1.26,1],["7OSO_0V1",3,7,3,3.69,1.67,1,3.59,1.84,1],["7P85_5ZG",3,14,4,3.69,1.65,1,4.75,1.61,1],["7PA4_C",3,21,4,3.96,1.62,1,3.52,3.52,0],["7PIH_7QW",3,24,3,8.04,2.67,0,2.14,1.35,1],["7Q19_DSM",3,20,4,1.8,1.8,1,5.36,1.85,1],["7QE4_NGA",3,15,3,4.49,2.06,0,4.76,2.0,0],["7RWS_4UR",3,45,2,4.65,3.87,0,3.93,2.35,0],["7SED_8VD",3,17,3,5.83,1.12,1,3.52,1.77,1],["7TS6_KMI",3,17,3,6.8,1.86,1,4.77,1.72,1],["7TSF_H4B",3,17,2,5.83,1.82,1,6.08,1.76,1],["7TWC_CXS",3,14,5,6.83,1.96,1,4.59,2.22,0],["7TXK_LW8",3,15,4,4.77,1.67,1,1.57,1.57,1],["7UJ5_DGL",3,10,4,3.94,1.73,1,4.14,1.33,1],["7USH_82V",3,26,2,6.44,2.77,0,3.8,1.72,1],["7UY4_SMI",3,24,2,2.58,1.92,1,5.85,2.28,0],["7VB8_STL",3,17,2,2.04,1.79,1,7.0,0.94,1],["7W05_GMP",3,20,2,4.35,2.33,0,2.74,1.94,1],["7W06_ITN",3,9,3,3.87,1.84,1,1.81,1.78,1],["7X9K_8OG",3,24,4,6.28,3.89,0,5.32,1.15,1],["7XRL_FWK",3,19,2,3.14,2.23,0,4.19,1.69,1],["7YZU_DO7",3,16,3,4.34,1.15,1,4.04,1.44,1],["7Z7F_IF3",3,14,2,2.68,2.02,0,4.11,2.54,0],["7ZCC_OGA",3,10,4,4.65,1.79,1,3.7,0.77,1],["7ZHP_IQY",3,27,2,4.33,3.96,0,4.24,0.93,1],["8AIJ_M9I",3,19,3,5.41,2.55,0,2.44,1.53,1],["8AJX_FUM",3,8,2,3.16,2.3,0,2.34,2.34,0],["8C5M_MTA",3,20,3,4.21,2.06,0,2.58,2.15,0],["8CGC_LMR",3,9,3,4.4,2.39,0,3.5,1.87,1],["8CSD_C5P",3,21,4,4.36,4.04,0,3.19,2.41,0],["5S8I_2LY",2,13,2,3.09,1.02,1,4.09,1.22,1],["5SAK_ZRY",2,18,2,6.53,2.44,0,4.07,1.59,1],["6T88_MWQ",2,10,3,3.62,1.47,1,1.43,0.85,1],["6Z14_Q4Z",2,18,3,3.35,1.69,1,5.75,1.47,1],["6Z5Z_BDF",2,12,1,3.29,3.04,0,4.42,3.37,0],["7BLG_GAL",2,12,1,2.9,2.79,0,3.39,2.42,0],["7BNH_BEZ",2,9,1,3.32,2.06,0,2.79,1.28,1],["7CNQ_G8X",2,9,1,2.58,1.51,1,2.52,1.55,1],["7CUO_PHB",2,10,1,3.94,1.19,1,1.31,0.92,1],["7E4L_MDN",2,9,2,2.43,1.79,1,2.92,1.98,1],["7ECR_SIN",2,8,3,1.66,1.32,1,1.39,1.11,1],["7JMV_4NC",2,11,1,2.67,1.99,1,1.85,0.7,1],["7KFO_IAC",2,13,2,3.27,1.73,1,2.62,2.15,0],["7LOU_IFM",2,10,1,3.47,2.22,0,1.49,0.85,1],["7NFB_GEN",2,20,1,5.42,0.62,1,6.95,0.42,1],["7NR6_UO8",2,17,1,4.12,1.86,1,1.8,1.15,1],["7OZC_G6S",2,16,3,2.19,2.19,0,2.23,0.9,1],["7P2I_MFU",2,12,1,3.25,1.22,1,3.78,1.84,1],["7Q2B_M6H",2,12,2,5.31,2.16,0,2.73,1.5,1],["7RSV_7IQ",2,20,1,6.5,2.15,0,0.72,0.72,1],["7RWO_7WN",2,20,2,3.64,1.03,1,2.73,2.1,0],["7RZL_NPO",2,10,1,3.92,2.21,0,3.21,1.09,1],["7SZA_DUI",2,20,1,2.6,1.28,1,6.28,1.0,1],["7THI_PGA",2,9,3,4.23,1.67,1,3.55,1.44,1],["7TOM_5AD",2,18,1,2.42,1.52,1,4.86,2.18,0],["7UAW_MF6",2,35,1,6.13,3.18,0,4.57,2.42,0],["7VBU_6I4",2,17,1,6.08,1.1,1,6.18,1.03,1],["7VJT_7IJ",2,27,2,3.03,3.03,0,7.69,1.75,1],["7VKZ_NOJ",2,11,1,2.85,1.44,1,3.61,1.36,1],["7Z1Q_NIO",2,9,1,2.04,1.49,1,3.62,1.46,1],["7Z2O_IAJ",2,14,1,3.06,1.59,1,2.07,1.8,1],["7ZDY_6MJ",2,11,1,3.87,2.61,0,4.12,1.25,1],["8AEM_LVF",2,13,1,4.0,1.82,1,3.58,1.46,1],["8HO0_3ZI",2,22,2,3.29,1.6,1,3.32,2.42,0],["6Z0R_Q4H",1,9,0,3.55,2.28,0,2.13,1.12,1],["7FB7_8NF",1,9,0,3.68,2.5,0,3.3,0.84,1],["7LOE_Y84",1,11,0,2.94,0.49,1,1.45,1.23,1],["7ORW_7WA",1,10,0,3.15,1.24,1,2.32,1.89,1],["7WKL_CAQ",1,8,0,2.77,0.31,1,2.98,0.91,1]];
+const C = {cid:0, F:1, atoms:2, tors:3, sfS:4, sfB:5, sfOK:6, sdS:7, sdB:8, sdOK:9};
+
+let fFrag = null, fCat = "all", sortCol = 1, sortDir = "desc";
+
+const bins = {};
+for (const r of DATA) {
+  const f = r[C.F];
+  bins[f] = bins[f] || {n:0, sf:0, sd:0};
+  bins[f].n++; bins[f].sf += r[C.sfOK]; bins[f].sd += r[C.sdOK];
+}
+const maxN = Math.max(...Object.values(bins).map(b => b.n));
+
+function drawDist(){
+  const host = document.getElementById("dist");
+  host.innerHTML = "";
+  for (let f = 1; f <= 11; f++){
+    const b = bins[f] || {n:0, sf:0, sd:0};
+    const btn = document.createElement("button");
+    btn.className = "col";
+    btn.setAttribute("aria-pressed", fFrag === f ? "true" : "false");
+    btn.setAttribute("aria-label",
+      `${f} Fragmente: ${b.n} Liganden, SigmaFlow ${b.sf} geloest, SigmaDock ${b.sd} geloest`);
+    const h = x => Math.max(2, Math.round(100 * x / maxN));
+    btn.innerHTML =
+      `<div class="cnt">${b.n || ""}</div>
+       <div class="bars">
+         <div class="bar total" style="height:${h(b.n)}%"></div>
+         <div class="bar hit-sf" style="height:${h(b.sf)}%"></div>
+         <div class="bar hit-sd" style="height:${h(b.sd)}%"></div>
+       </div>
+       <div class="lab">${f}</div>`;
+    btn.onclick = () => { fFrag = (fFrag === f) ? null : f; drawDist(); render(); };
+    host.appendChild(btn);
+  }
+}
+
+function passes(r){
+  if (fFrag !== null && r[C.F] !== fFrag) return false;
+  const sf = r[C.sfOK], sd = r[C.sdOK];
+  switch (fCat){
+    case "both":   return sf && sd;
+    case "sfonly": return sf && !sd;
+    case "sdonly": return sd && !sf;
+    case "none":   return !sf && !sd;
+    case "rigid":  return r[C.F] === 1;
+    default:       return true;
+  }
+}
+
+function render(){
+  const rows = DATA.filter(passes).sort((a, b) => {
+    const x = a[sortCol], y = b[sortCol];
+    const c = (typeof x === "string") ? x.localeCompare(y) : x - y;
+    return sortDir === "asc" ? c : -c;
+  });
+
+  const tb = document.getElementById("tb");
+  tb.innerHTML = rows.map(r => {
+    const flag = (v, col) => v
+      ? `<span class="yes"><span class="dot" style="background:var(--${col})"></span>ja</span>`
+      : `<span class="no">–</span>`;
+    return `<tr>
+      <td class="cid">${r[C.cid]}</td>
+      <td class="fragcell">${r[C.F]}</td>
+      <td class="num">${r[C.atoms]}</td>
+      <td class="num">${r[C.tors]}</td>
+      <td class="num grp">${r[C.sfS].toFixed(2)}</td>
+      <td class="num">${r[C.sfB].toFixed(2)}</td>
+      <td>${flag(r[C.sfOK], "sf")}</td>
+      <td class="num grp">${r[C.sdS].toFixed(2)}</td>
+      <td class="num">${r[C.sdB].toFixed(2)}</td>
+      <td>${flag(r[C.sdOK], "sd")}</td>
+    </tr>`;
+  }).join("");
+
+  document.getElementById("empty").hidden = rows.length > 0;
+  const nsf = rows.reduce((s, r) => s + r[C.sfOK], 0);
+  const nsd = rows.reduce((s, r) => s + r[C.sdOK], 0);
+  document.getElementById("count").textContent =
+    rows.length
+      ? `${rows.length} Liganden · SF ${nsf} · SD ${nsd}`
+      : "0 Liganden";
+}
+
+document.querySelectorAll("thead th").forEach(th => {
+  th.onclick = () => {
+    const c = +th.dataset.s;
+    sortDir = (sortCol === c && sortDir === "desc") ? "asc" : "desc";
+    sortCol = c;
+    document.querySelectorAll("thead th").forEach(o => o.removeAttribute("data-dir"));
+    th.setAttribute("data-dir", sortDir);
+    th.querySelector(".arrow").textContent = sortDir === "desc" ? "▼" : "▲";
+    render();
+  };
+});
+
+document.querySelectorAll(".chip").forEach(ch => {
+  ch.onclick = () => {
+    fCat = ch.dataset.f;
+    document.querySelectorAll(".chip").forEach(o => o.setAttribute("aria-pressed", "false"));
+    ch.setAttribute("aria-pressed", "true");
+    render();
+  };
+});
+
+drawDist();
+render();
+</script>
