@@ -23,7 +23,16 @@ python
 import glob, os
 from pymol import cmd
 
-CID = "6YRV_PJ8"          # <- hier den Komplex wechseln
+# Der Komplex wird aus der Protein-Datei im Arbeitsverzeichnis abgeleitet.
+# So laesst sich dasselbe Skript ohne Aenderung in jeden vis_<CID>-Ordner
+# kopieren -- ein manuell gepflegter Name waere genau die Sorte Fehlerquelle,
+# die still eine falsche Datei laedt.
+_prot = sorted(glob.glob("*_protein.pdb"))
+if not _prot:
+    raise SystemExit("Keine <CID>_protein.pdb im Arbeitsverzeichnis gefunden. "
+                     "Erst 'cd' in den vis_<CID>-Ordner.")
+CID = os.path.basename(_prot[0])[:-len("_protein.pdb")]
+print(f"[info] Komplex aus Dateinamen abgeleitet: {CID}")
 
 cmd.reinitialize()
 cmd.set("retain_order", 1)
