@@ -344,3 +344,55 @@ Ergebnisse in `RESULTS.md`.
 `arc/test_train_rc.sh` (11), `arc/test_aggregate_learning_curve.py` (14),
 `arc/test_exp101_distance_audit.py`, `audits/test_rotation_gradient_reachability.py` (15),
 `visualization/tests/test_visualization.py`, `arc/compare_final_configs.py`.
+
+---
+
+## H. Sitzungsprotokoll 2026-08-19 — ARC zurück, fünf Fehler gefunden
+
+ARC kam nach dem Temperaturausfall vom 13.08. zurück. Der Tag hat mehr
+Fehler zutage gefördert als jeder Audit davor — **alle erst beim tatsächlichen
+Ausführen, keiner durch Codelektüre.**
+
+| # | Fehler | Wirkung, wäre er geblieben |
+|---|---|---|
+| 1 | `.gitignore` verschluckte `conf/experiments/` (Datensatzdefinitionen nie versioniert) | 72h-Lauf stirbt in den ersten Sekunden |
+| 2 | Stufe 1 des Sweeps lief gegen `pdbbind-core`, auf ARC **leer** | Sweep unbrauchbar, kein Horizont |
+| 3 | EXP-101 baute Pfad und Regexe selbst, widersprach der Config in allen drei Angaben | IS-1 hätte am falschen Komplexsatz gemessen |
+| 4 | Alle Auswertungsskripte zeigten auf `data/posebusters` — dort liegt **keine** Referenzdatei | Lernkurven wären lautlos leer geblieben |
+| 5 | `count_fragments` benutzte `DataFront` statt `MetaFront` (relative statt absolute Pfade) | alle 209 Moleküle fielen aus |
+
+Gemeinsame Ursache: **Skripte konstruierten Datensatz-Speicherorte, statt sie
+aufzulösen.** Gegenmaßnahmen sind eingebaut — `get_experiment_config` überall,
+`ARC_TRUE_DIR` einmal in `_common.sh`, `precheck_dataset()` im Sweep,
+Abschnitt A9 im Preflight, `--expect-in-path` gegen den falschen Codebaum.
+
+**Was das über den GREEN-Stand vom 17.08. sagt:** er war zu selbstsicher. Die
+Audits waren korrekt in dem, was sie prüften, konnten diese Fehlerklasse aber
+strukturell nicht sehen. Ausführen schlägt Auditieren.
+
+### Positiv abgeschlossen
+
+- **Partition `long` verifiziert**: existiert, 30 Tage Limit, `gpu:l40s:4`. Der
+  letzte offene ARC-Laufzeitpunkt.
+- **PoseBusters-Umfang geklärt**: 209 Verzeichnisse = 209 Paare, keine stille
+  Teilmenge. Unsere Kopie ist eine bereits reduzierte Fassung (Original 428,
+  Paper 308).
+- **IS-1 entschieden** (negativ, siehe Abschnitt D).
+- **Auswertungskette validiert** an 2×2090 realen Posen, 100 % Abdeckung.
+- **Oracle@K gemessen** — Ranking ist der größte belegte Hebel (Abschnitt A).
+
+### Offen am Ende des Tages
+
+| Job | Stand |
+|---|---|
+| 8606626 / 8606627 | Throughput Stufe 1 — `PD (Priority)`, GPU knapp |
+| 8607507 | `probe_sizes` (n_train) — eingereicht |
+| 8607523 | Fragmentzähler mit Pfad-Fix — eingereicht |
+
+**`arc/train_final_72h.slurm` ist bis heute nie ausgeführt worden.** Alle
+Änderungen daran (expliziter `--max_steps`, `TRAIN_RC`-Klassifikation,
+Resume-Guard, Snapshot-Benennung, Manifest) sind syntaxgeprüft und
+unit-getestet, aber nicht auf ARC gelaufen. Das ist das größte verbleibende
+Ausführungsrisiko. Entschärft wird es dadurch, dass alles, was fehlschlagen
+kann, **früh** fehlschlägt: Sanity-Gate, Horizont-Konsistenzprüfung und
+Datensatzauflösung laufen alle vor dem ersten Trainingsschritt.
