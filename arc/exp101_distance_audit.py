@@ -130,6 +130,7 @@ def main() -> None:
                     help="Ergebnis zusaetzlich maschinenlesbar ablegen.")
     args = ap.parse_args()
 
+    from sigmadock.config import get_experiment_config
     from sigmadock.data import SigmaDataset
     from sigmadock.datafronts import DataFront
     from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
@@ -144,8 +145,29 @@ def main() -> None:
     torch.manual_seed(args.seed)
     np.random.seed(args.seed)
 
-    df = DataFront(f"{args.data_dir}/{args.experiment}",
-                   pdb_regex=r".*_protein\.pdb$", sdf_regex=r".*_ligand\.sdf$")
+    # Pfad UND Regexe kommen aus conf/experiments/<experiment>.yaml, nicht aus
+    # diesem Skript.
+    #
+    # WARUM DAS WICHTIG IST
+    #   Vorher stand hier ein selbst zusammengebauter Pfad
+    #   f"{data_dir}/{experiment}" mit eigenen Regexen
+    #   (.*_protein\.pdb$ / .*_ligand\.sdf$). Alle drei Angaben widersprachen
+    #   der Config: der echte Pfad ist posebusters_paper/
+    #   posebusters_benchmark_set/, das pdb_regex ist .*\.pdb$, und das
+    #   sdf_regex endet auf ligandS.sdf -- Plural. Job 8606628 scheiterte
+    #   daran mit "No valid pairs found in .../data/posebusters".
+    #
+    #   Schwerer als der Absturz waere der stille Fall gewesen: haette das
+    #   Verzeichnis zufaellig existiert, aber mit anderer Namenskonvention,
+    #   haette EXP-101 auf einem ANDEREN Komplexsatz gemessen als das
+    #   Training -- und das Go/No-Go fuer den gesamten Quellverteilungsstrang
+    #   waere auf der falschen Grundlage gefallen.
+    ec = get_experiment_config(args.experiment, root_dir=pathlib.Path(args.data_dir))
+    print(f"Experiment '{args.experiment}' -> {ec.dataset}")
+    print(f"  pdb_regex = {ec.pdb_regex}")
+    print(f"  sdf_regex = {ec.sdf_regex}")
+    df = DataFront(ec.dataset, pdb_regex=ec.pdb_regex, sdf_regex=ec.sdf_regex,
+                   ref_sdf_regex=getattr(ec, "ref_sdf_regex", None))
     ds = SigmaDataset(
         datafront=df, pocket_com_noise=0.0, pocket_distance_cutoff=8.0,
         pocket_distance_noise=0.0, prot_coordinate_distance_noise=0.0,
