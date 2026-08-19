@@ -573,6 +573,90 @@ behandelt die Kopien bereits richtig; betroffen war ausschließlich unsere
 eigene indexbasierte Auswertung. Alle Zahlen oben bleiben unverändert
 gültig, `p=0.0347` eingeschlossen.
 
+## 🧩 Fragmentzahl als Schwierigkeitsachse (2026-08-19, CPU)
+
+Verknüpfung von `arc/count_fragments.py` (208 Liganden mit Fragmentzahl) mit
+den Per-Komplex-RMSDs der 10-Seed-Läufe. Erfolg = Oracle@10, RMSD < 2 Å.
+
+| Fragmente | n | SigmaFlow | SigmaDock | SF med. bester RMSD | SD med. bester RMSD |
+|---:|---:|---:|---:|---:|---:|
+| 1 | 5 | 60.0 % | **100.0 %** | 1.24 Å | 1.12 Å |
+| 2 | 34 | 64.7 % | 79.4 % | 1.71 Å | 1.45 Å |
+| 3 | 41 | 48.8 % | 68.3 % | 2.02 Å | 1.72 Å |
+| 4 | 29 | 17.2 % | 44.8 % | 2.68 Å | 2.22 Å |
+| 5 | 42 | 21.4 % | 40.5 % | 2.69 Å | 2.05 Å |
+| 6 | 18 | 22.2 % | 33.3 % | 2.68 Å | 2.44 Å |
+| 7 | 16 | **0.0 %** | 12.5 % | 3.40 Å | 3.38 Å |
+| 8 | 15 | 0.0 % | 6.7 % | 4.01 Å | 3.29 Å |
+| 9 | 5 | 0.0 % | 0.0 % | 5.06 Å | 3.89 Å |
+| 10 | 1 | — | — | 2.97 Å | 3.71 Å |
+| 11 | 2 | — | — | 4.08 Å | 3.70 Å |
+
+### 1. Die Fragmentzahl ist die dominante Schwierigkeitsachse
+
+Logistische Regression `Erfolg ~ Arm + F + Arm:F` über beide Arme:
+**jedes zusätzliche Fragment multipliziert die Erfolgs-Odds mit 0.53**
+(`coef = −0.636`, `p < 1e-4`). Spearman gegen den besten RMSD:
+ρ = +0.570 (SigmaFlow, `p = 2.6e-19`) und +0.622 (SigmaDock, `p = 1.1e-23`).
+
+Geschichtet: `F ≤ 3` gegen `F ≥ 4` bricht SigmaFlow von 56.2 % auf 14.1 %
+(Fisher `p = 1.8e-10`), SigmaDock von 75.0 % auf 30.5 % (`p = 4.1e-10`).
+
+Ab **7 Fragmenten** trifft SigmaFlow keinen einzigen Komplex mehr (0/39 für
+F ≥ 7), SigmaDock noch 3/39.
+
+### 2. SigmaFlow ist GLEICHMÄSSIG schlechter, nicht überproportional
+
+Der Interaktionsterm `Arm:F` ist **nicht signifikant** (`coef = −0.030`,
+**`p = 0.85`**). Das Odds-Verhältnis SigmaFlow/SigmaDock ist über die
+Schichten stabil: 0.429 bei `F ≤ 3`, 0.373 bei `F ≥ 4`.
+
+**Das ist die zulässige Formulierung:** SigmaFlow verliert einen konstanten
+Faktor von rund 0.43 auf der Odds-Skala, unabhängig von der Fragmentzahl. Die
+auf der Prozentskala scheinbar wachsende Lücke ist überwiegend ein
+Bodeneffekt. Die Hypothese „die Rotationsbehandlung skaliert schlechter mit
+der Zahl starrer Körper" wird von diesen Daten **nicht** gestützt.
+
+### 3. 🚨 Korrektur: die Schnittmenge ist NICHT leer
+
+Gepaart über 208 Liganden, Oracle@10:
+
+| | Anzahl |
+|---|---:|
+| **beide lösen** | **48** |
+| nur SigmaFlow | 15 |
+| nur SigmaDock | 51 |
+| keiner | 94 |
+
+Die bisher dokumentierte Aussage „die Schnittmenge der gelösten Komplexe ist
+leer — beide Modelle lösen disjunkte Fälle" stammt aus **Einzelziehungen**
+(SigmaFlow 6/209, SigmaDock 17/209). Bei einem Ziehungsrauschen, das laut
+Seed-Varianz-Analyse etwa zehnmal so groß ist wie der Methodeneffekt, war das
+ein Kleinstichprobenartefakt. Mit zehn Seeds überlappen **48 Komplexe**.
+
+McNemar über die diskordanten Paare (15 gegen 51): `p = 1.0e-05`. SigmaDock
+ist signifikant besser — aber auf demselben Komplexsatz, nicht auf einem
+anderen.
+
+**Diese Korrektur muss in den Thesis-Entwurf.**
+
+### 4. Der einfachste Fall wird nicht zuverlässig gelöst
+
+Fünf Liganden haben **genau ein Fragment**, also keine Torsion. Für sie ist
+die gesamte Generierung eine einzige globale Rototranslation, ohne jede
+Fragmentkoordination. SigmaDock löst 5/5, **SigmaFlow nur 3/5**.
+
+Bei n = 5 ist das statistisch nichts. Als Diagnosehinweis ist es trotzdem
+wertvoll: wenn SigmaFlow schon einen einzelnen starren Körper nicht sicher
+platziert, liegt der Rückstand nicht an der Koordination mehrerer Fragmente,
+sondern an Rotation und Translation selbst. Diese fünf Komplexe sind die
+saubersten Testfälle für die 72h-Snapshots.
+
+Abbildungen: `A_fragment_distribution`, `B_fragments_vs_size`,
+`C_fragments_vs_performance` (PNG und PDF), erzeugt mit
+`visualization/plot_fragments.py`. Rohdaten: `fragments_vs_performance.csv`.
+
+
 ## 🎯 Oracle@K auf den 10-Seed-Läufen (2026-08-19, CPU)
 
 `SigmaFlow_Evaluation.evaluate_run` über die bereits vorhandenen Sampling-

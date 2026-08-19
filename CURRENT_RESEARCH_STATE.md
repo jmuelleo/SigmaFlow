@@ -63,9 +63,21 @@ gewinnt SigmaFlow Faktor 12.5, SigmaDock Faktor 4.7. Der Abstand zum Paper
 überwiegend aus Seeds und Ranking, nicht aus Generatorqualität. Details und
 Konsistenzprüfung gegen die Seed-Varianz-Analyse in `RESULTS.md`.
 
-⚠️ Die frühere Aussage „Schnittmenge der gelösten Komplexe ist leer" stammt aus
-**Einzelziehungen** (SigmaFlow 6/209, SigmaDock 17/209). Mit 10 Seeds ist sie
-**neu zu prüfen**; die Daten liegen in `arc_runs/eval_*_10seeds.json`.
+🚨 **KORRIGIERT 2026-08-19: die Schnittmenge ist NICHT leer.** Gepaart über
+208 Liganden bei Oracle@10 lösen **48 Komplexe beide** Modelle; 15 nur
+SigmaFlow, 51 nur SigmaDock, 94 keiner. Die alte Aussage stammte aus
+Einzelziehungen (6/209 gegen 17/209) und war ein Kleinstichprobenartefakt bei
+einem Ziehungsrauschen, das etwa zehnmal so gross ist wie der Methodeneffekt.
+McNemar über die diskordanten Paare: `p = 1.0e-05` zugunsten SigmaDock — auf
+demselben Komplexsatz, nicht auf einem anderen. **Diese Korrektur muss in den
+Thesis-Entwurf.**
+
+**Fragmentzahl ist die dominante Schwierigkeitsachse:** jedes zusätzliche
+Fragment multipliziert die Erfolgs-Odds mit **0.53** (`p < 1e-4`), für beide
+Arme. Ab 7 Fragmenten trifft SigmaFlow keinen Komplex mehr (0/39). SigmaFlow
+ist dabei **gleichmässig** schlechter (Odds-Faktor 0.43), nicht
+überproportional — der Interaktionsterm ist mit `p = 0.85` nicht signifikant.
+Volle Auswertung in `RESULTS.md`.
 
 **Rotationsdiagnostik (Median-Winkeländerung gegen die Quelle):** SigmaFlow 12h
 −15.0° [−21.6, −8.1]; SigmaDock 12h −20.4° [−26.0, −14.5]; SigmaFlow ohne
