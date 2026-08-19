@@ -14,6 +14,20 @@ export ARC_RUNS="${ARC_USER_ROOT}/arc_runs"
 export ARC_SF_ENV="${ARC_USER_ROOT}/sigmaflow_env"
 export ARC_SD_ENV="${ARC_USER_ROOT}/myenv"
 
+# Referenzliganden fuer jede Auswertung. AN GENAU EINER STELLE.
+#
+#   Vorher stand in eval_snapshots.slurm, compare_rankers.slurm und
+#   evaluate_snapshot.py jeweils "${ARC_DATA}/posebusters". Dieses Verzeichnis
+#   enthaelt aber nur raw/ (leer) und processed/ -- keine einzige
+#   <cid>_ligands.sdf. Jede Pose waere still uebersprungen worden
+#   (evaluate_run.collect: fail.add + continue), und die Lernkurven waeren
+#   nach 144 GPU-Stunden leer geblieben.
+#
+#   Der kanonische Satz liegt verschachtelt:
+#       posebusters_benchmark_set/<cid>/<cid>_ligands.sdf
+#   evaluate_run akzeptiert seit 4b3fc2f beide Layouts.
+export ARC_TRUE_DIR="${ARC_DATA}/posebusters_paper/posebusters_benchmark_set"
+
 # wandb-Haerten. Job 8525523 verlor 36 Minuten an
 #   ServicePollForTokenError: Failed to read port info after 30.0 seconds
 # weil wandbs Hilfsprozess seine Portdatei nicht rechtzeitig auf dem

@@ -138,7 +138,7 @@ for CKPT in "${SNAP_DIR}"/snap_*.ckpt; do
 
     "$PYTHON" -m SigmaFlow_Evaluation.evaluate_run \
         --sampling_root "${SAMPLE_OUT}" \
-        --true_dir "${ARC_DATA}/posebusters" \
+        --true_dir "${ARC_TRUE_DIR}" \
         --label "${MODEL}_${TAG}" \
         --out_json "${SAMPLE_OUT}/evaluation.json" \
       > "${SAMPLE_OUT}/evaluate.log" 2>&1 || \

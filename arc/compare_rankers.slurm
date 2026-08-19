@@ -51,7 +51,7 @@ run_eval() {
     echo; echo "======== ${label} ========"
     "$PYTHON" -m SigmaFlow_Evaluation.evaluate_run \
         --sampling_root "${SAMPLING_ROOT}" \
-        --true_dir "${ARC_DATA}/posebusters" \
+        --true_dir "${ARC_TRUE_DIR}" \
         --model "${MODEL}" \
         --label "${label}" \
         --out_json "${RUN_DIR}/eval_${label}.json" \

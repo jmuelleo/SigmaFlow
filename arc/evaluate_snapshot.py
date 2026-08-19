@@ -135,7 +135,7 @@ def build_sampling_commands(args: argparse.Namespace, out_dir: Path) -> list[lis
     evaluate = [
         sys.executable, "-m", "SigmaFlow_Evaluation.evaluate_run",
         "--sampling_root", str(out_dir),
-        "--true_dir", f"{args.data_dir}/posebusters",
+        "--true_dir", args.true_dir or f"{args.data_dir}/posebusters_paper/posebusters_benchmark_set",
         "--label", f"{args.arm}_{Path(args.checkpoint).stem}",
         "--out_json", str(out_dir / "evaluation.json"),
     ]
@@ -150,6 +150,9 @@ def main() -> int:
     p.add_argument("--out-dir", type=Path, default=None)
     p.add_argument("--data-dir", default=None)
     p.add_argument("--subset", default=None, help="fester Auswertungssubset (arc/eval_subset.txt)")
+    p.add_argument("--true-dir", dest="true_dir", default=None,
+                   help="Referenzliganden. Default: posebusters_paper/posebusters_benchmark_set "
+                        "(verschachtelt). <data>/posebusters ist LEER.")
     p.add_argument("--nfe", type=int, default=25)
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--run", action="store_true",
