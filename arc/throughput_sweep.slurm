@@ -26,8 +26,9 @@
 # DESIGN
 #   Der Datafront-Aufbau dauert auf pdbbind-general 10-35 min. Bei 12 Konfigs
 #   waere das die gesamte Laufzeit. Deshalb zweistufig:
-#     Stufe 1  pdbbind-core (285 Komplexe, schneller Aufbau) -> RELATIVE
-#              Faktoren: Batch-Skalierung, Debug, TF32, bf16, VRAM, OOM.
+#     Stufe 1  astex (85 Komplexe, schnellster Aufbau) -> RELATIVE
+#              Faktoren: Batch-Skalierung, Debug, TF32, bf16, VRAM.
+#              (Frueher pdbbind-core -- das ist auf ARC LEER, siehe unten.)
 #     Stufe 2  pdbbind-general, EINE Konfiguration (die aus Stufe 1 gewaehlte)
 #              -> ABSOLUTER Anker in samples/s auf der echten Verteilung.
 #   Stufe 2 laeuft NICHT automatisch; sie wird nach Sichtung von Stufe 1
@@ -96,6 +97,33 @@ VRAM_LOG="${RUN_DIR}/vram.log"
   done ) &
 POLLER_PID=$!
 trap 'kill $POLLER_PID 2>/dev/null' EXIT
+
+# ---------------------------------------------------------------- Vorpruefung
+# Ein nicht aufloesbarer oder leerer Datensatz erzeugte bisher ZEHN identische
+# Fehlschlaege, aus denen der Grund erst aus einem einzelnen Konfigurationslog
+# zu holen war -- und SLURM meldete trotzdem COMPLETED 0:0, weil dieses Skript
+# bewusst kein set -e setzt. Deshalb wird der Datensatz EINMAL vorab geprueft
+# und der Job bricht mit klarer Meldung ab.
+precheck_dataset() {
+    local ds="$1"
+    echo
+    echo "──────── Vorpruefung: Datensatz '${ds}' ────────"
+    if ! "$PYTHON" "${ARC_REPO}/arc/probe_datafront_size.py" \
+            --data-dir "${ARC_DATA}" --train "$ds" --val posebusters --test posebusters \
+            > "${RUN_DIR}/precheck_${ds}.log" 2>&1; then
+        echo "ABBRUCH: Datensatz '${ds}' ist nicht aufloesbar oder leer."
+        echo "  Log: ${RUN_DIR}/precheck_${ds}.log"
+        tail -15 "${RUN_DIR}/precheck_${ds}.log" | sed 's/^/    /'
+        echo
+        echo "  Bekannt leer auf ARC: pdbbind-core, pdbbind-refined"
+        echo "  (nie aus pdbbind/raw/P-L.tar.gz extrahiert, STATUS.md:999)."
+        echo "  Befuellt: pdbbind-general, posebusters, astex."
+        echo "  Anderen Satz waehlen:  STAGE1_DATASET=astex sbatch ..."
+        return 1
+    fi
+    grep -E "^train|^GEMESSEN" "${RUN_DIR}/precheck_${ds}.log" | sed 's/^/  /'
+    return 0
+}
 
 run_one() {
     local cfg_name="$1" dataset="$2" batch="$3" val_int="$4"; shift 4
@@ -173,7 +201,25 @@ if [ "$STAGE" = "1" ]; then
 # Reihenfolge bewusst: erst die Referenz, dann je EIN Hebel, dann kombiniert.
 # So ist jede Differenz genau einer Aenderung zuzuordnen.
 
-DS=pdbbind-core
+# WELCHER DATENSATZ FUER STUFE 1
+#   Frueher stand hier pdbbind-core. Dieses Verzeichnis ist auf ARC LEER --
+#   pdbbind/core-set/ und pdbbind/refined-set/ wurden nie aus
+#   pdbbind/raw/P-L.tar.gz extrahiert (STATUS.md:999, seit dem 6h-Lauf bekannt).
+#   Der Sweep 8583394/8583395 scheiterte daran in allen 10 Konfigurationen mit
+#     ValueError: No valid pairs found in .../pdbbind/core-set
+#
+#   astex_diverse_set (85 Komplexe) ist befuellt und der kleinste verfuegbare
+#   Satz, also der schnellste Datafront-Aufbau. posebusters waere ebenfalls
+#   befuellt, ist aber der Testsatz -- ihn als --train_exps zu benutzen waere
+#   selbst fuer eine reine Durchsatzmessung eine vermeidbare Unsauberkeit.
+#
+#   ACHTUNG ZUR OOM-GRENZE: astex-Liganden sind im Mittel kleiner als die von
+#   pdbbind-general. Die hier gemessene Speichergrenze ist deshalb eher
+#   OPTIMISTISCH. Verbindlich ist erst Stufe 2, die auf pdbbind-general laeuft
+#   -- ein OOM dort ist das eigentliche Signal, auf Akkumulation auszuweichen.
+DS="${STAGE1_DATASET:-astex}"
+
+precheck_dataset "$DS" || exit 1
 
 # (1) Referenz: exakt die Konfiguration der aktuellen 24h-Jobs.
 PREC=32 CUDA_PREC=highest DBG=yes \
@@ -234,6 +280,7 @@ else
 #   dafuer, dass beide Messpunkte denselben Cache-Zustand des Dateisystems
 #   sehen -- sonst waere C nicht konstant und die Differenz waere Unsinn.
 BATCH="${BATCH:?BATCH setzen}"
+precheck_dataset pdbbind-general || exit 1
 ACCUM="${ACCUM:-1}"
 EXTRA_STR="${EXTRA:-}"
 read -r -a EXTRA_ARR <<< "$EXTRA_STR"
