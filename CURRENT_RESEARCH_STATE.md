@@ -113,6 +113,21 @@ ohne alle vier Unterschiede im selben Satz zu nennen.
 
 ### Noch offen
 
+- **`n_train` ist GEMESSEN: 19 037** (Job 8607507, `pdbbind-general`).
+  Das sind **2.09 % unter** der Paper-Zahl 19 443. Daraus folgt
+  `steps_per_epoch = floor(19037/32) = 594` statt 607.
+
+  **Warum das jetzt zwingend war:** vor der Härtung rechnete `train.py:221`
+  den Horizont selbst aus `len(train_datafront)` — also automatisch mit der
+  echten Zahl. Der explizite `--max_steps`, mit dem der accum-Bug umgangen
+  wird, verlagert diese Verantwortung nach aussen. Hätte man dort die
+  Paper-Zahl eingesetzt, wäre der Horizont bei 70 Epochen um **840 Steps zu
+  gross** gewesen und der Anneal nur zu 98 % durchlaufen.
+  Zur Einordnung: bei 98 % steht der Cosinusfaktor bei 0.00096, die Lernrate
+  also praktisch schon am Minimum — der Schaden wäre klein gewesen, anders
+  als beim accum-Bug mit Faktor 2–4. Der Punkt ist nicht die Grössenordnung,
+  sondern dass die Zahl jetzt gemessen statt geerbt ist.
+
 - **Stufe-2-Durchsatz ist erforderlich.** Ohne ihn gibt es keinen gültigen
   Horizont. Stufe 2 misst per Zweipunktdifferenz, damit der konstante
   Datafront-Aufbau herausfällt — ein Einzellauf hätte den Durchsatz um
