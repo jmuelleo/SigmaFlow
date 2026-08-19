@@ -1,6 +1,6 @@
 # SigmaFlow — Current Research State
 
-**Stand: 2026-08-18.** Eingefrorener Vor-ARC-Zustand.
+**Stand: 2026-08-19.** ARC ist wieder online; IS-1 ist entschieden.
 
 Dieses Dokument ist die eine autoritative Quelle für den Projektstand. Eine
 neue Sitzung soll damit auskommen, ohne die Historie zu rekonstruieren.
@@ -150,8 +150,29 @@ konstruiert). Es fehlt die Validierung gegen **echtes ARC-Sampling** aus dem
 12h-Checkpoint. Das ist der einzige verbleibende Punkt für CORE 3 auf der
 SigmaFlow-Seite.
 
-**Fragmentzahlen:** bekannt ist `D = 6·F`, Median D 24, q90 42, max 66 →
-Median **4**, q90 **7**, max **11** Fragmente. Liganden mit 15+ Fragmenten
+**Fragmentzahlen (Stand 2026-08-19).** Drei unabhängige Quellen stimmen überein:
+
+| Quelle | n | Mittel | Median | q90 | Max |
+|---|---:|---:|---:|---:|---:|
+| `EXPERIMENT_REGISTRY.md` (D-Statistik) | 209 | — | 4 | 7 | 11 |
+| lokal aus den Ligand-SDFs gerechnet | 99 | 4.37 | 4 | 8 | 9 |
+| IS-1-Lauf 8606965 (953 Rotationen / 209 Komplexe) | 209 | **4.56** | — | — | — |
+
+Der Modus liegt bei 5 Fragmenten, die Verteilung ist rechtsschief. Rund ein
+Viertel der Liganden hat höchstens 2 Fragmente; 4 von 99 haben **gar keine**
+Torsion und sind damit ein einziger starrer Körper.
+
+`arc/count_fragments.slurm` (CPU-only) erzeugt die vollständige Liste je Ligand
+plus Histogramm und prüft dabei zusätzlich Verzeichnisse gegen erkannte Paare.
+Verifiziert: `Fragmente = min_cuts + 1`, und die Zahl **schwankt nicht**
+zwischen den minimalen Cut-Sets — trotz `fragmentation_strategy="random"` ist
+`D` je Ligand deterministisch.
+
+⚠️ `enumerate_valid_fragmentations` ist kombinatorisch: ein Ligand mit 23
+Torsionen lief lokal über 20 min ohne Ergebnis. Das Zählskript hat deshalb ein
+hartes Zeitlimit je Molekül.
+
+Liganden mit 15+ Fragmenten
 **existieren in diesem Benchmark nicht**; die Fallauswahl muss sich an 8–11
 orientieren. Die exakten Zahlen je Komplex brauchen ARC-Daten.
 
@@ -164,48 +185,51 @@ unverändert bleiben. **Darf den 72h-Start nicht verzögern.**
 
 ---
 
-## D. Informative Quellverteilung (CORE 4)
+## D. Informative Quellverteilung (CORE 4) — ABGESCHLOSSEN, NEGATIV
 
-Leiter aus `INFORMATIVE_SOURCE_ROADMAP.md`:
+**IS-1 ist am 2026-08-19 gelaufen (ARC-Job 8606965) und durchgefallen. Nach der
+vorregistrierten Regel wird IS-2 nicht gebaut und bekommt keine GPU-Zeit.**
+
+Gemessen über 209 PoseBusters-Komplexe, 953 Fragmentrotationen:
+
+| Quelle | Median d_SO(3) | Mittel | gegen Haar | |
+|---|---:|---:|---:|---|
+| H0 Haar (uninformiert) | 131.3° | 126.2° | — | Referenz |
+| **H1 Hauptachsen Konformer→Tasche** | **138.1°** | 128.4° | **−6.7°** | **TRÄGT NICHT** |
+| Hid `R_0 = I` (Kontrolle) | 130.7° | 126.4° | +0.6° | trägt nicht |
+| Hx Hauptachsen **mit Leakage** | 135.4° | 128.0° | −4.1° | trägt auch dann nicht |
+
+**Die Messung ist belastbar:** H0 trifft die Haar-Erwartung (Median ~132.3,
+Mittel ~126.5) auf ~1° genau. Das Urteil betrifft also die Heuristik, nicht die
+Messung.
+
+**Der entscheidende Befund ist die Leakage-Kontrolle.** Selbst *mit* geleakter
+Kristallgeometrie bleibt die Heuristik mit 135.4° schlechter als Haar. Die
+Obergrenze dieser Familie liegt unterhalb der uninformierten Quelle — das ist
+keine fehlende Information, sondern eine falsche Konstruktion. Hauptachsen von
+Konformer und Tasche sind nicht die Größen, die die gebundene Orientierung
+bestimmen. Auch `R_0 = I` ist mit +0.6° ununterscheidbar von Haar: es gibt
+keinen trivialen Orientierungsprior.
+
+**Die Asymmetrie, um die es ging, ist damit quantifiziert:**
 
 ```
-IS-0  Haar-Kontrolle              vorhanden, ist die aktuelle Quelle
-IS-1  Geometrie-Audit             READY, CPU-Gate  <- als nächstes
-IS-2  einfache informierte        vorbereitet, gesperrt durch IS-1
-      Rotationsquelle
-IS-3  Konzentrations-Sweep        dokumentiert
-IS-4  Mischverteilung             dokumentiert
-IS-5  gelernte Quelle             nur bei Erfolg von IS-1 und IS-2
+Translation:  N(0,I) Median 2.1  ->  Taschenmitte Median 1.5   (Prior wirkt)
+Rotation:     Haar   Median 131.3 ->  beste zulässige Heuristik 138.1  (schlechter)
 ```
 
-**IS-1** (`arc/exp101_distance_audit.py`, Slurm: `arc/exp101_distance_audit.slurm`,
-CPU-only) fragt: enthält inferenzverfügbare Geometrie genug Orientierungssignal,
-um Haar zu schlagen — **vor** jedem Flow-Training? Liefert Verteilung des
-Quell-Rotationsfehlers, Haar-Vergleich (Median 132.3°), Median-Rotationsdistanz,
-Anreicherung unter 30°/60°/90° und Bootstrap-Unsicherheit. Eigener Test:
-`arc/test_exp101_distance_audit.py`, alle Checks bestanden, inklusive
-Äquivarianz auf 1.6e-15.
+Die Translation hat bereits einen informativen Prior, weil `pocket_com` im
+Ursprung liegt. Für die Rotation gibt es kein Gegenstück — Haar hat keinen
+Mittelwert, und der Versuch, einen zu konstruieren, verschlechtert die Lage.
 
-**Vorregistrierte Go/No-Go-Regel:** zeigt IS-1 keine belastbare Anreicherung
-gegenüber Haar, wird **IS-2 nicht gebaut** und keine GPU-Zeit dafür verwendet.
+**Reichweite der Aussage.** Geprüft ist **eine** Heuristikfamilie
+(Hauptachsen). Dass *keine* informative Rotationsquelle helfen könnte, folgt
+daraus nicht. Für die Thesis ist die zulässige Formulierung: „Hauptachsen-
+Konditionierung hilft nicht", nicht „informative Quellen helfen nicht".
 
-**Wichtige konzeptionelle Einschränkung, im Skriptkopf festgehalten:** eine
-Quelle wird bei `t=0` gezogen, wenn die Fragmente noch keine Position haben.
-Konditioniert werden kann daher nur auf (Fragmentidentität, Ligandtopologie,
-Tasche als Ganzes) — nicht auf die Fragmentumgebung. IS-1 misst deshalb eine
-**globale** Ausrichtung, das Stärkste, was ohne Positionswissen sauber
-definierbar ist.
-
-**IS-2** würde ausschließlich die **Rotationsquelle** ändert
-(`p₀ᵀ` bleibt minimal, `p₀ᴿ ≠ Haar`), alles andere fix — der sauberste Test der
-Rotationshypothese. Gerüst liegt in
-`SigmaFlow_FM_Specific/EXP-102_heuristic_conditional_source/`; der Arm
-`sigmaflow_source` ist im Jobskript bereits vorgesehen, mit einer Warnung,
-falls `SOURCE_MEDIAN_DEG` noch auf dem Haar-Default 132.3 steht statt aus
-IS-1 zu kommen.
-
-**Gelernte Quelle bleibt nachgelagert.** Kein Netz jetzt. Nur wenn IS-1 Signal
-zeigt, IS-2 einen echten Nutzen belegt und Thesis-Zeit bleibt.
+Die Leiter IS-3 bis IS-5 bleibt dokumentiert (`INFORMATIVE_SOURCE_ROADMAP.md`),
+ist aber ohne bestandenes IS-1 gegenstandslos. Die gelernte Quelle (IS-5) wird
+nicht implementiert.
 
 ---
 
@@ -259,10 +283,10 @@ Ergebnisse in `RESULTS.md`.
 | `arc/eval_subset.txt` | **BLOCKED BY ARC DATA** (`make_eval_subset.py`) |
 | SigmaFlow-PyMOL-Infrastruktur | **READY, REQUIRES REAL ARC INFERENCE VALIDATION** |
 | SigmaDock-PyMOL-Parität | **PARTIALLY BLOCKED** — Zugriff auf Zwischenpositionen ungeprüft |
-| Fragmentzahlen je Komplex | **BLOCKED BY ARC DATA** |
-| IS-1 (EXP-101) | **READY, REQUIRES ARC DATA** |
-| IS-2 (EXP-102) | **PREPARED, GATED BY IS-1** |
-| IS-3 bis IS-5 | **OPTIONAL EXTENSION** |
+| Fragmentzahlen je Komplex | **READY** (`arc/count_fragments.slurm`, CPU-only); Mittel 4.56 bereits aus IS-1 bekannt |
+| IS-1 (EXP-101) | **DONE — NEGATIV** (Job 8606965, Heuristik 6.7° schlechter als Haar) |
+| IS-2 (EXP-102) | **CANCELLED** — vorregistrierte Regel greift, keine GPU-Zeit |
+| IS-3 bis IS-5 | **GEGENSTANDSLOS** ohne bestandenes IS-1; dokumentiert, nicht geplant |
 | NFE-Sweep-Vervollständigung | **OPTIONAL EXTENSION** (2 Tasks) |
 
 ---
@@ -282,7 +306,8 @@ Ergebnisse in `RESULTS.md`.
 | `arc/evaluate_snapshot.py` | Einzelsnapshot: Provenienz plus Metriken |
 | `arc/aggregate_learning_curve.py` | Lernkurve beider Arme, Serien getrennt |
 | `arc/compare_final_configs.py` | 115-Parameter-Diff der Arme |
-| `arc/exp101_distance_audit.py` | IS-1-Gate |
+| `arc/exp101_distance_audit.py` | IS-1-Gate (gelaufen, negativ) |
+| `arc/count_fragments.slurm` | Fragmentzahl je Ligand + Verteilung, CPU-only |
 | `visualization/build_case.py` | PyMOL-Paket je Komplex |
 
 **Tests, die lokal ohne ARC laufen:** `arc/test_scheduler_horizon.py` (16),

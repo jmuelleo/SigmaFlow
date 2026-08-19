@@ -1,5 +1,38 @@
 # Informative Source Distributions for SigmaFlow — Research Roadmap
 
+---
+
+> ## RESULT 2026-08-19 — IS-1 FAILED. THIS STRAND IS CLOSED.
+>
+> ARC job 8606965, 209 PoseBusters complexes, 953 fragment rotations.
+>
+> | source | median d_SO(3) | vs Haar |
+> |---|---:|---:|
+> | H0 Haar (uninformed) | 131.3° | — |
+> | **H1 principal axes conformer -> pocket** | **138.1°** | **-6.7°, WORSE** |
+> | Hid `R_0 = I` | 130.7° | +0.6° |
+> | Hx principal axes **with leakage** | 135.4° | -4.1° |
+>
+> Sanity held: H0 matched the Haar expectation (median ~132.3, mean ~126.5) to
+> within ~1°, so the verdict concerns the heuristic, not the measurement.
+>
+> The decisive line is Hx. Even **with** leaked crystal geometry the heuristic
+> stays worse than Haar. The ceiling of this family lies below the uninformed
+> source, so it is a wrong construction rather than an under-informed one.
+>
+> Translation meanwhile already has a working prior: source N(0,I) median 2.1
+> vs pocket-centre 1.5 normalised units. The asymmetry that motivated the whole
+> strand is now measured rather than assumed.
+>
+> **Consequence, by the pre-registered rule in section 7: IS-2 is not built and
+> gets no GPU time. IS-3 to IS-5 are moot.** The ladder below stays as
+> documentation of the design space, not as a plan.
+>
+> Scope of the claim: exactly one heuristic family was tested. "Principal-axes
+> conditioning does not help" is supported; "no informative rotational source
+> can help" is not.
+
+
 **Status:** planning document. No experiment below has been run.
 **Date:** 2026-08-17
 **Gate for everything here:** IS-1 (§7). If IS-1 fails, IS-2…IS-6 are not run.
