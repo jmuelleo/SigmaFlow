@@ -36,6 +36,7 @@ KRISTALLKOPIEN
 from __future__ import annotations
 
 import argparse
+import csv
 import glob
 import json
 import os
@@ -292,6 +293,9 @@ def main() -> int:
     p.add_argument("--model", default=None)
     p.add_argument("--label", default="run")
     p.add_argument("--out_json", default=None, type=Path)
+    p.add_argument("--per_complex_csv", default=None, type=Path,
+                   help="Eine Zeile je Komplex: RMSD (Seed 0, best, Median, worst) "
+                        "und Erfolgsflags. Zum Verknuepfen mit Ligandeigenschaften.")
     p.add_argument("--scores", default=None, type=Path,
                    help="JSON {complex_id: {pose_id: score}}, groesser ist besser. "
                         "Ohne diese Datei bleibt Top-1@K undefiniert; Oracle@K "
@@ -344,6 +348,34 @@ def main() -> int:
     print(format_report(ranking, label=args.label))
     print("\nNicht gewertet:")
     print(fail.report())
+
+    # --- Per-Komplex-Zeilen -------------------------------------------------
+    # Die Aggregate oben beantworten "wie gut insgesamt". Sie beantworten NICHT
+    # "bei welchen Liganden geht es schief". Genau dafuer braucht es eine Zeile
+    # je Komplex -- erst damit laesst sich Erfolg gegen Ligandeigenschaften
+    # auftragen, etwa gegen die Fragmentzahl aus arc/count_fragments.py.
+    if args.per_complex_csv:
+        per_c = defaultdict(list)
+        for r in records:
+            per_c[r.complex_id].append(r)
+        with open(args.per_complex_csv, "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["complex", "n_poses", "rmsd_seed0", "rmsd_best",
+                        "rmsd_median", "rmsd_worst",
+                        "success_2A_seed0", "success_2A_oracle",
+                        "success_5A_seed0", "success_5A_oracle"])
+            for cid in sorted(per_c):
+                rs = per_c[cid]
+                vals = sorted(r.rmsd for r in rs)
+                first = rs[0].rmsd          # Seed 0, dieselbe Konvention wie basics
+                w.writerow([
+                    cid, len(rs),
+                    f"{first:.4f}", f"{vals[0]:.4f}",
+                    f"{float(np.median(vals)):.4f}", f"{vals[-1]:.4f}",
+                    int(first < 2.0), int(vals[0] < 2.0),
+                    int(first < 5.0), int(vals[0] < 5.0),
+                ])
+        print(f"[eval] Per-Komplex-Tabelle: {args.per_complex_csv}")
 
     out = {"label": args.label, "basics": basics, "ranking": ranking,
            "scores": score_info, "failures": dict(fail.counts)}
