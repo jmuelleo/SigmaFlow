@@ -71,3 +71,6 @@ visualisations/
 *_fragment_distribution.png
 *_fragments_vs_size.png
 *_fragments_vs_performance.png
+
+# Lokale PyMOL-Arbeitsordner (Kopien von ARC-Daten, regenerierbar)
+vis_*/

@@ -439,3 +439,98 @@ unit-getestet, aber nicht auf ARC gelaufen. Das ist das größte verbleibende
 Ausführungsrisiko. Entschärft wird es dadurch, dass alles, was fehlschlagen
 kann, **früh** fehlschlägt: Sanity-Gate, Horizont-Konsistenzprüfung und
 Datensatzauflösung laufen alle vor dem ersten Trainingsschritt.
+
+---
+
+## I. Trainingsbudget im Verhältnis zum Original
+
+Beide Seiten rechnen bei effektiver Batch 32 mit praktisch gleicher
+Epochenlänge: das Paper auf 19 443 Beispielen (607 Schritte/Epoche), wir auf
+gemessenen 19 037 (594 Schritte/Epoche). Epochen sind damit direkt
+vergleichbar.
+
+| | Epochen | Optimizer-Schritte | Anteil am Original |
+|---|---:|---:|---:|
+| **Paper** (Appendix E.3, 4×A100, 4 Tage ≈ 384 GPU-h) | **256** | ~155 400 | 100 % |
+| **Unsere 12h-Referenzläufe** (Batch 8) | **5.8** | 13 750 | **2.3 %** |
+| Unser 72h-Lauf bei 2.75 Beispielen/s | 36 | 21 400 | 14 % |
+| Unser 72h-Lauf bei 4.0 | 52 | 30 900 | 20 % |
+| **Unser 72h-Lauf bei 5.5 (erwartet)** | **72** | **42 800** | **28 %** |
+| Unser 72h-Lauf bei 8.25 | 109 | 64 700 | 43 % |
+
+**Erwartungsbereich: 50–90 Epochen.** Batch 32 statt 8, TF32 an und kein
+`--debug` sind die drei Hebel, die Stufe 1 misst. Der Sprung von 2.3 % auf
+grob 20–35 % ist ein Faktor 8–15 gegenüber dem heutigen Stand.
+
+**Wichtige Abgrenzung:** unser Lauf ist ein *vollständiges, kürzeres*
+Trainingsprogramm, kein abgeschnittenes langes. Der Cosine-Anneal wird auf
+genau diese Epochenzahl kalibriert und läuft durch; das Modell endet auf der
+minimalen Lernrate. Ein auf 256 Epochen kalibrierter, nach 72 abgebrochener
+Schedule wäre etwas anderes und wissenschaftlich wertlos — genau dagegen ist
+die gesamte Horizont-Absicherung gebaut.
+
+**Für jede Zahl in der Thesis gilt der Kontextsatz:** ~28 % der Epochen,
+1 GPU statt 4, 209 statt 308 Komplexe, ein Seed ohne Ranking gegen 40 mit.
+
+---
+
+## J. Vorregistrierte Kenngröße für die Lernkurven
+
+**Verhältnis `Oracle@10 / Oracle@1`** — ein Maß für die Schärfe der erzeugten
+Verteilung, unabhängig vom absoluten Niveau.
+
+Stand 12 h: **SigmaFlow 6.8**, **SigmaDock 4.4** (30.1/4.4 bzw. 47.4/10.9).
+
+Zur Einordnung: bei uns bringt die Verdopplung von 5 auf 10 Seeds noch +11 bis
++13 Prozentpunkte — die Kurve steigt ungebremst. Beim Paper bringen *zwei*
+Verdopplungen (10 → 40 Seeds) zusammen +7.7 Punkte (72.2 % → 79.9 %). Zwei
+völlig verschiedene Regime. *(Vorsicht: Paper-Zahlen sind Top-k mit Ranking,
+unsere Oracle ohne — die Richtung stimmt, die Faktoren sind nicht direkt
+vergleichbar.)*
+
+**Vorhersage, vor dem Start festgehalten:**
+
+| Beobachtung über die Snapshots | Deutung |
+|---|---|
+| Verhältnis **fällt** deutlich | Verteilung konzentriert sich; die Streuung war Budget |
+| Verhältnis **bleibt konstant**, Niveau steigt | Modell wird besser, aber nicht sicherer → Ranking ist der Hebel |
+| Verhältnis **steigt** | strukturelles Problem |
+
+Beide Größen fallen bei der Snapshot-Auswertung ohnehin an. Als Test taugt das
+nur, solange es *vorher* notiert ist — deshalb steht es hier.
+
+**Offen:** `arc/aggregate_learning_curve.py` gibt das Verhältnis noch nicht als
+eigene Spalte aus. Kleine Ergänzung, noch nicht gemacht.
+
+---
+
+## K. Qualitative Einzelfallbetrachtung (PyMOL)
+
+`visualization/view_complex.pml` lädt für einen Komplex das Protein als
+Kontext, die Kristallpose und **alle zehn Sampling-Seeds beider Arme**. Der
+Komplexname wird aus der vorhandenen `<CID>_protein.pdb` abgeleitet, das
+Skript ist also unverändert in jeden `vis_<CID>`-Ordner kopierbar. Vier
+Szenen, vier Hilfsbefehle (`best`, `seed N`, `spread`, `frag N`).
+
+Alle zehn Seeds statt einer, weil das Ziehungsrauschen rund zehnmal so gross
+ist wie der Methodenunterschied — eine Einzelpose bildet Rauschen ab.
+
+**Zwei Fälle als Gegensatzpaar angesehen (2026-08-19):**
+
+| | 6YRV_PJ8 | 7ORW_7WA |
+|---|---:|---:|
+| Fragmente / Torsionen | 8 / 14 | **1 / 0** |
+| Zustandsdimension D | 48 | 6 |
+| SigmaFlow bester RMSD | 2.38 Å ✗ | **1.24 Å ✓** |
+| SigmaDock bester RMSD | 3.01 Å ✗ | **1.89 Å ✓** |
+
+`7ORW_7WA` ist ein starrer Körper ohne jede Torsion — dort ist die gesamte
+Generierung eine einzige globale Rototranslation, und Rotationsfehler sind
+nicht durch Konformation verdeckt. Der sauberste verfügbare Testfall für
+SO(3)-Transport, und einer von nur fünf im Datensatz.
+
+Beobachtung am Bildschirm: einzelne Posen sitzen gut, viele sind klar
+fehlrotiert oder versetzt. Das ist bei 2.3 % des Originaltrainings zu
+erwarten und zeigt sich in **beiden** Armen, auch in der unveränderten
+Referenzimplementierung. Belastbar wird die Frage erst im Vergleich mit
+demselben Komplex aus dem 72h-Snapshot.
