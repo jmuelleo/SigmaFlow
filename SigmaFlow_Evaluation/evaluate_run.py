@@ -145,9 +145,23 @@ def collect(sampling_root: Path, true_dir: Path, model: str | None,
         for sdf in sorted(sd.glob("*.sdf")):
             cid = sdf.name.split("__")[0]
             if cid not in true_cache:
-                tp = true_dir / f"{cid}_ligands.sdf"
-                if not tp.exists():
-                    tp = true_dir / f"{cid}_ligand.sdf"
+                # Zwei Layouts sind zulaessig, weil beide real vorkommen:
+                #   FLACH        <true_dir>/<cid>_ligands.sdf
+                #                (so legt es SigmaFlow_Variants/.../true_ligands an)
+                #   VERSCHACHTELT <true_dir>/<cid>/<cid>_ligands.sdf
+                #                (so liegt der kanonische posebusters_benchmark_set)
+                # Frueher wurde nur das flache Layout gesucht. Zeigte true_dir
+                # auf den kanonischen Satz, fand die Auswertung KEINE einzige
+                # Referenz -- und uebersprang jede Pose still (siehe unten).
+                for cand in (true_dir / f"{cid}_ligands.sdf",
+                             true_dir / f"{cid}_ligand.sdf",
+                             true_dir / cid / f"{cid}_ligands.sdf",
+                             true_dir / cid / f"{cid}_ligand.sdf"):
+                    if cand.exists():
+                        tp = cand
+                        break
+                else:
+                    tp = true_dir / f"{cid}_ligands.sdf"   # existiert nicht; fuer die Meldung
                 true_cache[cid] = load_mols(str(tp), sanitize=True) if tp.exists() else []
             copies = true_cache[cid]
             if not copies:
@@ -287,7 +301,29 @@ def main() -> int:
     fail = Failures()
     records, tfd_by_pose = collect(args.sampling_root, args.true_dir, args.model, fail)
     if not records:
-        raise SystemExit("Keine auswertbaren Posen gefunden.")
+        # Diagnostisch statt lakonisch. Der haeufigste Grund ist ein true_dir,
+        # das zwar existiert, aber die Referenzliganden in einem anderen Layout
+        # haelt -- dann wird JEDE Pose uebersprungen und das Ergebnis waere
+        # stillschweigend leer. Bei einer Lernkurve ueber zwoelf Snapshots
+        # faellt so etwas erst ganz am Ende auf.
+        msg = [
+            "Keine auswertbaren Posen gefunden.",
+            "",
+            f"  sampling_root : {args.sampling_root}",
+            f"  true_dir      : {args.true_dir}",
+            "",
+            "  Erwartete Layouts fuer die Referenzliganden (beide zulaessig):",
+            f"    flach         {args.true_dir}/<cid>_ligands.sdf",
+            f"    verschachtelt {args.true_dir}/<cid>/<cid>_ligands.sdf",
+            "",
+            "  Auf ARC liegt der kanonische Satz verschachtelt unter",
+            "    <data>/posebusters_paper/posebusters_benchmark_set/",
+            "  waehrend <data>/posebusters/ nur raw/ und processed/ enthaelt.",
+        ]
+        if fail.counts:
+            msg += ["", "  Gesammelte Gruende:"]
+            msg += [f"    {n:>6} x  {reason}" for reason, n in sorted(fail.counts.items())]
+        raise SystemExit("\n".join(msg))
 
     score_info = None
     if args.scores is not None:

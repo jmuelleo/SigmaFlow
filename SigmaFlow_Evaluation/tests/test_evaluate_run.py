@@ -118,6 +118,15 @@ def main() -> int:
         check("naechste Kristallkopie wird gewaehlt, nicht die erste",
               abs(r_best - 0.5) < 1e-6, f"{r_best:.6f} (nicht ~25)")
 
+        # --- VERSCHACHTELTES Layout ------------------------------------------
+        # Der kanonische posebusters_benchmark_set liegt als
+        # <cid>/<cid>_ligands.sdf. Frueher suchte collect() nur flach; zeigte
+        # true_dir auf den kanonischen Satz, wurde JEDE Pose still
+        # uebersprungen und die Lernkurve waere leer geblieben.
+        nested_dir = tmp / "true_nested"
+        write_sdf(nested_dir / "AAAA" / "AAAA_ligands.sdf", [mol])
+        write_sdf(nested_dir / "BBBB" / "BBBB_ligands.sdf", [far, mol])
+
         print("\n2. Pipeline end-to-end")
         fail = Failures()
         records, tfds = collect(root, true_dir, model, fail)
@@ -127,6 +136,17 @@ def main() -> int:
               str(sorted({r.complex_id for r in records})))
         check("vier Posen gesammelt (2 Komplexe x 2 Seeds)", len(records) == 4,
               str(len(records)))
+        # Dasselbe Sampling, aber Referenzen im verschachtelten Layout.
+        fail_n = Failures()
+        rec_n, _ = collect(root, nested_dir, model, fail_n)
+        check("verschachteltes Layout <cid>/<cid>_ligands.sdf wird gefunden",
+              {r.complex_id for r in rec_n} == {"AAAA", "BBBB"},
+              str(sorted({r.complex_id for r in rec_n})))
+        check("beide Layouts liefern dieselben RMSD-Werte",
+              [round(r.rmsd, 6) for r in sorted(rec_n, key=lambda x: (x.complex_id, x.pose_id))]
+              == [round(r.rmsd, 6) for r in sorted(records, key=lambda x: (x.complex_id, x.pose_id))],
+              "flach == verschachtelt")
+
         check("fehlende wahre Pose wird als Grund gezaehlt, nicht verschluckt",
               any("wahre Pose fehlt" in k for k in fail.counts), str(dict(fail.counts)))
 
