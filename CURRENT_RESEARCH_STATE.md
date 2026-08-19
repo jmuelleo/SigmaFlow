@@ -180,27 +180,43 @@ konstruiert). Es fehlt die Validierung gegen **echtes ARC-Sampling** aus dem
 12h-Checkpoint. Das ist der einzige verbleibende Punkt für CORE 3 auf der
 SigmaFlow-Seite.
 
-**Fragmentzahlen (Stand 2026-08-19).** Drei unabhängige Quellen stimmen überein:
+**Fragmentzahlen — GEMESSEN, vollständig** (Job 8607523, 208 von 209 Liganden;
+ein Ligand lief in das 120s-Zeitlimit der Cut-Set-Enumeration).
 
-| Quelle | n | Mittel | Median | q90 | Max |
-|---|---:|---:|---:|---:|---:|
-| `EXPERIMENT_REGISTRY.md` (D-Statistik) | 209 | — | 4 | 7 | 11 |
-| lokal aus den Ligand-SDFs gerechnet | 99 | 4.37 | 4 | 8 | 9 |
-| IS-1-Lauf 8606965 (953 Rotationen / 209 Komplexe) | 209 | **4.56** | — | — | — |
+| Fragmente | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 |
+|---|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|--:|
+| Liganden | 5 | 34 | 41 | 29 | **42** | 18 | 16 | 15 | 5 | 1 | 2 |
+| Anteil | 2.4% | 16.3% | 19.7% | 13.9% | **20.2%** | 8.7% | 7.7% | 7.2% | 2.4% | 0.5% | 1.0% |
 
-Der Modus liegt bei 5 Fragmenten, die Verteilung ist rechtsschief. Rund ein
-Viertel der Liganden hat höchstens 2 Fragmente; 4 von 99 haben **gar keine**
-Torsion und sind damit ein einziger starrer Körper.
+**Mittel 4.51 · Median 4 · q25 3 · q75 6 · q90 8 · Min 1 · Max 11**
+Zustandsdimension `D = 6F`: Median **24**, q90 **48**, Max **66**.
 
-`arc/count_fragments.slurm` (CPU-only) erzeugt die vollständige Liste je Ligand
-plus Histogramm und prüft dabei zusätzlich Verzeichnisse gegen erkannte Paare.
-Verifiziert: `Fragmente = min_cuts + 1`, und die Zahl **schwankt nicht**
-zwischen den minimalen Cut-Sets — trotz `fragmentation_strategy="random"` ist
-`D` je Ligand deterministisch.
+Bestätigt: `Fragmente = min_cuts + 1`, und die Zahl schwankt bei **null**
+Liganden zwischen den minimalen Cut-Sets — trotz
+`fragmentation_strategy="random"` ist `D` je Ligand **deterministisch**.
 
-⚠️ `enumerate_valid_fragmentations` ist kombinatorisch: ein Ligand mit 23
-Torsionen lief lokal über 20 min ohne Ergebnis. Das Zählskript hat deshalb ein
-hartes Zeitlimit je Molekül.
+**Korrektur gegenüber `EXPERIMENT_REGISTRY.md`:** Median D 24 und Max D 66
+stimmen exakt, **q90 ist aber 48 und nicht 42** (8 statt 7 Fragmente). Die
+Registry-Zahl ist damit überholt.
+
+**Zwei Beobachtungen für CORE 3:**
+- **Hochfragmentiert heißt 8–11.** Nur **23** Liganden haben ≥ 8 Fragmente,
+  nur **3** haben ≥ 10. Liganden mit 15+ Fragmenten existieren nicht; die
+  Fallauswahl muss sich an 8–11 orientieren.
+- **5 Liganden haben genau 1 Fragment**, also gar keine Torsion. Für sie ist
+  die gesamte Generierung eine einzige globale Rototranslation. Das sind die
+  saubersten Testfälle für das Rotationsverhalten, weil kein
+  Fragment-Fragment-Zusammenspiel überlagert.
+
+**Nicht dasselbe wie die IS-1-Zahl.** IS-1 meldete 953 Rotationen über 209
+Komplexe (4.56 im Mittel), benutzt aber `fragmentation_strategy="canonical"`.
+Hier wird über die **minimalen Cut-Sets** gezählt — das ist, was das Training
+mit `"random"` tut. 4.51 gegen 4.56 sind zwei nah beieinander liegende, aber
+**verschiedene** Grössen. Für alle trainingsbezogenen Rechnungen gilt 4.51.
+
+⚠️ `enumerate_valid_fragmentations` ist kombinatorisch; ein Ligand mit vielen
+Torsionen sprengt jedes Zeitbudget. Der Zähler hat deshalb ein hartes Limit je
+Molekül und schätzt nichts.
 
 Liganden mit 15+ Fragmenten
 **existieren in diesem Benchmark nicht**; die Fallauswahl muss sich an 8–11
