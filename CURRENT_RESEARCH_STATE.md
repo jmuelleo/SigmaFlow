@@ -20,8 +20,20 @@ Kurzfassung dessen, was gilt.
 
 ## A. Wissenschaftlich gültige Basisergebnisse
 
-Alle Läufe: 1× L40S, Batch 8, PoseBusters mit **209** Komplexen (das Paper
-nutzt 308).
+Alle Läufe: 1× L40S, Batch 8, PoseBusters mit **209** Komplexen.
+
+**Woher die 209 kommen (geprüft 2026-08-19).**
+`posebusters_paper/posebusters_benchmark_set/` enthält **209 Unterverzeichnisse
+und 209 erkannte Paare** — die Zahlen stimmen überein, es wird also nichts
+stillschweigend verworfen. Unsere ARC-Kopie ist eine **bereits reduzierte**
+Fassung des Benchmarks. Zum Vergleich: das Original (Buttenschoen et al. 2024)
+hat 428 Komplexe, das SigmaDock-Paper wertet auf 308 aus. Wie die Reduktion auf
+209 zustande kam, ist im Repository nicht dokumentiert und war nicht mehr
+rekonstruierbar.
+
+Für die Thesis heißt das: **209 ist eine Eigenschaft unserer Datenkopie, keine
+Auswahlentscheidung dieses Projekts** — und jeder Vergleich mit dem Paper muss
+den Unterschied im Benchmarkumfang nennen.
 
 | Lauf | Job | Walltime | Epochen | Steps | Status |
 |---|---|---|---|---|---|
