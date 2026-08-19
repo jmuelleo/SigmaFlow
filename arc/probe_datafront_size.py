@@ -40,6 +40,12 @@ def main() -> int:
     p.add_argument("--json-out", default=None)
     p.add_argument("--env-out", default=None,
                    help="Schreibt 'export FINAL_N_TRAIN=...' zum Sourcen.")
+    p.add_argument("--expect-in-path", default=None,
+                   help="Zeichenkette, die im Pfad des geladenen sigmadock-Pakets "
+                        "vorkommen MUSS, z.B. SigmaFlow_Minimal. Ohne diese Pruefung "
+                        "kann das Paket aus einem anderen Baum kommen.")
+    p.add_argument("--allow-any-tree", action="store_true",
+                   help="Baumpruefung ueberspringen (nur bewusst benutzen).")
     args = p.parse_args()
 
     try:
@@ -54,15 +60,40 @@ def main() -> int:
     # Aus welchem Baum wurde geladen? Bei zwei parallelen sigmadock-Installationen
     # ist das die einzige Absicherung gegen eine Messung am falschen Code.
     import sigmadock
-    print(f"sigmadock geladen aus: {Path(sigmadock.__file__).resolve()}")
+    loaded = Path(sigmadock.__file__).resolve()
+    print(f"sigmadock geladen aus: {loaded}")
     print(f"data_dir            : {args.data_dir}")
+
+    # WARUM DIESE PRUEFUNG
+    #   Auf ARC existieren mehrere sigmadock-Installationen. Ist myenv aktiv
+    #   (die SigmaDock-Umgebung), loest `import sigmadock` aus site-packages
+    #   auf den SigmaDock-Klon auf -- auch wenn man im SigmaFlow_Minimal-
+    #   Verzeichnis steht. Genau daran ist Job 8512799 gescheitert.
+    #   Gemessen werden soll mit dem Code, der auch trainiert.
+    if args.expect_in_path and not args.allow_any_tree:
+        if args.expect_in_path not in str(loaded):
+            print(file=sys.stderr)
+            print(f"FEHLER: erwartet '{args.expect_in_path}' im Pfad, geladen wurde:",
+                  file=sys.stderr)
+            print(f"  {loaded}", file=sys.stderr)
+            print("  Richtige Umgebung aktivieren und PYTHONPATH setzen:", file=sys.stderr)
+            print("    conda activate /data/stat-cadd/shug8458/sigmaflow_env", file=sys.stderr)
+            print("    export PYTHONPATH=\"$PWD/src:$PYTHONPATH\"", file=sys.stderr)
+            print("  Oder bewusst uebergehen mit --allow-any-tree.", file=sys.stderr)
+            return 3
+
+    # root_dir MUSS ein Path sein -- get_experiment_config ruft .exists() darauf.
+    data_root = Path(args.data_dir)
+    if not data_root.exists():
+        print(f"FEHLER: data_dir existiert nicht: {data_root}", file=sys.stderr)
+        return 2
     print()
 
     result: dict[str, object] = {"data_dir": args.data_dir,
                                  "sigmadock_path": str(Path(sigmadock.__file__).resolve())}
 
     for split, names in (("train", args.train), ("val", args.val), ("test", args.test)):
-        cfgs = [get_experiment_config(n, root_dir=args.data_dir) for n in names]
+        cfgs = [get_experiment_config(n, root_dir=data_root) for n in names]
         front = MetaFront(cfgs)
         n = len(front)
         result[f"n_{split}"] = n
