@@ -45,9 +45,27 @@ den Unterschied im Benchmarkumfang nennen.
 | SF Varianten a/b/c | 8540758 / 8534746 / 8534747 | je ~5:45 | 3 | ~7 050 | Nullergebnis / verworfen / No-Op |
 | SF/SD 24h | 8465054 / 8465055 | TIMEOUT | — | ~28 500 | **INVALID** (`max_epochs=1000`) |
 
-**Kopfzahlen (12h, 209 Komplexe, 1 Seed, kein Ranking):** SigmaFlow **6/209**,
-SigmaDock **17/209** unter 2 Å. Die Schnittmenge der gelösten Komplexe ist
-**leer** — beide Modelle lösen disjunkte Fälle.
+**Kopfzahlen (12h-Checkpoints, 209 Komplexe, 10 Seeds, ausgewertet 2026-08-19
+auf CPU aus den vorhandenen Sampling-Ausgaben 8554147/8554149):**
+
+| | SigmaFlow | SigmaDock |
+|---|---:|---:|
+| Einzelzug (Seed 0) < 2 Å | 2.4 % | 10.0 % |
+| Oracle@1 | 4.4 % | 10.9 % |
+| Oracle@5 | 19.1 % | 34.0 % |
+| **Oracle@10** | **30.1 %** | **47.4 %** |
+| RMSD Median (2090 Posen) | 4.90 Å | 4.38 Å |
+| Oracle@10 Median-RMSD | 2.55 Å | 2.05 Å |
+
+**Ranking ist der bislang größte gemessene Hebel:** von Seed 0 zu Oracle@10
+gewinnt SigmaFlow Faktor 12.5, SigmaDock Faktor 4.7. Der Abstand zum Paper
+(79.9 %, 40 Seeds **mit** Ranking, 308 Komplexe, 384 GPU-h) besteht damit
+überwiegend aus Seeds und Ranking, nicht aus Generatorqualität. Details und
+Konsistenzprüfung gegen die Seed-Varianz-Analyse in `RESULTS.md`.
+
+⚠️ Die frühere Aussage „Schnittmenge der gelösten Komplexe ist leer" stammt aus
+**Einzelziehungen** (SigmaFlow 6/209, SigmaDock 17/209). Mit 10 Seeds ist sie
+**neu zu prüfen**; die Daten liegen in `arc_runs/eval_*_10seeds.json`.
 
 **Rotationsdiagnostik (Median-Winkeländerung gegen die Quelle):** SigmaFlow 12h
 −15.0° [−21.6, −8.1]; SigmaDock 12h −20.4° [−26.0, −14.5]; SigmaFlow ohne

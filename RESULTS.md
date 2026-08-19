@@ -573,6 +573,65 @@ behandelt die Kopien bereits richtig; betroffen war ausschließlich unsere
 eigene indexbasierte Auswertung. Alle Zahlen oben bleiben unverändert
 gültig, `p=0.0347` eingeschlossen.
 
+## 🎯 Oracle@K auf den 10-Seed-Läufen (2026-08-19, CPU)
+
+`SigmaFlow_Evaluation.evaluate_run` über die bereits vorhandenen Sampling-
+Ausgaben der Jobs 8554147 / 8554149. Kein neues Sampling, keine GPU.
+**2090/2090 Posen gewertet, TFD-Abdeckung 100 %, keine einzige Pose verworfen.**
+
+| | SigmaFlow 12h | SigmaDock 12h |
+|---|---:|---:|
+| RMSD Median, alle 2090 Posen | 4.901 Å | 4.381 Å |
+| Einzelzug (Seed 0) < 2 Å | 2.4 % | 10.0 % |
+| Einzelzug (Seed 0) < 5 Å | 53.1 % | 59.8 % |
+| TFD Median | 0.2344 | 0.2257 |
+| **Oracle@1** | **4.4 %** | **10.9 %** |
+| **Oracle@5** | **19.1 %** | **34.0 %** |
+| **Oracle@10** | **30.1 %** | **47.4 %** |
+| Oracle@10 Median-RMSD | 2.55 Å | 2.05 Å |
+
+**Konsistenzprüfung:** Oracle@1 mittelt über alle Einzelziehungen und trifft
+damit exakt die frühere Seed-Varianz-Analyse vom 2026-08-13 (SigmaFlow 4.4 %,
+SigmaDock 9.8 % gegen hier 10.9 %). Der Einzelzug ist Seed 0 und liegt in
+beiden Armen innerhalb der dort dokumentierten Spannweiten (SF 1.4–6.7 %,
+SD 5.7–13.4 %). Zwei unabhängige Codepfade, dasselbe Ergebnis.
+
+### Was daran neu ist
+
+**Ranking ist der größte einzelne Hebel, den wir bisher gemessen haben.**
+Von Seed 0 zu Oracle@10 gewinnt SigmaFlow den Faktor **12.5**, SigmaDock den
+Faktor **4.7**. Mit einem perfekten Ranker und nur zehn Seeds erreicht unsere
+SigmaDock-Reproduktion **47.4 %**.
+
+Das ordnet den Abstand zum Paper neu ein. Die 79.9 % dort stehen für Top-1 aus
+**40** Seeds **mit** Ranking auf **308** Komplexen bei **384 GPU-h**. Unsere
+10.0 % waren ein Einzelzug ohne Ranking bei 12 GPU-h. Der Vergleich
+„10 % gegen 79.9 %" misst also überwiegend Seeds und Ranking, nicht
+Generatorqualität.
+
+**SigmaFlow ist stärker seedabhängig.** Der Faktor 12.5 gegen 4.7 heißt: die
+typische SigmaFlow-Pose ist schlechter, aber unter zehn Ziehungen ist
+überdurchschnittlich oft eine gute dabei. Das Verhältnis SF/SD steigt von 0.24
+(Einzelzug) über 0.56 (Oracle@5) auf 0.64 (Oracle@10).
+
+**Beide liegen dicht an der 2-Å-Schwelle.** Oracle@10-Median 2.55 Å und
+2.05 Å. Eine Verbesserung des Generators um wenige Zehntel Ångström würde sich
+deshalb überproportional in der Erfolgsquote niederschlagen — was die
+72h-Läufe zu einem empfindlichen Test macht.
+
+### Offene Anschlussfrage
+
+Die Lücke zwischen Oracle@K und Top-1@K ist genau das, was ein
+Confidence-Modell zurückholen könnte (EXP-105, nicht gebaut). Nachdem der
+Quellverteilungsstrang am 2026-08-19 als Negativergebnis geschlossen wurde,
+ist das die Richtung mit der bislang größten gemessenen Hebelwirkung.
+**Nicht vor den 72h-Läufen anfangen.**
+
+Ebenfalls offen: die frühere Aussage „Schnittmenge der gelösten Komplexe ist
+leer" stammt aus **Einzelziehungen**. Mit 10 Seeds je Arm ist sie neu zu
+prüfen — die Daten dafür liegen in den beiden `eval_*_10seeds.json`.
+
+
 ## 📊 Seed-Varianz: 10 unabhängige Sampling-Seeds (2026-08-13)
 
 Jobs 8554147 (SigmaFlow) und 8554149 (SigmaDock), je 10 Seeds × 209
