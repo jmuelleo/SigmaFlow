@@ -117,7 +117,7 @@ def main() -> int:
             enumerate_valid_fragmentations,
         )
         from sigmadock.config import get_experiment_config
-        from sigmadock.datafronts import DataFront
+        from sigmadock.datafronts import MetaFront
     except Exception as exc:  # noqa: BLE001
         print(f"FEHLER: Import fehlgeschlagen ({type(exc).__name__}: {exc})", file=sys.stderr)
         print("  Aus dem Code-Verzeichnis eines Arms aufrufen, passende Umgebung aktivieren.",
@@ -135,8 +135,15 @@ def main() -> int:
     # --- Verzeichnisse gegen Paare -------------------------------------------
     root = Path(ec.dataset)
     subdirs = sorted(d for d in root.iterdir() if d.is_dir())
-    front = DataFront(ec.dataset, pdb_regex=ec.pdb_regex, sdf_regex=ec.sdf_regex,
-                      ref_sdf_regex=getattr(ec, "ref_sdf_regex", None))
+
+    # MetaFront, NICHT DataFront direkt.
+    #   DataFront.pairs haelt RELATIVE Pfade (datafronts.py:88-91,
+    #   `file_path.relative_to(self.dataroot)`). Erst MetaFront macht daraus
+    #   absolute (datafronts.py:184-186). Wer DataFront direkt benutzt und die
+    #   Pfade oeffnet, liest gegen das Arbeitsverzeichnis -- Job 8607154 hat so
+    #   alle 209 Molekuele als "nicht ladbar" gezaehlt.
+    #   MetaFront ist ausserdem das, was train.py benutzt.
+    front = MetaFront([ec])
     n_pairs = len(front)
 
     print()
