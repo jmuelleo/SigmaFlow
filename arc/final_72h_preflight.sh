@@ -199,7 +199,51 @@ else
     fail "Snapshot-Benennung unterscheidet nicht zwischen Zwischenstand und Endpunkt"
 fi
 
-head2 "A9  Code-Provenienz"
+head2 "A9  Datensatzdefinitionen (conf/experiments)"
+# WARUM DIESER CHECK EXISTIERT
+#   .gitignore enthielt '**/experiments/', gedacht fuer die Trainings-
+#   AUSGABEN. Die Regel verschluckte aber auch conf/experiments/ -- die
+#   DATENSATZDEFINITIONEN. Sie waren nie versioniert und fehlten im
+#   ARC-Checkout. Der Throughput-Sweep 8583394/8583395 starb daran in allen
+#   10 Konfigurationen:
+#     ValueError: Experiment config not found: .../conf/experiments/pdbbind-core.yaml
+#   Ein 72h-Lauf waere mit demselben Fehler nach Sekunden gestorben, und das
+#   Sanity-Gate haette es nicht bemerkt -- es prueft nur den Frame-Fix.
+case "$MODEL" in
+    sigmadock)          CONF_DIR="${ARC_SIGMADOCK:-}/conf/experiments" ;;
+    sigmaflow_minimal)  CONF_DIR="${REPO}/SigmaFlow_Minimal/conf/experiments" ;;
+    sigmaflow_source)   CONF_DIR="${REPO}/SigmaFlow_FM_Specific/EXP-102_heuristic_conditional_source/conf/experiments" ;;
+    sigmaflow_conf)     CONF_DIR="${REPO}/SigmaFlow_FM_Specific/EXP-105_confidence_ranking/conf/experiments" ;;
+    *)                  CONF_DIR="" ;;
+esac
+if [ -n "$CONF_DIR" ] && [ -d "$CONF_DIR" ]; then
+    ok "Konfigurationsverzeichnis vorhanden: ${CONF_DIR}"
+    for y in pdbbind-general posebusters pdbbind-core; do
+        if [ -f "${CONF_DIR}/${y}.yaml" ]; then
+            ok "  ${y}.yaml vorhanden"
+        else
+            fail "  ${y}.yaml FEHLT -- train.py bricht sofort mit 'Experiment config not found' ab"
+        fi
+    done
+else
+    if [ "$MODEL" = "sigmadock" ]; then
+        pending "SigmaDock-Konfigurationen liegen in einem eigenen Klon, nur auf ARC pruefbar"
+    else
+        fail "Konfigurationsverzeichnis fehlt: ${CONF_DIR}"
+    fi
+fi
+# Die Definitionen muessen ausserdem VERSIONIERT sein, sonst erreichen sie
+# ARC nie -- genau das war der Fehler.
+if command -v git >/dev/null 2>&1 && [ -d "${REPO}/.git" ]; then
+    if git -C "$REPO" ls-files --error-unmatch \
+         "SigmaFlow_Minimal/conf/experiments/pdbbind-general.yaml" >/dev/null 2>&1; then
+        ok "Datensatzdefinitionen sind versioniert (erreichen den ARC-Checkout)"
+    else
+        fail "Datensatzdefinitionen sind NICHT versioniert -- sie fehlen auf ARC"
+    fi
+fi
+
+head2 "A10 Code-Provenienz"
 if command -v git >/dev/null 2>&1 && [ -d "${REPO}/.git" ]; then
     COMMIT="$(git -C "$REPO" rev-parse --short HEAD 2>/dev/null)"
     ok "git commit: ${COMMIT}"

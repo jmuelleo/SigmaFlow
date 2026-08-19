@@ -12,6 +12,17 @@ __pycache__/
 # SigmaFlow_Adapted/, and SigmaFlow_Variants/<name>/, not just
 # SigmaFlow_Development/.
 **/experiments/
+# ABER: conf/experiments/ sind KEINE Ausgaben, sondern die
+# DATENSATZDEFINITIONEN (pdbbind-general.yaml, posebusters.yaml, ...).
+# Sie wurden von der Regel darueber versehentlich mitverschluckt, waren
+# deshalb nie versioniert und fehlten im ARC-Checkout. Der Throughput-Sweep
+# 8583394/8583395 ist daran gescheitert:
+#   ValueError: Experiment config not found: .../conf/experiments/pdbbind-core.yaml
+# Die 72h-Laeufe waeren mit demselben Fehler nach Sekunden gestorben.
+# Verzeichnis UND Inhalt muessen einzeln zurueckgeholt werden -- git steigt
+# sonst gar nicht erst in ein ausgeschlossenes Verzeichnis hinab.
+!**/conf/experiments/
+!**/conf/experiments/**
 **/sampling_output*/
 **/posebusters_results/
 **/pymol_scripts/
