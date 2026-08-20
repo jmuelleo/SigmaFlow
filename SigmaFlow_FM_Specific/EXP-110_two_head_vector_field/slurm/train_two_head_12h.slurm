@@ -173,6 +173,76 @@ PYCOUNT
 $PYTHON -c "import os, wandb; r = wandb.init(mode='offline', dir=os.environ['WANDB_DIR'], project='preflight'); r.finish(); print('wandb preflight OK')"
 
 # ---------------------------------------------------------------------------
+# ABBRUCHSICHERHEIT
+#
+# Die Persistenz selbst kommt aus dem Trainingscode und ist ausreichend:
+# val_check_interval=50 bei accum_grad_batches=1 und
+# check_val_every_n_epoch=None heisst, dass alle 50 Trainingsbatches
+# validiert wird, und ModelCheckpoint(save_last=True) schreibt bei jedem
+# dieser Ereignisse last.ckpt neu -- mit Optimierer, Scheduler, Epoche,
+# global_step, hyper_parameters und EMA. Lightning schreibt ueber
+# _atomic_save, ein Abbruch mitten im Schreiben laesst also die vorherige
+# Datei heil. Verlust bei einem Walltime-Kill: hoechstens 50 Schritte,
+# beim Tempo des Referenzlaufs rund zweieinhalb Minuten.
+#
+# KEIN --signal=SIGUSR1: Lightnings _slurm_sigusr_handler_fn wuerde zwar
+# einen Checkpoint schreiben, danach aber `scontrol requeue` aufrufen und
+# den Job neu starten. Das waere fuer ein zeitbudgetiertes Experiment genau
+# falsch. Auf SIGTERM setzt Lightning received_sigterm, wirft beim naechsten
+# Batch SIGTERMException, und train.py flusht im finally-Zweig wandb.
+#
+# Hier unten kommt deshalb NUR eine Statusmarkierung dazu -- kein Eingriff
+# in Optimierung, Modell, Loss, Daten, Seed oder Zeitplan.
+# ---------------------------------------------------------------------------
+EXP_ROOT="${CODE_DIR}/experiments/sigmadock"
+mkdir -p "$EXP_ROOT"
+STAMP="${TMPDIR}/exp110_start_marker"
+: > "$STAMP"
+T0=$(date +%s)
+GIT_COMMIT="$(cd "$REPO" && git rev-parse HEAD 2>/dev/null || echo unbekannt)"
+
+newest_exp_dir() {
+    find "$EXP_ROOT" -mindepth 1 -maxdepth 1 -type d -newer "$STAMP" 2>/dev/null | sort | tail -1
+}
+
+write_run_status() {
+    # Das JSON baut Python, nicht die Shell. Ein frueherer Entwurf setzte es
+    # per Heredoc zusammen und erzeugte ungueltiges JSON, sobald ein Pfad
+    # einen Backslash enthielt -- im Trockentest aufgefallen.
+    local rc="$1" label="$2" d t1
+    d="$(newest_exp_dir)" || true
+    t1=$(date +%s)
+    if [ -z "$d" ]; then
+        echo "[STATUS] ${label} (rc=${rc}), aber kein Experimentordner gefunden."
+        return 0
+    fi
+    # timeout, damit das Lesen des Checkpoints die Abraeumfrist von SLURM
+    # (KillWait, meist 30 s) nicht sprengt.
+    timeout 25 "$PYTHON" "${CODE_DIR}/slurm/write_run_status.py" \
+        "$d" "$label" "$rc" "$T0" "$t1" "${SLURM_JOB_ID:-manual}" "$GIT_COMMIT" \
+        || echo "[STATUS] ${label} (rc=${rc}) -- RUN_STATUS.json konnte nicht geschrieben werden."
+}
+
+on_term() {
+    # SLURM schickt bei Walltime erst SIGTERM, dann nach KillWait SIGKILL.
+    trap - EXIT TERM INT   # sonst schreibt die EXIT-Falle gleich nochmal
+    write_run_status 143 "WALLTIME_ODER_SIGTERM"
+    exit 143
+}
+on_exit() {
+    local rc=$?
+    trap - EXIT TERM INT
+    if [ "$rc" -eq 0 ]; then
+        write_run_status 0 "COMPLETED"
+    else
+        write_run_status "$rc" "ABGEBROCHEN_rc${rc}"
+    fi
+    exit "$rc"
+}
+trap on_term TERM INT
+trap on_exit EXIT
+
+# ---------------------------------------------------------------------------
 # Trainingsaufruf — Zeichen fuer Zeichen der Referenzlauf 8541310.
 # Kein --seed: der Config-Default (0) gilt in beiden Laeufen.
 # --debug bleibt drin, weil der Referenzlauf es hatte. Es kostet Durchsatz,
@@ -197,4 +267,5 @@ $PYTHON scripts/train.py \
 
 echo "Checkpoints unter: experiments/sigmadock/<timestamp>/checkpoints/"
 echo "Ran: EXP-110 Zwei-Kopf, 12h pdbbind-general, max_epochs=6"
+echo "Status:      $(newest_exp_dir)/RUN_STATUS.json"
 echo "Gegenstueck: Job 8541310 (SigmaFlow Minimal Changes, 12h)"
