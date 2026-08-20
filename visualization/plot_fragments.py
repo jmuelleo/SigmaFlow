@@ -65,6 +65,42 @@ plt.rcParams.update({
 })
 
 
+# Beschriftungen in beiden Sprachen. Die Thesis ist englisch, die Arbeitslogs
+# sind deutsch -- beide Fassungen entstehen aus denselben Daten, damit keine
+# Zahl beim Uebersetzen von Hand wandert.
+L = {
+ "de": {
+  "ligands":"Liganden", "frags":"Fragmente je Ligand", "median":"Median",
+  "mean":"Mittel", "atleast":"Anteil $\\geq$ k  [%]",
+  "statedim":"Zustandsdimension  $D = 6F$",
+  "title_a":"Fragmente je Ligand", "nomeas":"ohne Messwert",
+  "heavy":"Schweratome", "tors":"Torsionsbindungen",
+  "title_b":"Fragmentzahl gegen Ligandgroesse", "fragshort":"Fragmente",
+  "jitter":"y-Jitter $\\pm$0.18 zur Sichtbarkeit",
+  "succ":"Oracle@10  RMSD < 2 $\\AA$  [%]",
+  "title_c1":"Erfolg gegen Fragmentzahl",
+  "bestrmsd":"Median bester RMSD  [$\\AA$]",
+  "title_c2":"Bester RMSD gegen Fragmentzahl",
+  "openc":"Offene Kreise: weniger als {n} Liganden im Bin — Einzelfaelle, keine Rate.",
+ },
+ "en": {
+  "ligands":"Ligands", "frags":"Fragments per ligand", "median":"Median",
+  "mean":"Mean", "atleast":"Fraction $\\geq$ k  [%]",
+  "statedim":"State dimension  $D = 6F$",
+  "title_a":"Fragments per ligand", "nomeas":"not measured",
+  "heavy":"Heavy atoms", "tors":"Rotatable bonds",
+  "title_b":"Fragment count vs. ligand size", "fragshort":"Fragments",
+  "jitter":"y-jitter $\\pm$0.18 for visibility",
+  "succ":"Oracle@10  RMSD < 2 $\\AA$  [%]",
+  "title_c1":"Success vs. fragment count",
+  "bestrmsd":"Median best RMSD  [$\\AA$]",
+  "title_c2":"Best RMSD vs. fragment count",
+  "openc":"Open circles: fewer than {n} ligands in bin — individual cases, not a rate.",
+ },
+}
+T = L["de"]          # wird in main() gesetzt
+
+
 def read_counts(path: Path) -> list[dict]:
     rows = []
     with open(path, newline="", encoding="utf-8") as fh:
@@ -93,6 +129,32 @@ def read_perf(path: Path) -> dict[str, dict]:
     return out
 
 
+def read_joined(path: Path):
+    """Liest die bereits verknuepfte fragments_vs_performance.csv.
+
+    Damit ist der Abbildungsordner aus EINER Datei reproduzierbar; die beiden
+    Ausgangstabellen muessen nicht mitgeliefert werden.
+    """
+    rows, perf = [], {"sigmaflow": {}, "sigmadock": {}}
+    with open(path, newline="", encoding="utf-8") as fh:
+        for r in csv.DictReader(fh):
+            if not r.get("fragments"):
+                continue
+            cid = r["complex"]
+            rows.append({"complex": cid, "fragments": int(r["fragments"]),
+                         "atoms": int(r["atoms"]) if r.get("atoms") else None,
+                         "torsions": int(r["torsions"]) if r.get("torsions") else None})
+            for arm in ("sigmaflow", "sigmadock"):
+                if r.get(f"{arm}_rmsd_best"):
+                    perf[arm][cid] = {
+                        "rmsd_seed0": float(r[f"{arm}_rmsd_seed0"]),
+                        "rmsd_best": float(r[f"{arm}_rmsd_best"]),
+                        "success_2A_seed0": 0,
+                        "success_2A_oracle": int(r[f"{arm}_success_2A_oracle"]),
+                    }
+    return rows, {k: v for k, v in perf.items() if v}
+
+
 def fig_a_distribution(rows: list[dict], out: Path, n_missing: int) -> None:
     frags = [r["fragments"] for r in rows]
     lo, hi = min(frags), max(frags)
@@ -113,31 +175,31 @@ def fig_a_distribution(rows: list[dict], out: Path, n_missing: int) -> None:
     med = float(np.median(frags))
     mean = float(np.mean(frags))
     ax.axvline(med, color="#333333", lw=1.2, ls="-", zorder=3,
-               label=f"Median {med:.0f}")
+               label=f'{T["median"]} {med:.0f}')
     ax.axvline(mean, color="#333333", lw=1.2, ls=":", zorder=3,
-               label=f"Mittel {mean:.2f}")
+               label=f'{T["mean"]} {mean:.2f}')
     ax.legend(frameon=False, fontsize=7.5, loc="upper right")
     ax.set_ylim(0, max(counts) * 1.18)
 
-    ax.set_ylabel("Liganden")
-    title = f"Fragmente je Ligand  (n = {len(rows)})"
+    ax.set_ylabel(T["ligands"])
+    title = f'{T["title_a"]}  (n = {len(rows)})'
     if n_missing:
-        title += f"   [{n_missing} ohne Messwert]"
+        title += f'   [{n_missing} {T["nomeas"]}]'
     ax.set_title(title, loc="left", fontsize=10)
 
     # Die Zustandsdimension gehoert nach OBEN. Unten kollidiert sie mit der
     # Achsenbeschriftung des kumulativen Panels.
     top = ax.secondary_xaxis("top", functions=(lambda x: 6 * x, lambda x: x / 6))
     top.set_xticks([6 * k for k in range(lo, hi + 1)])
-    top.set_xlabel("Zustandsdimension  $D = 6F$", fontsize=8, labelpad=4)
+    top.set_xlabel(T["statedim"], fontsize=8, labelpad=4)
     top.tick_params(labelsize=7)
 
     # Kumulativ als schmales Panel darunter -- beantwortet "wie selten ist >= k".
     order = np.sort(frags)
     cum = np.arange(1, len(order) + 1) / len(order)
     ax2.step(order, 100 * (1 - cum), where="post", color=C_BAR_EDGE, lw=1.3)
-    ax2.set_ylabel("Anteil $\\geq$ k  [%]", fontsize=8)
-    ax2.set_xlabel("Fragmente je Ligand")
+    ax2.set_ylabel(T["atleast"], fontsize=8)
+    ax2.set_xlabel(T["frags"])
     ax2.set_xticks(range(lo, hi + 1))
     ax2.set_ylim(0, 100)
     ax2.set_yticks([0, 50, 100])
@@ -155,8 +217,8 @@ def fig_b_size(rows: list[dict], out: Path) -> None:
         return
 
     fig, axes = plt.subplots(1, 2, figsize=(7.2, 3.0))
-    for ax, key, label in ((axes[0], "atoms", "Schweratome"),
-                           (axes[1], "torsions", "Torsionsbindungen")):
+    for ax, key, label in ((axes[0], "atoms", T["heavy"]),
+                           (axes[1], "torsions", T["tors"])):
         x = np.array([r[key] for r in have], dtype=float)
         y = np.array([r["fragments"] for r in have], dtype=float)
         # Jitter nur auf der diskreten Achse, damit ueberlagerte Punkte sichtbar
@@ -166,13 +228,13 @@ def fig_b_size(rows: list[dict], out: Path) -> None:
         ax.scatter(x, y + rng.uniform(-0.18, 0.18, size=y.size), s=11,
                    color=C_BAR_EDGE, alpha=0.55, linewidths=0)
         ax.set_xlabel(label)
-        ax.set_ylabel("Fragmente" if key == "atoms" else "")
+        ax.set_ylabel(T["fragshort"] if key == "atoms" else "")
         r = float(np.corrcoef(x, y)[0, 1])
         ax.set_title(f"Pearson r = {r:.2f}", loc="left", fontsize=9)
-    axes[1].text(0.98, 0.03, "y-Jitter $\\pm$0.18 zur Sichtbarkeit",
+    axes[1].text(0.98, 0.03, T["jitter"],
                  transform=axes[1].transAxes, ha="right", fontsize=6.5,
                  color="#777777")
-    fig.suptitle("Fragmentzahl gegen Ligandgroesse", x=0.02, y=1.06, ha="left", fontsize=10)
+    fig.suptitle(T["title_b"], x=0.02, y=1.06, ha="left", fontsize=10)
     fig.savefig(out / "B_fragments_vs_size.png")
     fig.savefig(out / "B_fragments_vs_size.pdf")
     plt.close(fig)
@@ -223,21 +285,20 @@ def fig_c_performance(rows: list[dict], perf: dict[str, dict[str, dict]],
         ax2.plot([xs[i] for i in thin], [med[i] for i in thin], "o",
                  color=col, ms=4, mfc="white", lw=0)
 
-    ax1.set_xlabel("Fragmente je Ligand")
-    ax1.set_ylabel("Oracle@10  RMSD < 2 $\\AA$  [%]")
+    ax1.set_xlabel(T["frags"])
+    ax1.set_ylabel(T["succ"])
     ax1.set_ylim(bottom=0)
     ax1.legend(frameon=False, fontsize=8)
-    ax1.set_title("Erfolg gegen Fragmentzahl", loc="left", fontsize=9)
+    ax1.set_title(T["title_c1"], loc="left", fontsize=9)
 
     ax2.axhline(2.0, color="#999999", lw=0.9, ls="--")
     ax2.text(ax2.get_xlim()[1], 2.0, " 2 $\\AA$", fontsize=7,
              va="center", color="#777777")
-    ax2.set_xlabel("Fragmente je Ligand")
-    ax2.set_ylabel("Median bester RMSD  [$\\AA$]")
-    ax2.set_title("Bester RMSD gegen Fragmentzahl", loc="left", fontsize=9)
+    ax2.set_xlabel(T["frags"])
+    ax2.set_ylabel(T["bestrmsd"])
+    ax2.set_title(T["title_c2"], loc="left", fontsize=9)
 
-    fig.text(0.02, -0.04, f"Offene Kreise: weniger als {min_n} Liganden im Bin — "
-                          "Einzelfaelle, keine Rate.", fontsize=6.5, color="#777777")
+    fig.text(0.02, -0.04, T["openc"].format(n=min_n), fontsize=6.5, color="#777777")
     fig.savefig(out / "C_fragments_vs_performance.png")
     fig.savefig(out / "C_fragments_vs_performance.pdf")
     plt.close(fig)
@@ -275,8 +336,12 @@ def write_join(rows: list[dict], perf: dict[str, dict[str, dict]], out: Path) ->
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--counts", required=True, type=Path,
+    ap.add_argument("--counts", type=Path, default=None,
                     help="fragment_counts_*.csv aus arc/count_fragments.py")
+    ap.add_argument("--joined", type=Path, default=None,
+                    help="bereits verknuepfte fragments_vs_performance.csv -- "
+                         "ersetzt --counts und --perf in einem")
+    ap.add_argument("--lang", choices=["de", "en"], default="de")
     ap.add_argument("--perf", action="append", default=[], metavar="ARM=CSV",
                     help="per_complex_csv aus evaluate_run, mehrfach angebbar")
     ap.add_argument("--out-dir", type=Path, default=Path("figures"))
@@ -284,15 +349,26 @@ def main() -> int:
                     help="ab wieviel Liganden je Bin eine Rate als Linie gilt")
     args = ap.parse_args()
 
+    global T
+    T = L[args.lang]
+
+    if not args.counts and not args.joined:
+        print("FEHLER: --counts oder --joined angeben.")
+        return 2
+
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
-    total = sum(1 for _ in open(args.counts, encoding="utf-8")) - 1
-    rows = read_counts(args.counts)
+    perf: dict[str, dict[str, dict]] = {}
+    if args.joined:
+        total = sum(1 for _ in open(args.joined, encoding="utf-8")) - 1
+        rows, perf = read_joined(args.joined)
+    else:
+        total = sum(1 for _ in open(args.counts, encoding="utf-8")) - 1
+        rows = read_counts(args.counts)
     n_missing = total - len(rows)
     print(f"\n{len(rows)} Liganden mit Fragmentzahl"
           + (f", {n_missing} ohne Messwert (bleiben aussen vor)" if n_missing else ""))
 
-    perf: dict[str, dict[str, dict]] = {}
     for spec in args.perf:
         if "=" not in spec:
             print(f"FEHLER: --perf braucht ARM=CSV, bekam '{spec}'")

@@ -74,3 +74,7 @@ visualisations/
 
 # Lokale PyMOL-Arbeitsordner (Kopien von ARC-Daten, regenerierbar)
 vis_*/
+
+# Der Thesis-Ablageordner ist ein bewusstes Ergebnis, kein Nebenprodukt --
+# die PNG-Regeln oben duerfen ihn nicht mitnehmen.
+!Thesis Visualisierungen/**
