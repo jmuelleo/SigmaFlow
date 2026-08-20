@@ -54,14 +54,25 @@ Newton-Euler-Wegs. Numerisch belegt in `audits/test_two_head_vector_field.py`.
 
 ## Parameterzuwachs
 
-Produktionsmaße (6 Layer, 128 Kanäle, lmax=3):
+Gemessen an dem Modell, das `scripts/train.py` aus `RunConfig()` baut — also
+genau der Konfiguration des 12h-Laufs (6 Layer, `sphere_channels=128`,
+`lmax=3`, `mmax=2`, `edge_channels=32`, ESM aus):
 
 | | Parameter |
 |---|---:|
-| Rumpf + 1 Kopf (= Minimal) | 21 654 513 |
-| zweiter Kopf | 2 811 905 |
-| gesamt | 24 466 418 |
-| **Zuwachs** | **+12.99 %** |
+| Rumpf + 1 Kopf (= Minimal) | 14 979 377 |
+| zweiter Kopf | 1 920 449 |
+| gesamt | 16 899 826 |
+| **Zuwachs** | **+12.82 %** |
+
+Beide Köpfe sind baugleich (je 1 920 449). `slurm/train_two_head_12h.slurm`
+misst das beim Start und schreibt es ins Log.
+
+> **Korrektur (2026-08-20).** Hier standen zuvor 24 466 418 Parameter und
+> +12.99 %. Diese Zahlen stammten aus einer von Hand gesetzten
+> Instanziierung, nicht aus `RunConfig`; keine der tatsächlichen
+> Konfigurationen reproduziert sie. Aufgefallen beim Bau des 12h-Skripts,
+> weil dessen Zähler das Modell wie `train.py` aufbaut.
 
 ## Geänderte Dateien
 
