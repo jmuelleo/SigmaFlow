@@ -1,0 +1,1862 @@
+\documentclass[11pt,a4paper]{report}
+
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[a4paper,margin=2.6cm]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,decorations.pathmorphing,fit,backgrounds}
+\usepackage[most]{tcolorbox}
+\usepackage[font=small,labelfont=bf]{caption}
+\usepackage{enumitem}
+\usepackage{microtype}
+\usepackage{setspace}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=NavyBlue,urlcolor=NavyBlue]{hyperref}
+
+\definecolor{NavyBlue}{RGB}{20,60,120}
+\definecolor{DraftBlue}{RGB}{28,72,138}
+\definecolor{DraftGrey}{RGB}{120,120,120}
+\definecolor{PanelGrey}{RGB}{246,246,248}
+
+\onehalfspacing
+\setlength{\parskip}{0.25em}
+
+% ---------------------------------------------------------------- theorems
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[chapter]
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+% ============================================================================
+%  DRAFT ANNOTATION SYSTEM
+%  Set \draftmodefalse to remove every annotation from the build.
+% ============================================================================
+\newif\ifdraftmode
+\draftmodetrue
+
+\ifdraftmode
+  \newenvironment{reserved}[1]{%
+    \begin{tcolorbox}[
+      enhanced, breakable,
+      colback=PanelGrey, colframe=DraftBlue,
+      boxrule=0.5pt, left=6pt,right=6pt,top=5pt,bottom=5pt,
+      fonttitle=\bfseries\small\sffamily,
+      title={RESERVED \textendash\ #1}]
+      \small\sffamily
+  }{%
+    \end{tcolorbox}
+  }
+\else
+  \newenvironment{reserved}[1]{\setbox0=\vbox\bgroup}{\egroup}
+\fi
+
+\newcommand{\dnote}[2]{\ifdraftmode{\sffamily\small\color{DraftBlue}\textbf{[#1]}\ #2}\fi}
+
+% #1 label  #2 caption  #3 specification of what the final figure must contain
+\newcommand{\figplaceholder}[3]{%
+  \begin{figure}[htbp]
+  \centering
+  \ifdraftmode
+    \begin{tcolorbox}[
+      width=0.92\textwidth, colback=PanelGrey, colframe=DraftGrey,
+      boxrule=0.5pt, sharp corners, halign=flush left]
+      \small\sffamily
+      \textbf{\color{DraftBlue}FIGURE PLACEHOLDER}\\[3pt]
+      #3
+    \end{tcolorbox}
+  \else
+    \fbox{\parbox{0.9\textwidth}{\centering\vspace{2cm}[figure]\vspace{2cm}}}
+  \fi
+  \caption{#2}
+  \label{#1}
+  \end{figure}}
+
+\newcommand{\tbd}{\ifdraftmode{\color{DraftBlue}\sffamily\textsc{tbd}}\else--\fi}
+
+% ============================================================================
+%  NOTATION
+% ============================================================================
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\Sph}{\mathbb{S}}
+\newcommand{\SOthree}{\mathrm{SO}(3)}
+\newcommand{\SEthree}{\mathrm{SE}(3)}
+\newcommand{\sothree}{\mathfrak{so}(3)}
+\newcommand{\Mfd}{\mathcal{M}}
+\newcommand{\Exp}{\operatorname{Exp}}
+\newcommand{\Log}{\operatorname{Log}}
+\newcommand{\Ad}{\operatorname{Ad}}
+\newcommand{\Tr}{\operatorname{tr}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Prob}{\mathbb{P}}
+\newcommand{\dif}{\mathrm{d}}
+\newcommand{\Loss}{\mathcal{L}}
+\newcommand{\vfield}{u}
+\newcommand{\pred}{v_\theta}
+\newcommand{\Haar}{\mathcal{U}_{\SOthree}}
+\newcommand{\ctx}{c}
+\newcommand{\skewm}[1]{\widehat{#1}}
+\newcommand{\Rot}{R}
+\newcommand{\Ang}[1]{\ensuremath{#1^{\circ}}}
+\newcommand{\divg}{\operatorname{div}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+
+\title{\textbf{SigmaFlow}\\[0.3em]
+       \large Riemannian Flow Matching for Generative Protein--Ligand Docking}
+\author{Julian M\"uller}
+\date{Draft of \today}
+
+\begin{document}
+\maketitle
+
+% ---------------------------------------------------------------------------
+\begin{abstract}
+\noindent
+Molecular docking predicts the bound geometry of a small molecule, the ligand,
+in a protein binding site. A recent advance in this direction is SigmaDock
+\citep{prat2026sigmadock}, which formulates docking as score-based Riemannian
+diffusion over rigid molecular fragments in $\SEthree$. SigmaDock reaches a
+Top-1 success rate of $79.9\%$ for poses that are simultaneously within
+$2$\,\AA{} RMSD of the crystallographic pose and PoseBusters-valid, and is the
+first deep-learning docking method to surpass classical physics-based docking
+on the intended PoseBusters train-test split. This thesis replaces SigmaDock's
+diffusion-based generative mechanism with Riemannian flow matching while
+holding the network architecture, the data pipeline and the training budget
+fixed, so that the effect of the generative mechanism is isolated from
+confounding architectural or computational change. The resulting system,
+SigmaFlow, provides, to our knowledge, the first flow-matching formulation of
+protein-ligand docking under SigmaDock's fragment-based conditional
+representation on $\SEthree^{N}$, and is evaluated against its diffusion
+parent at matched training compute. Beyond that controlled comparison, the
+thesis develops two variants that the flow formulation makes natural. The
+first separates the translational and rotational readout into two heads on a
+shared equivariant trunk, motivated by the observation that the inherited
+readout asks a single per-atom field to serve two spatial moments at once. The
+second attaches a confidence model trained on the generator's own samples, in
+the manner of DiffDock \citep{corso2023diffdock}, which addresses the
+observation that pose ranking rather than pose generation accounts for a large
+part of the achievable accuracy. Throughout, the deterministic
+ordinary-differential-equation formulation is exploited to study how accuracy
+depends on the number of integration steps and on the number of independent
+samples drawn.
+\\\\
+\dnote{RESULT PENDING}{The abstract closes with the verdict of the
+matched-compute experiments and of the two variants. Rewrite the final two
+sentences once Chapters~\ref{ch:minimal}, \ref{ch:separate} and
+\ref{ch:confidence} carry their results.}
+\end{abstract}
+
+\tableofcontents
+
+% ===========================================================================
+\chapter{Introduction}
+\label{ch:intro}
+
+\section{Docking as a generative problem}
+
+Molecular docking asks where a small molecule, the \emph{ligand}, sits when
+bound to a protein, and in what orientation and internal conformation. The
+answer determines whether a candidate compound is worth synthesising, and
+computational prediction has been a central tool of structure-based drug
+design for decades. Classical docking programs pose the question as
+optimisation. They define a scoring function that approximates binding free
+energy and then search the space of poses for its minimum. This approach has
+important limitations. The scoring functions are only approximate surrogates
+for the underlying molecular interactions, exploring the high-dimensional
+conformational search space becomes computationally demanding in large-scale
+virtual screening, and the resulting ranked candidate poses do not define an
+explicit probability distribution over plausible binding configurations, which
+makes uncertainty in the predicted pose difficult to quantify.
+
+Generative modelling offers a different perspective. Rather than searching
+directly for the optimum of a hand-designed scoring function, a generative
+model learns a distribution over plausible binding configurations conditioned
+on the protein, the ligand and the binding pocket. Docking then becomes the
+task of sampling from
+\begin{equation}
+    p(\text{pose}\mid\text{protein},\text{ligand},\text{binding pocket}),
+    \label{eq:docking-as-sampling}
+\end{equation}
+with multiple samples representing alternative hypotheses for how the ligand
+may bind. DiffDock \citep{corso2023diffdock} demonstrated that diffusion-based
+generative modelling can perform this task at scale, which motivated
+subsequent work on more expressive molecular representations, on equivariant
+architectures, and on diffusion processes adapted to the structure of the
+docking problem.
+
+A central development in that line is to respect the geometry of the pose
+space itself. A molecular pose is not naturally represented by an
+unconstrained Euclidean vector, since moving a rigid molecular fragment
+requires a translation together with a rotation, and the pair forms an element
+of the special Euclidean group $\SEthree$. Decomposing a flexible ligand into
+$N$ rigid fragments therefore leads naturally to a configuration space of the
+form $\SEthree^{N}$. SigmaDock \citep{prat2026sigmadock} exploits precisely
+this representation, combining an equivariant architecture with a diffusion
+process defined over fragment poses, and it reports that the fragment
+representation is what makes the learning problem tractable. In parallel,
+recent developments in generative modelling have introduced flow matching as
+an alternative and broader framework for constructing continuous generative
+processes \citep{lipman2023flow,liu2023rectified,albergo2023stochastic}. Its
+close relationship to diffusion, together with the freedom to define direct
+transport paths between a source and a target distribution, raises the
+question of whether these developments can be exploited in the geometric
+setting of molecular docking.
+
+This thesis investigates that question through \emph{SigmaFlow}, which
+replaces SigmaDock's diffusion dynamics with Riemannian flow matching while
+retaining its fragment-based geometric representation and, as far as possible,
+the surrounding model architecture. Instead of learning to reverse a
+stochastic noising process, SigmaFlow learns a time-dependent vector field
+that transports a simple reference distribution towards the conditional
+distribution of bound poses through an ordinary differential equation on
+$\SEthree^{N}$. This provides a controlled setting in which diffusion and flow
+matching can be compared for molecular docking. The resulting continuous
+normalising flow also admits evaluation of the density assigned to an
+individual pose through the probability-flow dynamics, which provides a
+model-based quantity that can be investigated as a measure of pose confidence
+alongside the variability observed across generated samples.
+
+\section{Research question and scope}
+
+SigmaDock \citep{prat2026sigmadock} combines an $\SEthree$-equivariant
+EquiformerV2 backbone \citep{liao2024equiformerv2} with a score-based
+diffusion process over rigid-fragment poses, and it is the starting point of
+this thesis. Diffusion is not the only way to learn a transport between a
+tractable source distribution and the data. Flow matching
+\citep{lipman2023flow} learns a velocity field directly by regression, without
+simulating a stochastic process at training time, and its Riemannian extension
+\citep{chen2024riemannian} carries the construction to manifolds. The two
+approaches are closely related, since a diffusion model admits a deterministic
+probability-flow ordinary differential equation \citep{song2021sde}, but they
+differ in what the network is asked to predict, in how the source distribution
+is chosen, and in how many network evaluations sampling requires. This thesis
+asks:
+\begin{quote}
+\itshape
+What changes when SigmaDock's score-based diffusion is replaced by Riemannian
+flow matching on the protein-ligand pose manifold, while holding architecture,
+data and computational budget fixed? Which flow-specific design choices are
+needed to make this substitution competitive, and what new modelling
+possibilities does it enable?
+\end{quote}
+
+\noindent
+The design principle in the first part is \emph{minimal intervention}. The
+backbone, the featurisation, the data pipeline, the optimiser and the
+evaluation protocol are held methodologically fixed, adapted only where
+technical integration requires it, and only the generative mechanism is
+replaced. That is what makes the comparison interpretable, and
+Chapter~\ref{ch:minimal} documents the extent to which it was achieved,
+including where it was not. Two further variants then relax the constraint in
+one controlled direction each. Chapter~\ref{ch:separate} separates the
+translational and rotational readout into two heads on a shared trunk, and
+Chapter~\ref{ch:confidence} adds a confidence model trained on the
+generator's own samples.
+
+Two limitations should be kept in view throughout. All experiments in this
+thesis run at a fraction of the compute used to produce SigmaDock's published
+numbers, so absolute performance is well below the literature and no benchmark
+claim is made. What is claimed is a matched-budget comparison between
+generative mechanisms. In addition, the evaluation set used here comprises $209$
+complexes, whereas the published PoseBusters figure is computed over $308$.
+The provenance of that difference is discussed in
+Section~\ref{sec:evaluation-set}, and its consequence is that the two sets of
+numbers are not directly comparable even at equal compute.
+
+% ===========================================================================
+\chapter{Docking as Conditional Generation on a Product Manifold}
+\label{ch:problem}
+
+This chapter states the problem that both generative mechanisms solve, in the
+representation that SigmaDock introduced and that SigmaFlow inherits
+unchanged. Section~\ref{sec:state-space} fixes the state space,
+Section~\ref{sec:why-fragments} explains why the fragment representation is
+the right one and cites the result that justifies it,
+Section~\ref{sec:conditional} states the learning problem, and
+Section~\ref{sec:sigmadock} describes the score-based baseline. The longest
+part is Section~\ref{sec:backbone}, which traces exactly how the network
+output becomes the two score components that enter the loss, because
+Chapters~\ref{ch:minimal} and \ref{ch:separate} both turn on that chain.
+
+\section{Poses, rigid fragments, and the state space}
+\label{sec:state-space}
+
+Let a ligand consist of $N_a$ atoms. A \emph{pose} is an assignment of
+positions to those atoms. Modelling the full conformational space couples bond
+lengths, bond angles and torsions. SigmaDock instead partitions the ligand
+into $N$ rigid \emph{fragments}, treats internal fragment geometry as fixed at
+a precomputed conformer, and generates only the rigid-body placement of each
+fragment. Torsional flexibility survives implicitly, as the relative placement
+of neighbouring fragments, but is not itself a modelled coordinate.
+
+A single fragment's placement is an element of the special Euclidean group
+\begin{equation}
+  \SEthree \;=\; \bigl\{\, (\Rot, p) : \Rot \in \SOthree,\; p \in \R^3 \,\bigr\},
+\end{equation}
+acting on a body-frame atom offset $\tilde{x}$ by
+$\tilde{x} \mapsto \Rot\,\tilde{x} + p$. The full state is therefore a point
+on the product manifold
+\begin{equation}
+  \Mfd \;=\; \SEthree^{N}
+  \;\cong\; \SOthree^{N} \times \bigl(\R^{3}\bigr)^{N},
+  \qquad \dim \Mfd = 6N .
+  \label{eq:state-space}
+\end{equation}
+Two conventions matter for what follows. The implementation treats $\Mfd$ as a
+\emph{direct} product, so rotations and translations receive independent
+probability paths and independent vector fields with no cross terms, which is
+a modelling choice rather than a property of $\SEthree$. Translations are
+expressed relative to the binding-pocket centroid, so the origin of the
+$\R^{3}$ factor is a chemically meaningful point, and the model is not
+required to be translation-equivariant.
+
+The number of fragments is therefore the quantity that fixes the dimension of
+the problem, and it varies considerably across the benchmark.
+Figure~\ref{fig:fragment-histogram} reports its distribution. Over $208$ of the
+$209$ evaluation complexes, one having exceeded the enumeration time limit,
+the mean is $4.51$ fragments with a standard deviation of $2.11$, the median
+is $4$, the mode is $5$, the interquartile range is $3$ to $6$, and the range
+is $1$ to $11$. The distribution is right-skewed, $38.5\%$ of ligands have at
+most three fragments, $18.8\%$ have at least seven, and five ligands have
+exactly one, meaning that they carry no rotatable bond and are generated as a
+single rigid body. The state dimension $D = 6N$ therefore averages $27.1$ and
+never exceeds $66$. The space is low-dimensional, and the difficulty lies in
+its geometry and in the conditioning rather than in its dimension.
+
+\figplaceholder{fig:fragment-histogram}
+{Distribution of the number of rigid fragments per ligand over the
+PoseBusters evaluation set, with the induced state dimension $D = 6N$ on the
+second axis.}
+{Histogram of fragment count $N$ over the $208$ measured ligands, bars in a
+single muted colour, with a cumulative curve overlaid on a secondary axis and
+a second top axis labelled $D = 6N$. Annotate mean $4.51$, median $4$ and the
+five single-fragment ligands. Source data:
+\texttt{Thesis Visualisierungen/data/fragment\_distribution.csv}. This is the
+figure that establishes the scale of the generative problem and should be
+referred back to whenever fragment count is used as a covariate.}
+
+\section{Why fragments, and what the representation buys}
+\label{sec:why-fragments}
+
+The alternative to fragments is the torsional parameterisation used by
+DiffDock and by torsional diffusion more generally
+\citep{corso2023diffdock,jing2022torsional}, in which the generative process
+acts on the global rigid motion together with the $k$ dihedral angles. That
+parameterisation is more compact, since it has $k+6$ degrees of freedom
+against $6N$, but SigmaDock argues that it is worse conditioned, and states
+the reason as a formal result.
+
+\begin{theorem}[\citealp{prat2026sigmadock}, Theorem 1]
+\label{thm:product-measure}
+For standard molecular topologies, torsional models define nonlinear mappings
+from torsion angles to Cartesian space, producing highly entangled,
+non-product induced measures. In contrast, disjoint rigid fragments yield a
+factorised product of Haar measures on $\SEthree^{m}$.
+\end{theorem}
+
+\noindent
+The result is quoted, not reproved. Its consequence is what matters here. A
+local change in a single torsion angle produces a non-local Cartesian
+displacement, because every atom distal to the rotated bond moves, and the
+displacement grows with the length of the chain through a lever effect. Under
+the induced measure in Cartesian coordinates, where the network observes the
+data, independent torsional perturbations therefore become correlated, and the
+product structure is destroyed. Fragments avoid this because the forward
+kernel factorises over disjoint $\SEthree$ components. Inter-fragment
+correlation then enters only through the learnt score, not through the noise
+model itself, which yields a better-conditioned learning problem and more
+stable reverse-time integration.
+
+A second difficulty with torsional parameterisations is a gauge ambiguity.
+Mapping a torsional increment $\Delta\phi$ to a Cartesian displacement
+requires a choice of which side of the rotatable bond moves, and
+implementations resolve this with heuristics such as removing the induced net
+rigid motion by superposition, which itself breaks the product structure.
+SigmaDock avoids the question by construction.
+
+Two further components of the representation are inherited unchanged and are
+recorded here for completeness. First, the naive fragmentation at every
+torsional bond yields $\hat{m} = k+1$ fragments, and SigmaDock reduces this by
+a stochastic merging procedure that recursively merges adjacent fragments to
+an irreducible set of size $m$, empirically about $\tfrac{2}{3}\hat{m}$, which
+directly reduces the dimension of the generative problem. Second, geometric
+information that fragmentation would otherwise discard is reintroduced as a
+soft conditioning signal, by feeding relative cross-fragment distance
+mismatches as edge features, which fixes bond lengths and bond angles across a
+cut bond without constraining the dihedral itself
+\citep[Lemma~1]{prat2026sigmadock}. Neither component is modified in this
+thesis, and both apply identically to every arm of the comparison.
+
+\section{The conditional generative formulation}
+\label{sec:conditional}
+
+Write $\ctx$ for the conditioning context, comprising the protein pocket, the
+ligand's molecular graph and the precomputed fragment conformers. The learning
+target is the conditional law of the crystallographic pose,
+\begin{equation}
+  p_{\mathrm{data}}(\,\cdot \mid \ctx\,) \quad\text{on}\quad \Mfd ,
+\end{equation}
+from which we wish to draw samples at inference. Two features distinguish this
+from unconditional generative modelling on a manifold. The conditioning is
+strong, in the sense that given a pocket the plausible poses occupy a small
+region of $\Mfd$. And the training data provide exactly one sample per
+context, namely the deposited structure, so there is no set of ground-truth
+poses per complex to match in distribution. Every generative construction in
+this thesis must therefore be conditional on $\ctx$ and trainable from single
+observations.
+
+\section{SigmaDock: the score-based baseline}
+\label{sec:sigmadock}
+
+SigmaDock defines a forward noising process that carries the data pose towards
+a tractable reference. Writing $Z^{(t)} = (p^{(t)}, \Rot^{(t)})$ for the state
+at diffusion time $t$, the forward process is the stochastic differential
+equation
+\begin{equation}
+  \dif Z^{(t)}
+  \;=\; \Bigl[-\tfrac12 p^{(t)},\, 0\Bigr]\dif t
+   \;+\; \Bigl[\dif B^{(t)}_{\R^{m\times 3}},\, \dif B^{(t)}_{\SOthree^{m}}\Bigr],
+  \label{eq:forward-sde}
+\end{equation}
+which is variance-preserving on the translational factor and Brownian motion
+on the rotational factor \citep{yim2023se3,leach2022so3}. Its stationary
+distribution is
+\begin{equation}
+  q(z) \;=\; \mathcal{N}(p;0,I) \otimes \Haar^{\otimes m},
+  \label{eq:stationary}
+\end{equation}
+an isotropic Gaussian on the translations together with the uniform measure on
+each rotational factor. This distribution will reappear in
+Chapter~\ref{ch:theory} as SigmaFlow's source, which is a useful continuity
+between the two mechanisms rather than a coincidence.
+
+A network $s_\theta(z,t,\ctx)$ is trained by denoising score matching
+\citep{vincent2011connection,song2019ncsn} to estimate the Stein score
+$\nabla_z \log p_t$ of the perturbed marginals, understood as a Riemannian
+gradient in the tangent space of $\SEthree^{m}$, and sampling integrates the
+corresponding reverse-time stochastic differential equation
+\citep{song2021sde}. Poses are generated in batches of $K$ independent seeds
+and ranked by a fixed heuristic that combines a Vinardo pseudo binding energy
+\citep{quiroga2016vinardo} with a set of physicochemical checks, and the
+published headline numbers are post-ranking. SigmaDock deliberately does not
+train a separate confidence model for this purpose, and
+Chapter~\ref{ch:confidence} returns to that decision.
+
+\subsection{The inherited backbone and how its output becomes a score}
+\label{sec:backbone}
+
+The network is an EquiformerV2 \citep{liao2024equiformerv2}, augmented by
+SigmaDock with virtual nodes and edges over the chemical graph and with
+structural-role-dependent featurisation. It is inherited by SigmaFlow without
+modification, so this section states the interface rather than the internals,
+and then traces the readout in full, because the readout is where the two
+generative mechanisms diverge and where the variant of
+Chapter~\ref{ch:separate} intervenes.
+
+Physical correctness requires equivariance. Rotating the entire complex must
+rotate the predicted pose update accordingly, and permuting atom indices must
+induce the corresponding permutation of the outputs. A network built purely
+from distances and other invariant scalars satisfies rotational invariance by
+construction but cannot emit a directional update, because any function of
+invariant quantities is itself invariant. The resolution is to propagate
+\emph{steerable} features whose components transform according to prescribed
+irreducible representations of $\SOthree$, indexed by degree $\ell$, with
+$\ell=0$ components transforming as scalars and $\ell=1$ components as
+vectors. Equivariant message passing then preserves these transformation laws
+throughout the network. Permutation equivariance is automatic, because the
+architecture is a graph neural network whose aggregation is permutation
+invariant and whose outputs are attached to nodes.
+
+The relevant consequence is concrete. The backbone maps the conditioning
+context and the current noisy state to per-atom steerable features, and its
+output block emits a single $\ell=1$ vector per node. Restricting to ligand
+atoms and adopting the implementation's sign convention gives a per-atom field
+\begin{equation}
+  f_i \in \R^3, \qquad i = 1,\ldots,N_a .
+  \label{eq:force-field}
+\end{equation}
+These vectors are not themselves scores. They form an intermediate atom-wise
+equivariant representation which SigmaDock interprets as a \emph{pseudo-force
+field}, in the sense that under a global rotation they transform in the same
+way as physical force vectors, while being learned generative quantities
+rather than forces derived from a molecular-mechanics potential.
+
+The reason for reading the network output through mechanics rather than
+predicting fragment updates directly is a gauge ambiguity in the fragment
+representation, and it is worth stating because it explains an otherwise
+surprising design. The global coordinates of a fragment are
+$x_F = (p,\Rot)\cdot\tilde{x}_F$, but the body-frame coordinates $\tilde{x}_F$
+have no canonical orientation. Replacing $\tilde{x}_F$ by
+$\tilde{x}'_F = \Rot_0\tilde{x}_F$ and $(p,\Rot)$ by $(p, \Rot\Rot_0^{-1})$
+describes the same physical fragment, so a head that predicted $\Rot$ directly
+would have to commit to a convention. SigmaDock instead adapts the
+$\SOthree$-equivariant prediction head of \citet{jin2023se3denoising}, based on
+the Newton-Euler equations of rigid-body mechanics, and passes the backbone
+output through it. With this choice the training objective and the sampling
+procedure are invariant with respect to the orientation of local coordinates
+\citep[Theorem~2]{prat2026sigmadock}.
+
+Concretely, consider a fragment $F$ whose atoms occupy positions $r_i$ at
+diffusion time $t$ and whose centre is $c_F$. The reduction produces a net
+pseudo-force and a net pseudo-torque,
+\begin{equation}
+  F_F \;=\; \sum_{i \in F} f_i ,
+  \qquad
+  \tau_F \;=\; \sum_{i \in F} (r_i - c_F) \times f_i .
+  \label{eq:newton-euler}
+\end{equation}
+The same atom-wise output is therefore read twice, in two different ways.
+Translation depends on the zeroth spatial moment of the field over the
+fragment, and rotation on its first moment about the fragment centre.
+
+Since the coordinates are centred, $\sum_{i\in F}(r_i - c_F) = 0$, so a
+spatially constant component of $f$ contributes to the net force but produces
+no torque, while a spatially varying pattern whose atom-wise vectors sum to
+zero contributes torque but no force. The two channels read genuinely
+different spatial modes of one field. This observation is the entire
+motivation for Chapter~\ref{ch:separate} and is worth carrying forward.
+
+The reduction is completed with the fragment's mass and inertia. The
+implementation assigns unit mass to every atom, so the fragment mass $M_F$ is
+its atom count, and the inertia tensor about the centre is
+\begin{equation}
+  I_F \;=\; \sum_{i \in F}
+  \Bigl[\, \|r_i - c_F\|_2^{2}\, I_3 \;-\; (r_i - c_F)(r_i - c_F)^{\top} \Bigr],
+  \label{eq:inertia}
+\end{equation}
+regularised by clamping small eigenvalues before inversion. The Newton-Euler
+step then converts force and torque into rigid-body increments,
+\begin{equation}
+  \Delta T_F \;=\; \frac{F_F}{M_F} \;=\; \frac{1}{|F|}\sum_{i\in F} f_i,
+  \qquad
+  \omega_F \;=\; I_F^{-1}\tau_F ,
+  \qquad
+  \skewm{\omega}_F \;=\; \operatorname{hat}(\omega_F).
+  \label{eq:updates}
+\end{equation}
+Because the masses are uniform, the translational increment is exactly the
+\emph{mean} of the per-atom vectors over the fragment. The rotational
+increment carries an inverse inertia, which accounts for the fact that the
+same torque need not produce the same rotational response for fragments with
+different spatial distributions of atoms, and which is also, as
+Chapter~\ref{ch:separate} discusses, the numerically delicate part of the
+chain.
+
+Only at this point does the diffusion parameterisation enter. Both increments
+are rescaled by the score scaling of the corresponding diffuser at time $t$.
+On the translational factor, with $\alpha_t = \exp(-\tfrac12\int_0^t \beta_s\,\dif s)$
+and conditional standard deviation $\sigma_t = \sqrt{1-\alpha_t^{2}}$, the
+scaling is $\lambda_{\R^3}(t) = 1/\sigma_t$ and the predicted score is
+\begin{equation}
+  s^{p}_\theta \;=\; \lambda_{\R^3}(t)\, \Delta T_F
+  \;=\; \frac{1}{\sigma_t}\,\frac{1}{|F|}\sum_{i\in F} f_i .
+  \label{eq:trans-score}
+\end{equation}
+This gives the readout the conditioning of an $\epsilon$-prediction
+parameterisation, since the conditional score of the variance-preserving path
+is $\nabla \log p_t(x_t\mid x_0) = -(x_t - \alpha_t x_0)/\sigma_t^{2}$ and the
+network is thereby asked to predict a quantity of roughly unit scale at every
+noise level.
+
+On the rotational factor the production configuration takes a route that is
+worth stating exactly, because it is easy to describe incorrectly. Rather than
+emitting a score directly, the model first forms an estimate of the clean
+rotation. Writing $\lambda_{\SOthree}(t)$ for the tabulated root-mean-square
+scaling of the conditional $\SOthree$ score at time $t$, the increment is
+exponentiated and applied to the current rotation,
+\begin{equation}
+  \Delta \Rot_F \;=\; \Exp\!\bigl(\lambda_{\SOthree}(t)\,\skewm{\omega}_F\bigr),
+  \qquad
+  \widehat{\Rot}_0 \;=\; \Delta \Rot_F\, \Rot_t ,
+  \label{eq:rot-denoised}
+\end{equation}
+and the score is then evaluated in closed form from the pair
+$(\Rot_t, \widehat{\Rot}_0)$ using the analytic conditional score of the
+isotropic Gaussian on $\SOthree$,
+\begin{equation}
+  s^{\Rot}_\theta
+  \;=\; \Rot_t \,\Log\bigl(\widehat{\Rot}_0^{\top}\Rot_t\bigr)\,
+        \frac{\partial_\Omega \log f\bigl(\Omega,\sigma_t\bigr)}{\Omega},
+  \qquad
+  \Omega = \bigl\|\Log\bigl(\widehat{\Rot}_0^{\top}\Rot_t\bigr)\bigr\| ,
+  \label{eq:rot-score}
+\end{equation}
+where $f(\,\cdot\,,\sigma)$ is the radial density of the $\mathrm{IGSO}(3)$
+distribution. The network therefore predicts a \emph{denoised rotation} and
+the score is a deterministic function of it. Two points follow. The rotational
+head is a denoiser rather than a score head, which is precisely the structure
+that makes the flow-matching substitution of Chapter~\ref{ch:theory} natural,
+since flow matching also predicts something about the endpoint. And the score
+in \eqref{eq:rot-score} is written as $\Rot_t X$ with $X \in \sothree$, which
+fixes the trivialisation convention that Section~\ref{sec:trivialisation}
+makes explicit.
+
+The complete inherited mapping is therefore
+\begin{equation}
+  \{f_i\}_{i\in F}
+  \;\longrightarrow\;
+  \begin{cases}
+    F_F \;\longrightarrow\; \Delta T_F \;\longrightarrow\; s^{p}_\theta, \\[0.6ex]
+    \tau_F \;\longrightarrow\; I_F^{-1}\tau_F \;\longrightarrow\;
+      \widehat{\Rot}_0 \;\longrightarrow\; s^{\Rot}_\theta .
+  \end{cases}
+  \label{eq:readout-summary}
+\end{equation}
+There is no independently learned translational head and rotational head at
+the level of the backbone. Both score components originate in the same
+atom-wise equivariant field, and the transformations between that field and
+the two scores are substantially different.
+
+The training objective regresses both predicted scores onto their analytic
+conditional counterparts, weighted by the inverse squared score scaling of the
+respective factor, and adds two reconstruction terms in data space, one on the
+fragment centre and one geodesic term of the form
+$\|\Log(\widehat{\Rot}_0^{\top}\Rot_0)\|_F^{2}$ on the fragment rotation. The
+weights are inherited unchanged by every arm of the comparison in this thesis.
+
+\figplaceholder{fig:architecture}
+{The inherited architecture and its interface to the generative mechanism.
+Components in grey are shared by every arm; only the shaded block is replaced.}
+{Schematic in three columns.
+\textbf{Left, shared:} protein pocket and ligand graph, featurisation,
+EquiformerV2 backbone, per-atom steerable features.
+\textbf{Middle, shared:} the $\ell=1$ output block emitting $f_i \in \R^3$
+per atom, and the Newton-Euler reduction to $(F_F, \tau_F)$ per fragment,
+Eq.~\eqref{eq:newton-euler}, with the mass and inertia step
+Eq.~\eqref{eq:updates}. Draw the zeroth and first spatial moment explicitly,
+so that the reader sees the two channels reading the same field differently.
+\textbf{Right, replaced:} the interpretation layer. SigmaDock reads the
+increments as a \emph{score}, rescales by $\lambda(t)$, and integrates a
+reverse SDE; SigmaFlow reads them as a \emph{velocity} and integrates an ODE.
+The figure must make visually obvious that the substitution is confined to one
+block, since that is the evidence for the controlled comparison, and it
+replaces roughly $400$ words of prose.}
+
+\section{Evaluation}
+\label{sec:metrics}
+
+Docking accuracy is reported as the symmetry-corrected root-mean-square
+deviation between predicted and crystallographic ligand atoms
+\citep{meli2020spyrmsd}, computed against the nearest crystallographic copy,
+with the fraction of complexes below $2$\,\AA{} as the conventional success
+criterion. Physical plausibility is assessed with the PoseBusters battery
+\citep{buttenschoen2024posebusters}. The primary criterion throughout is the
+conjunction
+\begin{equation}
+  \mathrm{RMSD} < 2\,\text{\AA}
+  \qquad\text{and}\qquad
+  \text{PoseBusters-valid},
+  \label{eq:success}
+\end{equation}
+because a geometrically close prediction achieved through a chemically invalid
+configuration is not a successful prediction. Because RMSD mixes placement
+error with internal geometry error, RMSD after optimal rigid superposition
+\citep{kabsch1976solution} and the centroid displacement are reported
+alongside it, since they isolate the two contributions.
+
+Because sampling is repeated, a success rate is only defined relative to a
+sampling and ranking protocol. Two quantities are distinguished throughout.
+The \emph{oracle} rate at $K$ samples is the fraction of complexes for which at
+least one of $K$ generated poses satisfies \eqref{eq:success}, and it is an
+upper bound attainable only with a perfect ranker. The \emph{Top-1} rate is the
+fraction for which the pose selected by the ranking heuristic satisfies it.
+The gap between the two measures how much accuracy is lost in ranking rather
+than in generation, and Chapter~\ref{ch:confidence} is devoted to it.
+
+For the rotational channel a null model is needed, because the natural scale of
+an orientation error is not obvious. If fragment orientations were drawn from
+the Haar measure, the expected geodesic angle to the truth would be
+\begin{equation}
+  \E[\theta] \;=\; \frac{\pi^{2}/2 + 2}{\pi} \;\approx\; \Ang{126.5},
+  \label{eq:haar-null}
+\end{equation}
+with a median of about $\Ang{132.3}$ under the sampling protocol used here.
+Every rotational number reported in this thesis is stated against that
+reference, because an error of $\Ang{130}$ is not a poor prediction but no
+prediction at all.
+
+\subsection{The evaluation set, and how it differs from the published one}
+\label{sec:evaluation-set}
+
+The published SigmaDock results are computed over the PoseBusters v2 set,
+described as a temporal split of $308$ protein-ligand complexes whose protein
+sequences are unseen and whose structures were released from 2021 onwards
+\citep{prat2026sigmadock}, with a further $85$ complexes from the Astex diverse
+set \citep{hartshorn2007astex} as a second evaluation set. The original
+PoseBusters benchmark from which it derives contains $428$ complexes
+\citep{buttenschoen2024posebusters}.
+
+The copy of the benchmark available to this project contains $209$ complexes,
+and this section records what is and is not known about that difference,
+because it bounds what any comparison against the literature can claim.
+
+Three checks establish that the reduction is a property of the data copy rather
+than a silent filter in the pipeline. The benchmark directory contains $209$
+subdirectories and yields $209$ recognised protein-ligand pairs, so the loader
+discards nothing. The loader itself applies no selection beyond requiring a
+matching structure file and ligand file per directory, and it emits a warning
+whenever the two counts disagree, which it does not here. And the evaluation
+stage, which globs the reference ligand files independently of the loader, also
+finds $209$. The number is therefore fixed upstream of any modelling decision
+taken in this thesis.
+
+How the reduction from the published set came about is not documented and was
+not reconstructible. The $209$ complexes carry $209$ distinct PDB identifiers
+and $209$ distinct ligand codes, so the set contains no repeated protein and no
+repeated ligand, and about ninety per cent of the identifiers fall in the
+ranges assigned to recent depositions, which is consistent with but does not
+establish a temporal split. Whether the $209$ form a subset of the published
+$308$ has not been verified.
+
+Two consequences follow, and they are different in kind. No absolute number in
+this thesis may be compared against a published PoseBusters figure, since the
+sets differ in size and in unknown composition, and this holds even for the
+reproduced SigmaDock baseline. The internal comparison, by contrast, is
+unaffected, because every arm is trained on the same data and evaluated on the
+same $209$ complexes, and it is the internal comparison that this thesis
+claims.
+
+\dnote{OPEN}{Settling whether the $209$ are a subset of the published $308$
+requires only the official identifier list. If they are a strict subset the
+matter is closed with one sentence; if they are not, the composition of the
+evaluation set needs to be characterised before any external comparison is
+attempted.}
+
+% ===========================================================================
+\chapter{From Score to Velocity: Riemannian Flow Matching}
+\label{ch:theory}
+
+This chapter develops the generative machinery that replaces diffusion in
+SigmaFlow. The exposition follows the development in
+\citet{holderrieth2025flowmatching}, and results that are standard are stated
+with attribution rather than reproved. What is derived here is only what the
+later chapters depend on in a specific form, namely the construction on
+$\SOthree$ and the trivialisation convention that the implementation must fix.
+
+\section{Generation as sampling, and flows as the machinery}
+
+Following \citet{holderrieth2025flowmatching}, generation is modelled as
+sampling. The object to be generated is a point $z$ of the state space, the
+data are a finite collection of such points drawn from an unknown distribution
+$p_{\mathrm{data}}$, and a generative model is an algorithm that returns
+further samples from it. In the conditional case, which is the relevant one
+here, the target is $p_{\mathrm{data}}(\cdot\mid\ctx)$ as in
+\eqref{eq:docking-as-sampling}.
+
+A flow model produces such a sample by drawing an initial state from a
+tractable source distribution and transporting it along a time-dependent
+vector field. The trajectory solves the ordinary differential equation
+\begin{equation}
+  \frac{\dif}{\dif t} X_t \;=\; \vfield_t(X_t),
+  \qquad X_0 \sim p_{\mathrm{init}},
+  \label{eq:flow-ode}
+\end{equation}
+and the endpoint $X_1$ is the generated sample. The generative goal is
+therefore to find a vector field whose flow satisfies
+$X_0 \sim p_{\mathrm{init}} \Rightarrow X_1 \sim p_{\mathrm{data}}$. Two
+questions follow, namely which vector field has that property and how it can
+be learned from data.
+
+\section{Conditional paths and the marginal vector field}
+
+Flow matching answers the first question by specifying how probability mass
+should move. For a data point $z \sim p_{\mathrm{data}}$ one chooses a
+\emph{conditional probability path} $p_t(\cdot \mid z)$ with boundary
+conditions
+\begin{equation}
+  p_0(\cdot \mid z) = p_{\mathrm{init}},
+  \qquad
+  p_1(\cdot \mid z) = \delta_z ,
+  \label{eq:path-boundaries}
+\end{equation}
+so that conditional on a particular training example the path transports the
+source continuously onto that example. Averaging over the data induces the
+\emph{marginal probability path}
+\begin{equation}
+  p_t(x) \;=\; \int p_t(x\mid z)\, p_{\mathrm{data}}(z)\, \dif z ,
+  \label{eq:marginal-path}
+\end{equation}
+which by construction interpolates from $p_{\mathrm{init}}$ at $t=0$ to
+$p_{\mathrm{data}}$ at $t=1$.
+
+If for each $z$ there is a tractable conditional vector field
+$\vfield_t^{\mathrm{tgt}}(x\mid z)$ whose flow generates
+$p_t(\cdot\mid z)$, then the field
+\begin{equation}
+  \vfield_t^{\mathrm{tgt}}(x)
+  \;=\; \int \vfield_t^{\mathrm{tgt}}(x\mid z)\,
+        \frac{p_t(x\mid z)\,p_{\mathrm{data}}(z)}{p_t(x)}\,\dif z
+  \label{eq:marginal-field}
+\end{equation}
+generates the marginal path $p_t$, in the sense that it satisfies the
+continuity equation for $p_t$
+\citep[Theorem~9]{holderrieth2025flowmatching}. Integrating
+\eqref{eq:flow-ode} under this field therefore transports
+$p_{\mathrm{init}}$ to $p_{\mathrm{data}}$, which answers the first question.
+
+\section{The conditional flow matching objective}
+
+The field \eqref{eq:marginal-field} is intractable, since it averages against
+the unknown data distribution. The second question is answered by not
+evaluating it. One trains a neural field $\pred$ against the tractable
+conditional field instead, through the conditional flow matching objective
+\begin{equation}
+  \Loss_{\mathrm{CFM}}(\theta)
+  \;=\; \E_{\,t\sim\mathcal{U}[0,1],\; z\sim p_{\mathrm{data}},\;
+             X_t \sim p_t(\cdot\mid z)}
+    \Bigl[\bigl\| \pred(t, X_t) - \vfield_t^{\mathrm{tgt}}(X_t\mid z)\bigr\|^{2}\Bigr].
+  \label{eq:cfm-loss}
+\end{equation}
+That this is legitimate is the central result of flow matching.
+
+\begin{theorem}[\citealp{lipman2023flow}; \citealp{holderrieth2025flowmatching}, Theorem~12]
+\label{thm:cfm}
+The marginal flow matching loss and the conditional flow matching loss differ
+by a constant independent of $\theta$, so
+$\nabla_\theta \Loss_{\mathrm{FM}}(\theta)
+ = \nabla_\theta \Loss_{\mathrm{CFM}}(\theta)$.
+In particular, for the minimiser $\theta^{*}$ of $\Loss_{\mathrm{CFM}}$ and a
+sufficiently expressive parameterisation, $\pred[\theta^{*}]$ equals the
+marginal vector field $\vfield_t^{\mathrm{tgt}}$.
+\end{theorem}
+
+\noindent
+By explicitly regressing against a tractable conditional field, one implicitly
+regresses against the intractable marginal field that is actually wanted. Two
+practical consequences follow and both matter for this thesis. Training is
+\emph{simulation-free}, since no ODE is integrated during training and the
+objective is an ordinary regression, and the probability path becomes an
+explicit design choice rather than a consequence of a noising process.
+
+In $\R^{d}$ the standard choice is the straight-line path between a source
+draw and the data point,
+\begin{equation}
+  x_t = (1-t)\,x_0 + t\,x_1,
+  \qquad
+  \vfield_t(x_t \mid x_0, x_1) = x_1 - x_0 ,
+  \label{eq:linear-path}
+\end{equation}
+whose conditional trajectories are straight and whose target is constant along
+each trajectory. This is what SigmaFlow uses on the translational factor.
+
+\section{Score and velocity as two coordinates on one object}
+\label{sec:score-vs-velocity}
+
+The title of this chapter is meant literally, and it is worth making the
+relationship precise, since the substitution studied here is often described
+loosely. For a Gaussian conditional path
+$p_t(\cdot\mid z) = \mathcal{N}(\alpha_t z, \beta_t^{2} I_d)$ the marginal
+velocity and the marginal score determine one another through an affine
+relation,
+\begin{equation}
+  \vfield_t^{\mathrm{tgt}}(x)
+  \;=\; a_t\, \nabla \log p_t(x) \;+\; b_t\, x,
+  \qquad
+  a_t = \beta_t^{2}\frac{\dot\alpha_t}{\alpha_t} - \dot\beta_t \beta_t,
+  \qquad
+  b_t = \frac{\dot\alpha_t}{\alpha_t},
+  \label{eq:score-velocity}
+\end{equation}
+so on such a path the two objects carry the same information
+\citep[Proposition~1]{holderrieth2025flowmatching}. Moreover, adding the score
+to the deterministic dynamics with any diffusion coefficient $\sigma_t \ge 0$
+preserves the marginals,
+\begin{equation}
+  \dif X_t \;=\; \Bigl[\vfield_t^{\mathrm{tgt}}(X_t)
+    + \tfrac{\sigma_t^{2}}{2}\nabla \log p_t(X_t)\Bigr]\dif t
+    \;+\; \sigma_t\, \dif W_t
+  \;\Longrightarrow\; X_t \sim p_t ,
+  \label{eq:sde-family}
+\end{equation}
+which recovers the deterministic probability-flow ODE at $\sigma_t = 0$ and a
+diffusion sampler at $\sigma_t > 0$
+\citep[Theorem~17]{holderrieth2025flowmatching}; the same statement in the
+diffusion literature is the probability-flow ODE of \citet{song2021sde}.
+
+Two things follow for the present work. First, diffusion and flow matching are
+not competing theories but different coordinates on a family of processes
+sharing the same marginals, and the substitution studied in this thesis is a
+change of parameterisation together with a change of probability path.
+Diffusion may be viewed as flow matching along a particular Gaussian path
+\citep{lipman2023flow}. Second, and this is the practical content, the
+relation \eqref{eq:score-velocity} is time-dependent through $a_t$ and $b_t$.
+A score must be rescaled by noise-level-dependent factors before it becomes a
+displacement, which is exactly what \eqref{eq:trans-score} and
+\eqref{eq:rot-denoised} do, whereas a velocity is already in the units of the
+state. The entire scalar apparatus that converts scores into displacements is
+therefore deleted rather than modified when the substitution is made, and
+Chapter~\ref{ch:minimal} records that this is what was done.
+
+\section{The Riemannian generalisation}
+\label{sec:riemannian}
+
+On a Riemannian manifold $(\Mfd, g)$ several ingredients of the Euclidean
+construction stop making sense, and it is worth being precise about which.
+The interpolant $(1-t)x_0 + t x_1$ is undefined, because there is no addition.
+The difference $x_1 - x_0$ is undefined. A velocity at $x$ is an element of the
+tangent space $T_x\Mfd$, and tangent spaces at different points are different
+vector spaces that cannot be compared without extra structure. Finally, the
+squared error in \eqref{eq:cfm-loss} must be measured in the metric at the
+point where both vectors live.
+
+What survives is what matters. The argument behind Theorem~\ref{thm:cfm} uses
+only bilinearity of an inner product and the tower property of conditional
+expectation, both of which hold pointwise on a manifold, so the conditional
+objective remains a valid surrogate \citep{chen2024riemannian}. Three
+substitutions carry the construction over. Straight lines become geodesics,
+differences become logarithmic maps, and the Euclidean norm becomes the
+Riemannian metric at the relevant point,
+\begin{equation}
+  \Loss_{\mathrm{RCFM}}(\theta)
+  \;=\; \E_{t,\,x_1,\,x_t}\bigl\|\, \pred(t,x_t)
+        - \vfield_t(x_t \mid x_1)\,\bigr\|^{2}_{g(x_t)} .
+  \label{eq:rcfm-loss}
+\end{equation}
+The geodesic interpolant between $x_0$ and $x_1$ is
+\begin{equation}
+  x_t \;=\; \Exp_{x_0}\!\bigl(t\, \Log_{x_0}(x_1)\bigr),
+  \label{eq:geodesic-interp}
+\end{equation}
+where $\Exp_x : T_x\Mfd \to \Mfd$ follows the geodesic leaving $x$ with a given
+initial velocity and $\Log_x$ is its local inverse. Differentiating
+\eqref{eq:geodesic-interp} and re-expressing the result at $x_t$ gives the
+conditional field
+\begin{equation}
+  \vfield_t(x_t \mid x_1) \;=\; \frac{\Log_{x_t}(x_1)}{1-t},
+  \label{eq:riem-target}
+\end{equation}
+which states that at time $t$ one must cover the remaining geodesic distance
+in the remaining time. On a simple geometry such as a compact Lie group with a
+bi-invariant metric, where $\Exp$ and $\Log$ are available in closed form, this
+construction remains simulation-free \citep{chen2024riemannian}.
+
+\section{The rotation group and the trivialisation convention}
+\label{sec:so3}
+
+$\SOthree = \{\Rot\in\R^{3\times3} : \Rot^\top\Rot = I,\ \det\Rot = 1\}$ is a
+compact three-dimensional Lie group. Its Lie algebra $\sothree$ is the space of
+skew-symmetric matrices, identified with $\R^3$ by the hat map
+\begin{equation}
+  \skewm{\omega} =
+  \begin{pmatrix}
+    0 & -\omega_3 & \omega_2\\
+    \omega_3 & 0 & -\omega_1\\
+    -\omega_2 & \omega_1 & 0
+  \end{pmatrix},
+  \qquad \omega\in\R^3 .
+\end{equation}
+With the bi-invariant metric $\langle A,B\rangle = \tfrac12\Tr(A^\top B)$ the
+exponential map is Rodrigues' formula and its inverse is available in closed
+form away from the cut locus,
+\begin{equation}
+  \Exp(\skewm{\omega}) = I + \frac{\sin\theta}{\theta}\skewm{\omega}
+    + \frac{1-\cos\theta}{\theta^{2}}\skewm{\omega}^{2},
+  \qquad \theta = \|\omega\| ,
+  \label{eq:rodrigues}
+\end{equation}
+\begin{equation}
+  \Log(\Rot) = \frac{\theta}{2\sin\theta}\bigl(\Rot - \Rot^\top\bigr),
+  \qquad
+  \theta = \arccos\!\Bigl(\frac{\Tr \Rot - 1}{2}\Bigr).
+  \label{eq:so3-log}
+\end{equation}
+The choice of a bi-invariant metric is not cosmetic. It makes left and right
+translation isometries, so distances are unchanged by re-expressing both
+arguments in another frame. It makes the geodesics through the identity
+exactly the one-parameter subgroups $t \mapsto \Exp(t\skewm{\omega})$, which is
+what puts \eqref{eq:rodrigues} in closed form. And it makes the Haar measure
+the Riemannian volume, so the phrase ``uniform on $\SOthree$'' is unambiguous.
+Every closed form in this chapter depends on it, and it is available because
+$\SOthree$ is compact.
+
+The geodesic distance between $\Rot_a$ and $\Rot_b$ is
+$\|\Log(\Rot_a^\top\Rot_b)\|$, taking values in $[0,\pi]$. The logarithm is
+branch-ambiguous at $\theta = \pi$, the cut locus, since a rotation by exactly
+$\pi$ about an axis is equally a rotation by $-\pi$ about the same axis. This
+is not a rare edge case in the present construction. Under the Haar measure
+the angle has density proportional to $1 - \cos\theta$, which is increasing on
+$[0,\pi]$, so uniformly sampled rotations concentrate towards large angles and
+roughly one draw in ten exceeds $\Ang{170}$. Since SigmaFlow's rotational
+source is exactly Haar, a tenth of all training pairs begin near the cut locus,
+and the numerical treatment of \eqref{eq:so3-log} there is a correctness
+requirement rather than a refinement.
+
+\subsection{Body frame or spatial frame, fixed explicitly}
+\label{sec:trivialisation}
+
+Because $\SOthree$ is a group, a tangent vector at $\Rot$ may be transported to
+the identity in two inequivalent ways, and the resulting conventions are easy
+to conflate. Writing a curve's velocity as
+\begin{equation}
+  \dot{\Rot} = \Rot\,\skewm{\Omega}
+  \;\Longleftrightarrow\;
+  \skewm{\Omega} = \Rot^\top \dot{\Rot}
+  \qquad \text{(body frame)}
+  \label{eq:body-frame}
+\end{equation}
+differs from
+\begin{equation}
+  \dot{\Rot} = \skewm{w}\,\Rot
+  \;\Longleftrightarrow\;
+  \skewm{w} = \dot{\Rot}\,\Rot^\top
+  \qquad \text{(spatial frame)},
+  \label{eq:spatial-frame}
+\end{equation}
+and the two are related by the adjoint action,
+\begin{equation}
+  \skewm{\Omega} \;=\; \Rot^\top \skewm{w}\,\Rot
+  \;=\; \Ad_{\Rot^{-1}}\skewm{w} .
+  \label{eq:adjoint}
+\end{equation}
+This thesis uses the body-frame convention \eqref{eq:body-frame} throughout,
+following \citet{marsden1999introduction}. Every rotational velocity, every
+target and every network output is a body-frame quantity, and the integrator
+correspondingly right-multiplies by the exponential.
+
+Fixing this explicitly is necessary rather than pedantic, for a reason that is
+visible in the baseline itself. The inherited rotational increment
+$\skewm{\omega}_F$ of \eqref{eq:updates} is built from torques computed in the
+global frame, so it is a spatial-frame quantity, and SigmaDock consumes it
+consistently by left-multiplying in \eqref{eq:rot-denoised}. A body-frame
+formulation cannot use it unconverted. Section~\ref{sec:sf-readout} states the
+conversion that SigmaFlow applies.
+
+\section{The SigmaFlow probability path and objective}
+\label{sec:sigmaflow-objective}
+
+Specialising \eqref{eq:geodesic-interp} and \eqref{eq:riem-target} to the two
+factors of $\Mfd$ gives the construction implemented in SigmaFlow. The source
+is the same distribution that SigmaDock's forward process converges to in
+\eqref{eq:stationary}, namely an isotropic Gaussian on each translational
+factor in pocket-centred coordinates and the Haar measure on each rotational
+factor, so the two mechanisms start their sampling from the same law.
+
+On each translational factor, with $x_0 \sim \mathcal{N}(0,I_3)$,
+\begin{equation}
+  x_t = (1-t)x_0 + t\,x_1,
+  \qquad
+  \vfield_t^{\mathrm{trans}} = x_1 - x_0 \;=\; \frac{x_1 - x_t}{1-t}.
+  \label{eq:sf-trans}
+\end{equation}
+On each rotational factor, with $\Rot_0 \sim \Haar$,
+\begin{equation}
+  \Rot_t \;=\; \Rot_0\, \Exp\!\bigl(t\, \Log(\Rot_0^\top \Rot_1)\bigr),
+  \qquad
+  \vfield_t^{\mathrm{rot}} \;=\; \Log(\Rot_0^\top\Rot_1)
+  \;=\; \frac{\Log(\Rot_t^\top \Rot_1)}{1-t}.
+  \label{eq:sf-rot}
+\end{equation}
+In both cases the two expressions for the target agree. The right-hand forms,
+which involve the current state, express the target as the remaining distance
+divided by the remaining time and are singular at $t=1$; the left-hand forms,
+which involve only the endpoints, are constant along each conditional
+trajectory and are not singular. The implementation uses the endpoint forms
+for exactly that reason, and the equivalent state-dependent forms are retained
+for diagnostics.
+
+The product structure of $\Mfd$ makes the extension to $N$ fragments
+immediate. On a Riemannian product the metric is the direct sum of the factor
+metrics, geodesics are products of factor geodesics, and $\Exp$ and $\Log$ act
+componentwise, so a path constructed independently on each factor is a
+legitimate path on $\Mfd$ and the conditional field is the concatenation of the
+factor fields. The objective is therefore a weighted sum of the two factor-wise
+losses,
+\begin{equation}
+  \Loss(\theta) \;=\;
+  \E_{t\sim\mathcal{U}[0,1]}\Bigl[
+    \lambda_{\mathrm{trans}}\bigl\|\pred^{\mathrm{trans}}
+      - \vfield_t^{\mathrm{trans}}\bigr\|^{2}
+    + \lambda_{\mathrm{rot}}\bigl\|\pred^{\mathrm{rot}}
+      - \vfield_t^{\mathrm{rot}}\bigr\|_F^{2}\Bigr],
+  \label{eq:sf-objective}
+\end{equation}
+with the rotational term measured in the Frobenius norm on $\sothree$ and the
+weights inherited unchanged from SigmaDock's production configuration.
+Sampling integrates the learned field by explicit Euler, using the exponential
+map as the retraction on the rotational factor,
+\begin{equation}
+  x^{(k+1)} = x^{(k)} + \pred^{\mathrm{trans}}\Delta t,
+  \qquad
+  \Rot^{(k+1)} = \Rot^{(k)}\Exp\!\bigl(\pred^{\mathrm{rot}}\Delta t\bigr).
+  \label{eq:euler}
+\end{equation}
+The right-multiplication in \eqref{eq:euler} is the concrete expression of the
+body-frame convention fixed in Section~\ref{sec:trivialisation}.
+
+\figplaceholder{fig:paths}
+{Conditional probability paths on the two factors of $\Mfd$, with the
+conditional target drawn at three times.}
+{Two panels.
+\textbf{Left:} $\R^3$ drawn as $\R^2$. A source sample $x_0$ from a Gaussian
+centred at the pocket origin, the data point $x_1$, the straight interpolant,
+and the constant target $x_1-x_0$ drawn as equal arrows at
+$t = 0.2, 0.5, 0.8$.
+\textbf{Right:} $\SOthree$ drawn as a schematic curved surface. $\Rot_0$
+sampled Haar-uniformly, $\Rot_1$ the crystal orientation, the geodesic between
+them, and the body-frame target drawn at the same three times, with identical
+length at every $t$. The visual point is that neither set of arrows shrinks as
+$t \to 1$, which is what distinguishes the endpoint parameterisation from the
+state-dependent one. Replaces roughly $250$ words.}
+
+\section{The source distribution as a modelling choice}
+\label{sec:source-theory}
+
+One consequence of the freedom granted by Theorem~\ref{thm:cfm} deserves
+emphasis, because Section~\ref{sec:future-source} returns to it. Under
+diffusion the source is not chosen. It is whatever the forward noising process
+converges to, which is \eqref{eq:stationary}. Under flow matching the only
+requirements on $p_0$ are that it be tractable to sample and that the
+conditional path connect it to $p_1$. Any such $p_0$ is admissible, including
+one that depends on the conditioning context $\ctx$.
+
+This is a genuinely flow-specific degree of freedom, and it is not merely a
+convenience, because the difficulty of the learning problem depends on how much
+the source already knows. SigmaFlow's translational source is centred on the
+binding pocket and is therefore informative, in the sense that its mean is the
+right order of magnitude from the answer. Its rotational source is Haar and
+carries no orientational information whatsoever, and indeed the Haar measure
+has no mean to centre. Section~\ref{sec:future-source} reports a measurement of
+that asymmetry and a negative result on one attempt to remove it.
+
+% ===========================================================================
+\chapter{SigmaFlow-Minimal: The Minimal Conversion}
+\label{ch:minimal}
+
+\section{Design principle and what actually changed}
+\label{sec:minimal-change}
+
+The comparison is only interpretable if the substitution is confined to the
+generative mechanism. This was treated as a constraint on the implementation
+rather than as an aspiration, and the resulting partition is given in
+Table~\ref{tab:minimal-change}.
+
+\begin{table}[htbp]
+\centering
+\caption{Partition of the system under the minimal-change constraint.
+Components marked identical were verified by file hash over the relevant
+source trees.}
+\label{tab:minimal-change}
+\small
+\begin{tabular}{@{}p{0.30\textwidth} p{0.16\textwidth} p{0.46\textwidth}@{}}
+\toprule
+\textbf{Component} & \textbf{Status} & \textbf{Note} \\
+\midrule
+EquiformerV2 backbone            & identical & all backbone source files hash-identical between arms \\
+Featurisation, graph construction & identical & inherited \\
+Data pipeline, fragmentation      & identical & same conformers, same splits \\
+Output block ($\ell=1$ head)      & identical & one field $f_i$, Eq.~\eqref{eq:force-field} \\
+Newton-Euler reduction            & identical & Eqs.~\eqref{eq:newton-euler}--\eqref{eq:updates} \\
+Optimiser and schedule            & identical & AdamW \citep{loshchilov2019adamw}, same cosine schedule \\
+Loss weights                      & identical & SigmaDock production values \\
+\midrule
+Forward noising process           & \textbf{removed} & replaced by an explicit probability path \\
+Score rescaling by $\lambda(t)$   & \textbf{removed} & the scalar apparatus converting scores to displacements is deleted, not modified \\
+Probability path                  & \textbf{new} & Eqs.~\eqref{eq:sf-trans}--\eqref{eq:sf-rot} \\
+Training target                   & \textbf{new} & conditional velocity in place of score \\
+Frame conversion                  & \textbf{new} & Eq.~\eqref{eq:frame-conversion} \\
+Sampler                           & \textbf{new} & deterministic Euler, Eq.~\eqref{eq:euler} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Two residual confounders should be recorded rather than glossed. The two arms
+run in separate software environments with different interpreter versions, and
+the SigmaDock arm is invoked with its own rotational-score configuration flags,
+which have no counterpart in a flow-matching model. Neither touches the
+backbone, but neither is strictly nothing.
+
+\section{The vector field readout}
+\label{sec:sf-readout}
+
+The network output and its Newton-Euler reduction are inherited exactly, so the
+per-fragment increments $\Delta T_F$ and $\skewm{\omega}_F$ of
+\eqref{eq:updates} are available unchanged. What differs is their
+interpretation. SigmaFlow reads them as a velocity, which requires no
+time-dependent rescaling, so the translational prediction is
+\begin{equation}
+  \pred^{\mathrm{trans}} \;=\; \Delta T_F
+  \;=\; \frac{1}{|F|}\sum_{i \in F} f_i .
+  \label{eq:sf-trans-pred}
+\end{equation}
+
+The rotational prediction requires one further step, which is the only piece of
+new mathematics in the minimal conversion. As noted in
+Section~\ref{sec:trivialisation}, $\skewm{\omega}_F$ is a spatial-frame
+quantity, whereas the target \eqref{eq:sf-rot} and the integrator
+\eqref{eq:euler} are both body-frame. Requiring the two descriptions of the
+same infinitesimal motion to agree,
+\begin{equation}
+  \Rot_t \Exp\!\bigl(\skewm{\Omega}\,\Delta t\bigr)
+  \;=\; \Exp\!\bigl(\skewm{w}\,\Delta t\bigr) \Rot_t ,
+\end{equation}
+gives the adjoint transport of \eqref{eq:adjoint}, so the predicted rotational
+velocity is
+\begin{equation}
+  \pred^{\mathrm{rot}}
+  \;=\; \Rot_t^{\top}\, \skewm{\omega}_F\, \Rot_t .
+  \label{eq:frame-conversion}
+\end{equation}
+Conjugating a skew-symmetric matrix by a rotation preserves skew-symmetry, so
+$\pred^{\mathrm{rot}}$ remains a valid element of $\sothree$ and every
+downstream shape is unchanged.
+
+This conversion is required by the construction rather than by any particular
+readout. The target $\Log(\Rot_t^\top \Rot_1)$ is \emph{invariant} under a
+global rotation $Q$, since $(Q\Rot_t)^\top(Q\Rot_1) = \Rot_t^\top\Rot_1$,
+whereas any equivariant network output transforms covariantly. The conjugation
+is what reconciles the two, and it would be needed for any equivariant
+rotational readout, not only for the Newton-Euler one. The translational
+channel needs no counterpart, because $\Delta T_F$ and
+$\vfield^{\mathrm{trans}}_t$ are both expressed in the world frame.
+
+\section{Deterministic integration}
+\label{sec:integration}
+
+Sampling integrates \eqref{eq:euler} from $t=0$ to $t=1$ over a fixed number of
+steps. On the translational factor this is ordinary explicit Euler. On the
+rotational factor the update is a retraction, meaning the step is taken along
+the manifold rather than in an ambient space followed by a projection, and
+because $\Exp$ maps into $\SOthree$ exactly, every iterate is a rotation matrix
+by construction and no re-orthogonalisation is required.
+
+Three properties distinguish this from the reverse-time stochastic differential
+equation it replaces. Sampling is deterministic, so the generated pose is a
+function of the source draw alone and the diversity of a $K$-sample set is
+inherited entirely from $p_0$. The sampler has no temperature or noise scale to
+tune. And the number of network evaluations equals the number of steps and is a
+free parameter at inference, decoupled from anything fixed at training time.
+Because the conditional paths are straight in $\R^3$ and geodesic on
+$\SOthree$, the marginal field they induce is expected to be nearly straight,
+so few Euler steps should suffice. That is a prediction of the construction
+rather than a hope, and Section~\ref{sec:minimal-nfe} tests it. The step count
+inherited from SigmaDock is $25$, a value tuned there for a stochastic reverse
+process, and there is no reason for that number to transfer.
+
+\section{Results}
+\label{sec:minimal-results}
+
+\begin{reserved}{SigmaFlow-Minimal against SigmaDock at matched budget}
+\textbf{Experiment.} The $72$\,h matched pair, SigmaFlow-Minimal against
+SigmaDock, identical data, identical wall-clock allocation on identical
+hardware, identical batch size, optimiser and annealing schedule. Sampling with
+$K=10$ independent seeds per complex over the $209$ evaluation complexes.\\
+\textbf{Metrics.} Top-1 and oracle-at-$K$ rates under \eqref{eq:success}, the
+RMSD distribution, PoseBusters validity, RMSD after rigid superposition and
+centroid displacement.\\
+\textbf{Question answered.} Whether replacing score-based diffusion by
+Riemannian flow matching changes docking accuracy at matched compute, and in
+which direction.\\
+\textbf{Dependence.} If the two arms are within sampling error, the thesis
+reports a null result on the mechanism and the interest shifts to the
+inference-time properties in Sections~\ref{sec:minimal-nfe} and
+\ref{sec:minimal-seeds}. If they differ, the diagnostic quantities in
+Section~\ref{sec:minimal-rotation} are the first place to look for the reason.
+\end{reserved}
+
+\figplaceholder{fig:minimal-curves}
+{Evolution of the pose-level metrics over training for SigmaFlow-Minimal and
+SigmaDock at matched budget.}
+{Three stacked panels sharing an $x$ axis in optimisation steps, with a second
+axis in wall-clock hours. Panel 1: median RMSD. Panel 2: fraction with
+RMSD $<2$\,\AA. Panel 3: fraction PoseBusters-valid, and the conjunction
+\eqref{eq:success} as a separate line. Two colours, one per arm, with bootstrap
+bands over complexes. Snapshots from a single annealing schedule are drawn as
+curves; separately annealed endpoints are drawn as isolated markers and are
+never joined to the curves, because a mid-anneal snapshot is not the model one
+would obtain by training to that budget with its own schedule.}
+
+\figplaceholder{fig:minimal-pymol}
+{Generated fragment trajectories for SigmaFlow-Minimal on representative
+complexes, rendered in PyMOL.}
+{A grid of panels, one per selected complex, chosen to span the fragment-count
+range of Figure~\ref{fig:fragment-histogram}, for instance one ligand each with
+$N = 1$, $3$, $5$ and $8$. In each panel show the protein pocket surface in
+light grey, the crystallographic pose in a saturated reference colour, and the
+generated pose. Overlay the integration trajectory by drawing the fragment
+centroids at every integration step as a fading trace, with each fragment in
+its own colour so that the reader can see whether fragments move coherently or
+independently. State the number of integration steps in the caption. The point
+of the figure is qualitative, namely whether failures look like a
+mis-positioned but coherent ligand or like a set of fragments that never
+assembled.}
+
+\subsection{Number of function evaluations}
+\label{sec:minimal-nfe}
+
+\begin{reserved}{Accuracy against integration steps}
+\textbf{Experiment.} Sample the same trained checkpoint with
+$\{1, 5, 10, 25, 50, 100\}$ Euler steps, fixed seeds, everything else held
+constant.\\
+\textbf{Metrics.} The criteria of \eqref{eq:success} against step count,
+together with wall-clock time per pose.\\
+\textbf{Question answered.} Whether the near-straight conditional paths
+predicted in Section~\ref{sec:integration} translate into accurate sampling at
+low step counts, and where the accuracy-cost curve saturates.\\
+\textbf{Dependence.} A curve that saturates well below $25$ steps is a concrete
+inference-time advantage of the flow formulation and belongs in the abstract. A
+curve that does not saturate until far above $25$ would falsify the
+straightness argument and require explanation.\\
+\textbf{Caveat already established.} Wall-clock timings from the preliminary
+sweep are not usable, because they show a spurious minimum at intermediate step
+counts that is the signature of a cold filesystem cache on the first array
+task. The step-count axis itself is unaffected.
+\end{reserved}
+
+\figplaceholder{fig:minimal-nfe}
+{Docking accuracy as a function of the number of integration steps.}
+{Accuracy on the $y$ axis, number of Euler steps on a logarithmic $x$ axis,
+with one line per metric in \eqref{eq:success} and a bootstrap band. Mark the
+inherited default of $25$ steps with a vertical rule. If a second axis is used
+for wall-clock cost per pose, take it from a clean timing run rather than from
+the preliminary sweep.}
+
+\subsection{Number of samples}
+\label{sec:minimal-seeds}
+
+\begin{reserved}{Accuracy against the number of independent samples}
+\textbf{Experiment.} For $K \in \{1,\ldots,10\}$, report both the oracle rate
+over $K$ draws and the Top-1 rate after the inherited ranking heuristic.\\
+\textbf{Metrics.} Oracle-at-$K$ and Top-1 under \eqref{eq:success}, and the
+ratio between them.\\
+\textbf{Question answered.} How much of the attainable accuracy is lost in
+ranking rather than in generation, which is the quantity
+Chapter~\ref{ch:confidence} sets out to recover.\\
+\textbf{Pre-registered.} The ratio of oracle-at-$10$ to oracle-at-$1$ was fixed
+as a reported quantity before the long runs, together with the interpretation
+of each outcome, and is not to be reinterpreted afterwards. On the preliminary
+$12$\,h pair the ratio was $6.8$ for SigmaFlow and $4.4$ for SigmaDock.
+\end{reserved}
+
+\figplaceholder{fig:minimal-seeds}
+{Oracle and Top-1 accuracy as a function of the number of independent samples.}
+{Two lines per arm, oracle-at-$K$ and Top-1 after ranking, with $K$ on the $x$
+axis. Shade the region between them, since that area is precisely the accuracy
+that a better ranker could recover and is the motivation for
+Chapter~\ref{ch:confidence}.}
+
+\subsection{The rotational channel}
+\label{sec:minimal-rotation}
+
+The diagnostic quantity of most interest is the per-fragment rotational error
+against the null of \eqref{eq:haar-null}, because it separates a model that
+places fragments correctly but orients them poorly from one that fails at
+both.
+
+\begin{reserved}{Rotational error against the Haar null}
+\textbf{Experiment.} Per-fragment geodesic angle between the generated and the
+crystallographic fragment orientation, aggregated over the evaluation set, for
+both arms and at several points along training.\\
+\textbf{Metrics.} Median and mean geodesic angle against the null values
+$\Ang{132.3}$ and $\Ang{126.5}$, reported with bootstrap intervals over
+complexes.\\
+\textbf{Question answered.} Whether the rotational channel carries signal at
+this budget, and whether any deficit narrows as training proceeds.\\
+\textbf{Deliberately not developed further here.} On the preliminary $6$\,h run
+the absolute rotational error did not fall below the null, but it is not yet
+known whether that persists under longer training. This subsection therefore
+reports the measurement and stops. Any mechanistic account would be premature,
+and if the deficit does persist at full budget it belongs in
+Section~\ref{sec:discussion-open} as an open question rather than as a claim.
+\end{reserved}
+
+% ===========================================================================
+\chapter{SigmaFlow-Separate: Translation and Rotation Specific Heads}
+\label{ch:separate}
+
+\section{Motivation}
+
+The minimal conversion inherits a readout in which one per-atom field serves
+both channels. As established in Section~\ref{sec:backbone}, translation reads
+the zeroth spatial moment of $f$ over a fragment and rotation reads its first
+moment about the fragment centre, and the centring identity
+$\sum_{i\in F}(r_i - c_F) = 0$ means that these two moments are not merely
+different summaries but pick out orthogonal spatial modes. A spatially constant
+component of the field is invisible to the rotational channel, and a
+zero-sum spatially varying pattern is invisible to the translational one.
+
+Under diffusion this coupling is mitigated by the fact that the two channels
+are rescaled independently by their respective noise schedules, so the
+effective gain on each is set separately at every noise level. Under flow
+matching that apparatus is deleted, as recorded in
+Table~\ref{tab:minimal-change}, and the two channels read a single unscaled
+field. Whether the single field can serve both is then an empirical question,
+and it is the question this chapter isolates.
+
+A second, narrower motivation concerns conditioning. The rotational path passes
+through $I_F^{-1}$, and the inertia tensor of a fragment consisting of two
+atoms is that of a line, which is singular in the direction of the bond. The
+implementation regularises the eigenvalues before inversion, but the
+regularised tensor of a two-atom fragment still has a condition number of order
+$10^{8}$, so the rotational channel is numerically delicate for exactly those
+fragments that the fragmentation scheme produces most readily. A readout that
+does not invert an inertia tensor avoids the issue entirely.
+
+\begin{remark}
+An earlier version of this argument appealed to single-atom fragments, for
+which the torque vanishes identically. That argument does not apply, because
+the baseline asserts a minimum fragment size of two atoms and single-atom
+fragments therefore never arise. The two-atom case above is the one that
+survives scrutiny.
+\end{remark}
+
+\section{Construction}
+
+The variant replaces the single output block by two blocks of identical
+configuration on a shared trunk, so that the backbone up to the final
+attention block is untouched and only the readout is duplicated. Each block
+emits its own $\ell=1$ field per atom,
+\begin{equation}
+  f_i^{T} \in \R^3, \qquad f_i^{R} \in \R^3 .
+\end{equation}
+The Newton-Euler reduction is then removed from the active path and replaced by
+mean pooling over the atoms of each fragment,
+\begin{equation}
+  \pred^{\mathrm{trans}} \;=\; \frac{1}{|F|}\sum_{i\in F} f_i^{T},
+  \qquad
+  \bar{w}_F \;=\; \frac{1}{|F|}\sum_{i\in F} f_i^{R},
+  \qquad
+  \pred^{\mathrm{rot}} \;=\; \Rot_t^{\top}\,\skewm{\bar{w}_F}\,\Rot_t .
+  \label{eq:separate-readout}
+\end{equation}
+The translational expression is unchanged in form, since uniform masses already
+made \eqref{eq:sf-trans-pred} a mean. The rotational expression differs
+substantively, since the torque and the inverse inertia are gone and the
+network is asked to emit an angular velocity directly. The frame conversion of
+\eqref{eq:frame-conversion} is retained without modification, for the reason
+given in Section~\ref{sec:sf-readout}, namely that it is required by the
+invariance of the target rather than by the particular readout.
+
+Mean pooling rather than summation is deliberate. A sum makes the predicted
+velocity scale with fragment size, which over a benchmark whose fragments range
+from two atoms to several dozen would impose an uncontrolled size-dependent
+gain on the loss. A mean is size-invariant.
+
+The cost is one additional attention block. Measured on the production
+configuration the model has $16{,}899{,}826$ parameters against
+$14{,}979{,}377$ for the single-head model, of which $1{,}920{,}449$ belong to
+each of the two identically configured heads, an increase of $12.82\%$.
+Everything else, including the data pipeline, the fragmentation, the optimiser,
+the schedule, the loss weights, the source distribution and the sampler, is
+byte-identical to SigmaFlow-Minimal.
+
+The construction has one structural property worth recording, because it is not
+available in the single-head model and it is what the variant is for. With two
+heads the translational loss reaches the rotational block with a gradient that
+is exactly zero and the rotational loss reaches the translational block with a
+gradient that is exactly zero, while both losses reach the shared trunk. The
+two channels are therefore structurally decoupled at the readout and coupled
+only through the representation. In the single-head model no such statement is
+possible, since both losses share one output.
+
+\section{Results}
+
+\begin{reserved}{SigmaFlow-Separate against SigmaFlow-Minimal}
+\textbf{Experiment.} A run at wall-clock budget matched to the corresponding
+SigmaFlow-Minimal run, identical in every other respect. Compute rather than
+step count is the matched quantity, so the larger model completes fewer
+optimisation steps within the same allocation, and the achieved step count is
+reported alongside every comparison.\\
+\textbf{Metrics.} The pose-level criteria of \eqref{eq:success}, the
+translational and rotational validation losses reported separately, and the
+per-fragment rotational error against the null of \eqref{eq:haar-null}.\\
+\textbf{Question answered.} Whether the shared readout was a binding constraint
+on the rotational channel, or whether the deficit lies elsewhere.\\
+\textbf{Dependence.} An improvement concentrated in the rotational channel
+supports the moment-competition account of Section~\ref{sec:backbone}. An
+improvement in neither channel, or one attributable purely to the extra
+capacity, argues that the readout was not the limiting factor and redirects
+attention to the source distribution of Section~\ref{sec:future-source}.\\
+\textbf{Control for capacity.} The variant adds parameters as well as
+separating the channels, so an unambiguous attribution would require a
+capacity-matched control with a widened single head. That control is recorded
+here as a limitation rather than run.
+\end{reserved}
+
+\figplaceholder{fig:separate-curves}
+{Metric evolution over training for SigmaFlow-Separate against
+SigmaFlow-Minimal at matched compute.}
+{Same three-panel layout as Figure~\ref{fig:minimal-curves}, with the two
+SigmaFlow variants as the two series and SigmaDock retained as a faint
+reference line. Because the budget is matched in compute rather than in steps,
+plot against wall-clock hours as the primary axis and mark the achieved step
+count of each arm at its endpoint.}
+
+\figplaceholder{fig:separate-pymol}
+{Generated fragment trajectories for SigmaFlow-Separate on the same complexes
+as Figure~\ref{fig:minimal-pymol}.}
+{Identical rendering protocol, camera and colour scheme to
+Figure~\ref{fig:minimal-pymol}, on the same complexes, so that the two figures
+can be compared panel by panel. Any difference in orientation behaviour should
+be visible without consulting the numbers.}
+
+\figplaceholder{fig:separate-nfe-seeds}
+{Integration steps and sample count for SigmaFlow-Separate.}
+{Two panels reproducing the protocols of Figures~\ref{fig:minimal-nfe} and
+\ref{fig:minimal-seeds} for this variant, so that the inference-time
+characterisation is available for every model in the thesis rather than for the
+baseline alone.}
+
+% ===========================================================================
+\chapter{SigmaFlow-Confidence: An Integrated Confidence Model}
+\label{ch:confidence}
+
+\section{Why ranking is a separate problem}
+
+Every generative docking method samples repeatedly and must then choose. The
+quantity reported as accuracy therefore depends on a ranker as much as on a
+generator, and the two can fail independently. Section~\ref{sec:minimal-seeds}
+measures the size of that gap directly, and on the preliminary pair it was
+large, with the oracle rate over ten samples exceeding the single-sample rate
+by a factor of $6.8$ for SigmaFlow and $4.4$ for SigmaDock. A ranker that
+recovered even part of that difference would be worth more than a
+correspondingly sized improvement in the generator.
+
+The two systems this thesis builds on resolve the problem differently.
+DiffDock \citep{corso2023diffdock} trains a separate \emph{confidence model}.
+The generative model is first trained and then frozen, and is used to sample
+poses for the training complexes. Each sampled pose is labelled by whether its
+RMSD to the crystallographic pose falls below the success threshold, and a
+second, smaller equivariant network is trained on those labelled samples as a
+binary classifier. At inference the generator produces $K$ poses and the
+confidence model ranks them. The essential point, and the reason the confidence
+model is not simply trained on crystal poses, is that the distribution it must
+discriminate over is the generator's own output distribution, which is not the
+data distribution. A classifier trained on crystallographic poses against
+arbitrary decoys would be solving a different problem from the one it faces at
+inference.
+
+SigmaDock deliberately declines this. It reports that the reliability of its
+samples makes a learned filter unnecessary and ranks instead by a fixed
+heuristic combining a Vinardo pseudo binding energy
+\citep{quiroga2016vinardo} with a set of physicochemical checks
+\citep{prat2026sigmadock}. Its ablations show that the heuristic is doing real
+work rather than being a formality, since removing the energy term or the
+physicochemical checks each cost several points of Top-1 accuracy.
+
+This leaves an open question that the present setting is well placed to
+examine. SigmaDock's argument for the heuristic rests on the quality of its
+samples at full training budget. At the budgets available here the samples are
+considerably worse, and the oracle-to-Top-1 gap is correspondingly larger, so
+the regime in which a learned confidence model helps is precisely the regime
+this thesis operates in.
+
+\section{Construction}
+
+The variant follows DiffDock's protocol, adapted to the fragment
+representation and reusing the inherited backbone so that the addition remains
+a controlled one.
+
+\begin{enumerate}[leftmargin=*,itemsep=3pt]
+\item Train SigmaFlow to convergence under the budget and freeze it.
+\item For each training complex, sample $K$ poses from the frozen generator
+      using the deterministic sampler of \eqref{eq:euler} with independent
+      source draws, so that the sampled distribution is exactly the one seen at
+      inference.
+\item Label each pose by the criterion of \eqref{eq:success}, giving a binary
+      target per pose.
+\item Train a confidence head $d_\psi(x,\ctx) \in \R$ on these labelled samples
+      with the binary cross-entropy objective
+      \begin{equation}
+        \Loss_{\mathrm{conf}}(\psi)
+        = -\E\bigl[\, y \log \varsigma(d_\psi) + (1-y)\log(1-\varsigma(d_\psi))\,\bigr],
+        \label{eq:conf-loss}
+      \end{equation}
+      where $\varsigma$ is the logistic function and $y$ the label. The head
+      reads the same equivariant features as the generator but pools to a
+      single invariant scalar, since a confidence score must be invariant
+      rather than equivariant.
+\item At inference, sample $K$ poses and return the one maximising $d_\psi$.
+\end{enumerate}
+
+Two design points require care and are recorded as such. The labels are highly
+imbalanced at low training budgets, because most sampled poses fail, so the
+positive rate must be reported and the objective weighted or the sampling
+stratified accordingly. And the confidence model must be trained on samples
+from complexes in the training split only, since sampling from evaluation
+complexes to train the ranker would leak the answer into the reported metric.
+
+\section{Results}
+
+\begin{reserved}{Learned ranking against the inherited heuristic}
+\textbf{Experiment.} With the generator fixed, compare three rankers on the
+same set of $K$ generated poses per complex, namely the inherited
+energy-plus-checks heuristic, the learned confidence model, and the oracle.\\
+\textbf{Metrics.} Top-1 under \eqref{eq:success} for each ranker, the fraction
+of the oracle-to-heuristic gap that the learned model recovers, and the
+calibration of $\varsigma(d_\psi)$ against the empirical success rate.\\
+\textbf{Question answered.} Whether a learned confidence model is worth its
+training cost at this budget, and whether SigmaDock's decision to omit one is
+budget-dependent.\\
+\textbf{Dependence.} Because the generator is held fixed, this comparison is
+clean regardless of how the generative comparison in
+Chapter~\ref{ch:minimal} turns out, and it remains reportable even if the
+matched-budget result there is null.
+\end{reserved}
+
+\figplaceholder{fig:confidence-ranking}
+{Top-1 accuracy under three rankers, against the number of generated samples.}
+{Three lines against $K$, namely the inherited heuristic, the learned
+confidence model, and the oracle, all on the same generated pose sets so that
+the generator is held fixed. Shade the region recovered by the learned model as
+a fraction of the region between heuristic and oracle, since that fraction is
+the headline quantity of the chapter.}
+
+\figplaceholder{fig:confidence-calibration}
+{Calibration of the learned confidence score.}
+{A reliability diagram with predicted confidence on the $x$ axis, binned, and
+the empirical fraction of poses satisfying \eqref{eq:success} on the $y$ axis,
+with the diagonal drawn. Include a histogram of predicted confidences beneath,
+since calibration in a sparsely populated bin is not informative. Report the
+positive rate of the training labels in the caption, because the imbalance
+noted above determines how this figure should be read.}
+
+\figplaceholder{fig:confidence-pymol}
+{Poses selected by the heuristic and by the learned confidence model on
+complexes where the two disagree.}
+{Paired panels for a handful of complexes on which the two rankers select
+different poses. Show the crystallographic pose, the heuristic's choice and the
+confidence model's choice in three distinguishable colours, with the RMSD of
+each annotated. Choose examples in both directions, that is, cases where the
+learned model wins and cases where it loses, rather than only favourable ones.}
+
+% ===========================================================================
+\chapter{Discussion}
+\label{ch:discussion}
+
+\section{What the comparison establishes}
+
+\begin{reserved}{Synthesis across the three variants}
+To be written once Chapters~\ref{ch:minimal}, \ref{ch:separate} and
+\ref{ch:confidence} carry their results. The section should state, in order,
+what the matched-budget comparison shows about the generative mechanism, what
+the separated readout adds, and how much of the remaining gap is attributable
+to ranking rather than to generation. It should also state plainly which of the
+three questions the available compute was not sufficient to answer.
+\end{reserved}
+
+\section{Limitations}
+
+Several limitations constrain what can be claimed, and they are stated here
+rather than distributed through the results.
+
+The compute budget is the binding one. SigmaDock's published results were
+obtained with $256$ epochs of training, whereas the runs reported here reach a
+small fraction of that. Absolute accuracies are correspondingly far below the
+literature for every arm, including the reproduced baseline, and no benchmark
+claim is made. What the design supports is a comparison between mechanisms at
+equal cost, and the reader should resist reading any absolute number here
+against a published one.
+
+The evaluation set differs from the published one, and the difference is not
+fully characterised. Section~\ref{sec:evaluation-set} records what is known,
+namely that the copy of the benchmark available to this project contains $209$
+complexes rather than the $308$ the paper evaluates, and that the reduction was
+not reconstructible. Whether the $209$ are a subset of the published $308$ has
+not been established. Every absolute number in this thesis should therefore be
+read as pertaining to this particular $209$-complex set, and the internal
+matched comparison, which uses the same set for every arm, is unaffected.
+
+The comparison in Chapter~\ref{ch:separate} matches compute rather than
+optimisation steps, which is the correct control for a question about
+mechanisms at fixed cost but means the larger model takes fewer steps. The
+achieved step count is therefore reported alongside every such comparison.
+Further, that variant adds capacity at the same time as it separates the
+channels, and the capacity-matched control was not run.
+
+Snapshots taken during a single annealing schedule are not equivalent to
+separately annealed shorter runs, because a mid-schedule snapshot sits at a
+learning rate far above its terminal value. Training trajectories are therefore
+plotted as curves under a fixed shared schedule, separately annealed endpoints
+are plotted as isolated markers, and the two are never joined. No claim of the
+form ``performance scales with compute as $\ldots$'' is made, since
+establishing that would require a fully annealed run per budget.
+
+Finally, one residual environmental confounder remains between the two arms,
+since they run under different interpreters and the baseline is invoked with
+configuration flags that have no flow-matching counterpart. Neither touches the
+backbone, and both are recorded rather than corrected.
+
+\section{Open questions}
+\label{sec:discussion-open}
+
+\begin{reserved}{Open questions arising from the results}
+To be written with the results. The rotational channel of
+Section~\ref{sec:minimal-rotation} is the natural candidate, provided the
+measurement at full budget supports raising it. If the deficit against the Haar
+null has closed by then, this section should say so and the question is
+retired.
+\end{reserved}
+
+\section{Future work}
+
+\subsection{Informative source distributions}
+\label{sec:future-source}
+
+Section~\ref{sec:source-theory} established that the source distribution is a
+free modelling choice under flow matching and a fixed consequence of the
+forward process under diffusion. This is the most distinctively flow-specific
+degree of freedom available, and it is unexploited in the present work, since
+SigmaFlow inherits \eqref{eq:stationary} unchanged.
+
+The asymmetry between the two factors is what makes the idea attractive and can
+be quantified. On the translational factor the source is already informative,
+because pocket-centred coordinates place its mean near the answer. Measured
+over the evaluation set, the median normalised distance from a standard normal
+draw to the true fragment centre is $2.1$, against $1.5$ for a draw centred on
+the pocket centre. On the rotational factor there is no counterpart, because
+the Haar measure has no mean and the median geodesic distance from a Haar draw
+to the true orientation is $\Ang{131.3}$, essentially the null of
+\eqref{eq:haar-null}.
+
+A natural conjecture is that a context-dependent rotational source
+$p_0(\cdot\mid\ctx)$ concentrated near plausible orientations would shorten the
+transport paths and simplify the learning problem. One family of such
+heuristics was tested and \emph{failed}, and the result is reported here
+because a negative result obtained under a pre-registered gate is worth more
+than an untested conjecture. Aligning the principal axes of the fragment
+conformer with those of the pocket gave a median geodesic distance of
+$\Ang{138.1}$, which is $\Ang{6.7}$ \emph{worse} than the uninformed Haar
+source. A control that placed $\Rot_0$ at the identity gave $\Ang{130.7}$, and
+a leakage control in which the heuristic was allowed to see the
+crystallographic geometry still gave only $\Ang{135.4}$, so the ceiling of this
+family lies below the uninformed source. The measurement itself is sound, since
+the Haar arm reproduced the analytic null of \eqref{eq:haar-null} to within
+about one degree.
+
+The scope of that conclusion should be stated narrowly. One heuristic family
+was tested, so what is established is that principal-axis conditioning does not
+help, not that no informative rotational source can help. Directions that
+remain open include mixtures on $\SOthree$ that hedge the axis ambiguity
+inherent in aligning near-symmetric fragments, sources that couple the
+fragments rather than treating them independently, and a source learned jointly
+with the flow, the last of which would require care to remain leakage-free
+since a learned source has the capacity to memorise the answer.
+
+\subsection{Likelihood-based pose confidence}
+\label{sec:future-likelihood}
+
+Chapter~\ref{ch:confidence} obtains a confidence score by training a
+classifier. The flow formulation offers a second route that the diffusion
+formulation does not offer as directly, namely reading a likelihood off the
+generative process itself.
+
+Because sampling integrates a deterministic ordinary differential equation, the
+model is a continuous normalising flow \citep{chen2018neural}, and the density
+of a generated point follows from the instantaneous change of variables. On
+$\R^{d}$,
+\begin{equation}
+  \log p_1(x_1) \;=\; \log p_0(x_0)
+    \;-\; \int_0^1 \divg \pred(t, x_t)\, \dif t ,
+  \label{eq:cnf-likelihood}
+\end{equation}
+where $x_t$ solves \eqref{eq:flow-ode}. The same statement holds on a
+Riemannian manifold with the divergence taken with respect to the Riemannian
+volume form \citep{chen2024riemannian}, which on $\SOthree$ with the
+bi-invariant metric is the Haar measure, so the construction is available on
+$\Mfd$ without further choices. Evaluating \eqref{eq:cnf-likelihood} for a
+\emph{given} pose requires integrating the flow backwards from that pose to
+$t=0$, which is a well-posed problem precisely because the dynamics are
+deterministic and reversible.
+
+The practical obstacle is the divergence term, whose exact evaluation costs
+$O(d)$ backward passes. The standard remedy is the Hutchinson trace estimator
+\citep{hutchinson1989stochastic,grathwohl2019ffjord},
+\begin{equation}
+  \divg \pred \;=\; \E_{\epsilon}\Bigl[\epsilon^{\top}
+    \frac{\partial \pred}{\partial x}\, \epsilon\Bigr],
+  \qquad \E[\epsilon] = 0, \quad \operatorname{Cov}(\epsilon) = I,
+  \label{eq:hutchinson}
+\end{equation}
+which replaces the exact trace by a stochastic estimate at the cost of one
+vector-Jacobian product per sample. On $\Mfd$ the estimator must draw
+$\epsilon$ from the tangent space at $x_t$ with the metric-induced covariance,
+which on the rotational factors means sampling in $\sothree$ under the
+bi-invariant inner product.
+
+Three uses suggest themselves, in increasing order of ambition. The conditional
+log-density $\log p_\theta(x\mid\ctx)$ could rank the $K$ generated poses
+directly, giving a confidence score that requires no additional training and no
+labelled samples, and which could be compared against the learned classifier of
+Chapter~\ref{ch:confidence} on identical pose sets. The same quantity evaluated
+at the crystallographic pose would give a likelihood-based evaluation metric
+that is independent of RMSD thresholds. And the spread of $\log p_\theta$ over a
+sample set would give a measure of the model's own uncertainty for a given
+complex, which is the quantity classical docking cannot provide and which
+motivated the generative formulation in the first place.
+
+Two cautions belong with this proposal. A high model density is a statement
+about the model, not about binding affinity, so calibration against measured
+outcomes would be required before any such score could be read as a physical
+quantity. And the estimator in \eqref{eq:hutchinson} is unbiased for the
+divergence but not for the log-density after integration, so the variance of
+the resulting estimate must be reported rather than assumed small.
+
+\subsection{Further directions}
+
+Three smaller directions are worth recording. The integration scheme is
+explicit Euler throughout, chosen for correctness rather than efficiency, and
+the near-straight paths of Section~\ref{sec:integration} suggest that a
+higher-order or adaptive scheme would either reduce the step count further or
+show that the paths are straight enough that it cannot. The product structure
+of $\Mfd$ is imposed rather than derived, and a construction that coupled the
+rotational and translational fields, for instance through the semidirect
+product structure of $\SEthree$, would be a genuine change of model rather than
+of parameterisation. Finally, SigmaDock notes that its fragment formulation
+extends to flexible docking by treating selected side chains as additional
+fragments, and nothing in the flow-matching substitution obstructs that
+extension.
+
+% ===========================================================================
+\chapter{Conclusion}
+\label{ch:conclusion}
+
+\begin{reserved}{Conclusion}
+To be written last. It should restate what was substituted and what was held
+fixed, give the verdict of the matched-budget comparison in one sentence,
+state what the two variants added, and close on the two directions of
+Sections~\ref{sec:future-source} and \ref{sec:future-likelihood} that the flow
+formulation makes available and the diffusion formulation does not. It should
+not introduce any quantity that has not appeared earlier.
+\end{reserved}
+
+% ---------------------------------------------------------------------------
+\bibliographystyle{plainnat}
+\bibliography{../refs}
+
+% ===========================================================================
+\appendix
+
+\chapter{Equivariance and the Inherited Backbone}
+\label{app:equivariance}
+\dnote{DRAFT}{Retained from the earlier draft and not currently referenced by
+the main text. The main text is written to stand without the appendices.}
+
+\chapter{Diffusion Background}
+\label{app:diffusion}
+\dnote{DRAFT}{Retained from the earlier draft.}
+
+\chapter{Derivations}
+\label{app:derivations}
+\dnote{DRAFT}{Retained from the earlier draft.}
+
+\chapter{Numerical Verification}
+\label{app:numerics}
+\dnote{DRAFT}{Retained from the earlier draft.}
+
+\chapter{Extended Results}
+\label{app:extended}
+\dnote{DRAFT}{Retained from the earlier draft.}
+
+\chapter{Implementation Reference}
+\label{app:implementation}
+\dnote{DRAFT}{Retained from the earlier draft.}
+
+\end{document}

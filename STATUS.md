@@ -121,8 +121,15 @@ Schreiben, `RUN_STATUS.json` unterscheidet `COMPLETED` von
    bereits `all_pos` (`sampling.py:380/464/478`), `sample.py` gibt
    `trajectory: [T, N_lig, 3]` heraus. Nur ein Writer fehlt; `R_t`/`trans_t`
    je Schritt müssten append-only ergänzt werden. SigmaDock-Seite ungeprüft.
-3. Thesis-Draft (`Thesis_Draft_Proposal/`) nennt 209 Komplexe ohne Hinweis
-   auf die 308 des Papers, und die RMSD∧PB-Konjunktion fehlt noch.
+3. **Evaluationssatz: unsere 209 stammen aus PoseBusters v1, nicht v2.**
+   Geklärt am 2026-08-20 mit der offiziellen 308er-Liste
+   (`SigmaFlow_Evaluation/reference/`): Schnittmenge 151, bei uns 57 Komplexe,
+   die v2 wegen **Kristallkontakten** entfernt hat, 157 v2-Komplexe fehlen uns.
+   Wirkung gemessen: auf den 151 steigen beide Arme (SF 30.3→33.8 %,
+   SD 47.6→53.0 % Oracle@10), der Methodenunterschied bleibt stabil. Offen ist
+   die Entscheidung, ob primär auf den 151 ausgewertet wird. Kostet keine
+   GPU-Zeit. Betrifft **nur die Auswertung, nicht das Training**
+   (`--train_exps pdbbind-general`).
 4. `texprobe/` im Repo-Root ist Müll aus einer Werkzeugprüfung, untracked.
 5. SigmaDock-NFE-Tasks `--array=5-6` zurückgestellt.
 6. Oracle-Verhältnis-Spalte in `aggregate_learning_curve.py` fehlt noch.

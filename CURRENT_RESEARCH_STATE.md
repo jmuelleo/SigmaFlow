@@ -31,6 +31,22 @@ hat 428 Komplexe, das SigmaDock-Paper wertet auf 308 aus. Wie die Reduktion auf
 209 zustande kam, ist im Repository nicht dokumentiert und war nicht mehr
 rekonstruierbar.
 
+**NACHTRAG 2026-08-20: geklärt, und schlechter als gedacht.** Die offizielle
+308er-Liste wurde beschafft und gegen unsere IDs gehalten (Liste und Auswertung
+in `SigmaFlow_Evaluation/reference/`). Ergebnis: Schnittmenge **151**, bei uns
+aber **57 Komplexe, die NICHT in v2 sind**, und 157 der v2-Komplexe fehlen uns.
+Unsere Kopie ist damit ein Teilsatz des **überholten 428er-Satzes (v1)**, nicht
+von v2. Die 120 Strukturen, die zwischen v1 und v2 wegfielen, wurden von den
+Autoren wegen **Kristallkontakten** entfernt; ihr eigenes Beispiel `5S8I_2LY`
+ist bei uns drin.
+
+Gemessene Wirkung (12h, Oracle@10): auf den 151 v2-Komplexen SigmaFlow 33.8 %
+und SigmaDock 53.0 %, auf den 57 aussortierten nur 21.1 % und 33.3 %. Beide Arme
+werden also gleichermaßen gedrückt, der Methodenunterschied bleibt bei rund 17
+bis 19 Punkten stabil. **Der interne Vergleich ist nicht gefährdet, die
+absoluten Zahlen schon.** Empfehlung: primär auf den 151 auswerten, die 209 als
+Sensitivitätsanalyse. Kostet keine GPU-Zeit, alle Posen liegen vor.
+
 Für die Thesis heißt das: **209 ist eine Eigenschaft unserer Datenkopie, keine
 Auswahlentscheidung dieses Projekts** — und jeder Vergleich mit dem Paper muss
 den Unterschied im Benchmarkumfang nennen.

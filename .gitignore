@@ -78,3 +78,10 @@ vis_*/
 # Der Thesis-Ablageordner ist ein bewusstes Ergebnis, kein Nebenprodukt --
 # die PNG-Regeln oben duerfen ihn nicht mitnehmen.
 !Thesis Visualisierungen/**
+
+# LaTeX-Hilfsdateien der Thesis-Entwuerfe
+Thesis_Draft_Proposal/**/*.aux
+Thesis_Draft_Proposal/**/*.log
+Thesis_Draft_Proposal/**/*.out
+Thesis_Draft_Proposal/**/*.toc
+Thesis_Draft_Proposal/**/*.blg
