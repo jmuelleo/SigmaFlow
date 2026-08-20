@@ -14,13 +14,22 @@ User dort weitermachen will.
 
 ---
 
-# ⏭️ HIER WEITERMACHEN (Stand 2026-08-17)
+# ⏭️ HIER WEITERMACHEN (Stand 2026-08-20)
 
-## Aktuelle Arbeitsphase: **72h-Endläufe sind LAUNCH-READY — warten auf ARC**
+## Zwei Stränge, beide bereit, keiner abgeschickt
 
-Alle Korrektheitsfragen sind geschlossen. Es fehlt nur noch verfügbare
-GPU-Kapazität. **Nichts mehr auditieren, keine neuen Blocker suchen** — der
-User hat die Entscheidungsregel ausdrücklich gesetzt: Gate bestanden ⇒ GREEN.
+| Strang | Zustand |
+|---|---|
+| **A — 72h-Paar** (SigmaFlow Minimal vs. SigmaDock) | eingefroren, LAUNCH-READY. `arc/final_horizon.env` existiert **noch nicht** → Durchsatz messen, Horizont rechnen, dann submitten. |
+| **B — EXP-110 Zwei-Kopf, 12h** | fertig gebaut, 110 Audit-Checks grün, Skript verifiziert, **nicht abgeschickt**. Details in `SigmaFlow_FM_Specific/EXP-110_two_head_vector_field/STATUS.md`. |
+
+Die beiden sind unabhängig. B ist billiger (12 GPU-h) und beantwortet die
+offene Hauptfrage — ob der absolute Rotationsfehler unter das Zufallsniveau
+kommt. A ist der Produktionsvergleich für die Thesis.
+
+---
+
+## Strang A — 72h-Paar
 
 ### 🟢 Launch-Verdikt: GREEN
 
@@ -30,77 +39,18 @@ User hat die Entscheidungsregel ausdrücklich gesetzt: Gate bestanden ⇒ GREEN.
 | Frame-Kette / adjungierter Transport | exakt bis 6.7e-16 |
 | J1 Checkpoint-Provenienz | **geschlossen** |
 | J2 Code-Baum-Identität | **geschlossen** — nur CRLF/LF |
-| **Gradient-Erreichbarkeit Rotation** | **geschlossen, GREEN** |
+| Gradient-Erreichbarkeit Rotation | **geschlossen, GREEN** (15/15) |
 | EMA-Politik | entschieden, deckt sich mit dem Paper |
 
-### Der Gradient-Gate (neu, 2026-08-17)
+`audits/test_rotation_gradient_reachability.py`: `‖∂L_rot/∂f‖ = 2.41e+01`
+gegen `‖∂L_trans/∂f‖ = 7.85e+00` — der Rotationsgradient ist **größer**,
+nicht kleiner. 100 % der Atome bekommen ihn.
+`cos(∂L_rot/∂f, ∂L_trans/∂f) = +0.0000` bestätigt numerisch, dass
+Translation und Rotation orthogonale Projektionen desselben Feldes sind.
+**H-dead ist ausgeschlossen.** Die drei Null-Ablationen heißen „kein Signal
+zum Umgewichten", **nicht** „kein Gradient".
 
-`audits/test_rotation_gradient_reachability.py` — 15/15 Checks, Exit 0.
-
-- `‖∂L_rot/∂f‖ = 2.41e+01` gegen `‖∂L_trans/∂f‖ = 7.85e+00`
-  → Rotationsgradient ist **größer**, nicht kleiner. Kein AMBER.
-- 100 % der Atome erhalten Rotationsgradient; `‖∂L_rot/∂W‖ = 5.29e+01` an
-  einem echten linearen Kopf, alle 3 Ausgabezeilen.
-- `cos(∂L_rot/∂f, ∂L_trans/∂f) = +0.0000` → **numerische Bestätigung**, dass
-  Translation und Rotation orthogonale Projektionen desselben Feldes sind.
-- `max|ω| = 2.01` gegen Clamp 1e3 → keine Sättigung.
-- Gegenprobe mit künstlichem `detach()` liefert Gradient null ✓
-
-**Konsequenz:** H-dead (strukturell abgetrennter Rotationskopf) ist
-ausgeschlossen. Die drei Null-Ablationen sind als „kein Signal zum
-Umgewichten" zu lesen, **nicht** als „kein Gradient".
-
-### Gültige Referenzläufe (endgültig)
-
-| | SigmaFlow 6h | SigmaFlow 12h | SigmaDock 6h | SigmaDock 12h |
-|---|---|---|---|---|
-| Job | 8530243 | **8541310** | 8512922 | **8541439** |
-| Checkpoint | `0-08-10_10-04-41/last.ckpt` | `0-08-11_18-00-41/last.ckpt` | n.g. | n.g. |
-| Step | 7050 (Epoche 2) | **13750** (Epoche 5) | — | — |
-| Gewichte beim Sampling | **EMA** | **EMA** | vermutlich EMA | vermutlich EMA |
-
-⚠️ **8512798 ist NICHT verwendbar** — 6h **ohne** Frame-Fix.
-⚠️ `posebusters_ligandonly_SigmaDock_12h.csv` ist die **veraltete** Datei
-(0 Treffer). Immer `..._12h_lrfix.csv` benutzen (17 Treffer).
-Per-Komplex nachgezählt: SigmaFlow 6/209, SigmaDock 17/209, **Schnittmenge
-leer** — die beiden Modelle lösen disjunkte Komplexe.
-
-### 📄 SigmaDock-Paper-Audit (Paper liegt in `papers/`, NICHT `paper/`)
-
-*Prat, Zhang, Deane, Teh, Morris — ICLR 2026, arXiv:2511.04854v2*
-
-| Punkt | Wert |
-|---|---|
-| **Headline 79.9 %** | Top-1 **(RMSD < 2 Å UND PB-valid)**, N_seeds = **40** |
-| bei N_seeds = 10 | 74.7 % (RMSD) / 72.2 % (kombiniert) |
-| Benchmark | PoseBusters v2, **308** Komplexe (wir: 209) |
-| RMSD | symmetriekorrigiert (Meli & Biggin 2020) |
-| Top-k | mind. eine der Top-k Posen aus N_seeds unter 2 Å |
-| Ranking | `s_i = −b_i·p_i^4`, Vinardo + 5 PB-Checks, **kein trainiertes Confidence-Modell** |
-| Sampling | **20** Schritte (wir haben 25 geerbt), Batch 64 |
-| Training | 256 Epochen, Batch **32**, AdamW, Warmup+Cosine 1e-6→1e-4→1e-5, **EMA 0.999** |
-| Compute | **4× A100 80GB, 4 Tage ≈ 384 GPU-h** (wir: 12 GPU-h) |
-| Nicht berichtet | Median-RMSD, RMSD < 5 Å |
-
-**Vergleichsregel für die Thesis:** unsere Zahlen nie gegen 79.9 % stellen
-ohne alle vier Unterschiede im selben Satz zu nennen (209 vs 308, 12 vs 384
-GPU-h, Batch 8 vs 32, 1 Seed ohne Ranking vs 40 mit Ranking). Und 79.9 % ist
-eine **Konjunktion** — unsere 1.9 % ist RMSD allein, also nicht dasselbe
-Ereignis.
-
-### EMA-Politik für 72h (entschieden)
-
-Training mit EMA, Validierung mit EMA, **Sampling und Report mit EMA** — für
-**beide** Arme. Deckt sich mit Appendix E.3 des Papers. Im Repo:
-`EMAWithRampup`, Halbwertszeit 2 Epochen, Rampup 1/8, Schattenmodell, in
-`ckpt["ema_state_dict"]` persistiert. `use_ema: true` in
-`conf/sampling/base.yaml:79`.
-
-Ins Fingerprint aufnehmen: `use_ema, ema_halflife, ema_rampup_ratio,
-checkpoint_path, checkpoint_sha256, global_step, epoch,
-weights_used_for_sampling=EMA`.
-
-### ⏭️ NÄCHSTE SCHRITTE, sobald ARC läuft
+### ⏭️ Ablauf beim Abschicken
 
 ```bash
 cd /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow
@@ -108,46 +58,78 @@ git pull origin main
 bash arc/00_preflight.sh                                    # READY erwarten
 python audits/test_rotation_gradient_reachability.py        # Exit 0 erwarten
 
-# FINAL_MAX_EPOCHS=36 in arc/final_config.sh setzen.
-# Herleitung: 13.750 Steps in 11,1 h bei Batch 8 -> 2,78 Beispiele/s
-#             -> ~90k Steps in 72 h -> ~36 Epochen.
-# NICHT höher setzen: unvollendeter Cosine-Anneal hat schon die Läufe
-# vom 2026-08-07 entwertet.
+# Durchsatz messen, dann:
+python arc/calculate_final_epochs.py ... --write-env        # schreibt final_horizon.env
+bash arc/final_72h_preflight.sh sigmaflow_minimal
+bash arc/final_72h_preflight.sh sigmadock
 
 DRY_RUN=1 bash arc/submit_final.sh sigmaflow_minimal
 DRY_RUN=1 bash arc/submit_final.sh sigmadock
 bash arc/submit_final.sh sigmaflow_minimal
 bash arc/submit_final.sh sigmadock
-
-sbatch arc/exp101_distance_audit.slurm    # CPU-only, umgeht die GPU-Queue
 ```
+
+Grobe Erwartung aus dem 12h-Lauf: 13.750 Steps in 11,1 h bei Batch 8
+→ 2,78 Beispiele/s → ~90k Steps in 72 h → **~36 Epochen**.
+**NICHT höher setzen** — ein unvollendeter Cosine-Anneal hat schon die Läufe
+vom 2026-08-07 entwertet.
 
 ⚠️ **Bei Resume `FINAL_MAX_EPOCHS` NICHT erhöhen** — `configure_optimizers`
 baut den Scheduler aus dem aktuellen Wert neu und wendet den
 wiederhergestellten Step-Zähler auf eine gestreckte Kurve an
 (ungeplanter Warm Restart).
 
-### Offene Punkte (keine Blocker)
+---
+
+## Strang B — EXP-110 Zwei-Kopf, 12h
+
+Getrennte Köpfe für Translation und Rotation auf geteiltem Rumpf, Mittel-
+Pooling je Fragment, Rahmenwechsel `R_t^T hat(ω) R_t` bleibt. +12,82 %
+Parameter (16.899.826 gesamt).
+
+**Rechenzeitgematcht, nicht schrittgematcht:** 12:00:00 gegen den
+12h-Minimal-Lauf 8541310. Die Walltime wird **nicht** erhöht, auch wenn das
+größere Modell weniger Schritte schafft — das ist Teil des Vergleichs.
+Ziel sind **nicht** sechs Epochen, das Budget sind 12 Stunden.
+
+```bash
+cd /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow
+git pull
+cd SigmaFlow_FM_Specific/EXP-110_two_head_vector_field
+mkdir -p slurm_logs
+sbatch slurm/train_two_head_12h.slurm
+```
+
+Nach etwa einer Stunde die Schrittrate prüfen — bleibt sie deutlich unter
+1260 Steps/h, wird der Anneal nicht fertig, und man weiß es früh:
+
+```bash
+grep -oE "Epoch [0-9]+" slurm_logs/<jobid>.out | tail -1
+```
+
+Abbruchsicherheit ist geprüft: Checkpoint alle 50 Trainingsbatches
+(**nicht** an Epochengrenzen), maximaler Verlust ~2,4 Minuten, atomares
+Schreiben, `RUN_STATUS.json` unterscheidet `COMPLETED` von
+`WALLTIME_ODER_SIGTERM`. Alles Weitere in der Varianten-`STATUS.md`.
+
+---
+
+## Offene Punkte (keine Blocker)
 
 1. SigmaDock-Checkpoint/EMA-Provenienz noch nicht per `torch.load` geprüft.
-2. Fragmentzahl-Histogramm fehlt. Bekannt: `D = 6·F`, Median D 24, q90 42,
-   max 66 → **Median 4, q90 7, max 11 Fragmente**. Die gewünschten
-   10–15/20+/30–40-Liganden **existieren nicht**.
-3. Trajektorien-Export nicht implementiert. SigmaFlow sammelt bereits
-   `all_pos` (`sampling.py:380/464/478`), `sample.py` gibt
+2. **Trajektorien-Export** (CORE 3) nicht implementiert. SigmaFlow sammelt
+   bereits `all_pos` (`sampling.py:380/464/478`), `sample.py` gibt
    `trajectory: [T, N_lig, 3]` heraus. Nur ein Writer fehlt; `R_t`/`trans_t`
    je Schritt müssten append-only ergänzt werden. SigmaDock-Seite ungeprüft.
-4. Thesis-Draft (`Thesis_Draft_Proposal/`) nennt 209 Komplexe ohne Hinweis
+3. Thesis-Draft (`Thesis_Draft_Proposal/`) nennt 209 Komplexe ohne Hinweis
    auf die 308 des Papers, und die RMSD∧PB-Konjunktion fehlt noch.
-5. `texprobe/` im Repo-Root ist Müll aus einer Werkzeugprüfung, untracked.
+4. `texprobe/` im Repo-Root ist Müll aus einer Werkzeugprüfung, untracked.
+5. SigmaDock-NFE-Tasks `--array=5-6` zurückgestellt.
+6. Oracle-Verhältnis-Spalte in `aggregate_learning_curve.py` fehlt noch.
 
-### Neue Dateien dieser Sitzung
-
-- `audits/test_rotation_gradient_reachability.py` — der Gate, 15 Checks
-- `INFORMATIVE_SOURCE_ROADMAP.md` — Leiter IS-0…IS-6, Leakage-Regeln,
-  SO(3)-Familien, gelernte Quellen, Priorisierung
-- `Thesis_Draft_Proposal/` — kompilierender LaTeX-Entwurf, 46 S.,
-  8.021 Wörter Prosa, 0 undefinierte Referenzen
+**Erledigt seit dem letzten Lesezeichen:** Fragmentzahl-Histogramm (Job
+8607523, `Thesis Visualisierungen/`), IS-1 (negativ, CORE 4 geschlossen),
+vier ARC-Blocker gefunden und behoben, EXP-110 gebaut und auditiert.
 
 ---
 
@@ -6037,3 +6019,144 @@ Die frei werdende GPU geht an einen zweiten Seed.
 
 `ARC_PLAN_2026-08-16.md` Abschnitt L, Schritte 0-8. Schritt 2 muss um
 `which gnina` ergaenzt werden.
+
+---
+
+# ARC zurück, vier Blocker, EXP-110 — 2026-08-18 bis 2026-08-20
+
+## Vier ARC-Blocker, alle durch Ausführen gefunden
+
+Keiner davon war beim Lesen sichtbar. Das GREEN-Verdikt vom 2026-08-17 war
+insofern zu selbstsicher: es beruhte auf Codeanalyse, nicht auf Ausführung.
+
+| # | Blocker | Ursache | Behoben durch |
+|---|---|---|---|
+| 1 | `ValueError: Experiment config not found` | `.gitignore` schluckte `conf/experiments/` über `**/experiments/` | Negationsmuster `!**/conf/experiments/**` (Commit `0ddfe39`) |
+| 2 | `pdbbind-core` leer auf ARC | Datensatz nie befüllt | Stage 1 auf `astex`, `precheck_dataset()` |
+| 3 | `exp101_distance_audit.py`: Pfad **und** beide Regexes falsch | Pfade konstruiert statt aufgelöst | `get_experiment_config` |
+| 4 | `true_dir` zeigte auf leeres Verzeichnis | `data/posebusters` hat nur leeres `raw/` | `ARC_TRUE_DIR` einmal in `arc/_common.sh` + verschachtelter Fallback |
+
+Blocker 1 hätte den 72h-Lauf nach Sekunden getötet.
+
+**Gemeinsame Lehre, jetzt Regel:** Datensatzorte werden **aufgelöst**, nie
+konstruiert. Vorabprüfung auf nichtleer, und `COMPLETED` von SLURM ist kein
+Beleg für ein Ergebnis.
+
+## Gemessene Zahlen
+
+- `n_train` = **19.037** statt der Paper-Zahl 19.443 (−2,09 %)
+- Fragmentzahl je Ligand (Job 8607523, 208 von 209 gemessen):
+  Mittel **4,51** (SD 2,11), Median 4, Modus 5, IQR 3–6, q90 8, Spanne 1–11
+  → Zustandsdimension `D = 6F`, Mittel 27,1
+- `F` ist je Ligand **deterministisch** — obwohl das Training zufällig aus
+  den minimalen Cut-Sets zieht, schwankt die Fragmentzahl bei keinem der
+  208 Liganden.
+- ⚠️ Nicht mit **4,56** verwechseln: die stammt aus IS-1 unter
+  `fragmentation_strategy="canonical"`. Trainingsrelevant ist **4,51**.
+
+## Drei Befunde zur Schwierigkeit
+
+1. **Fragmentzahl ist die dominante Schwierigkeitsachse.** Jedes zusätzliche
+   Fragment multipliziert die Erfolgs-Odds mit **0,53** (`p < 1e-4`), für
+   beide Verfahren. Ab `F = 7` trifft SigmaFlow keinen Komplex mehr (0/39).
+2. **SigmaFlow ist gleichmäßig schlechter, nicht überproportional.** Der
+   Interaktionsterm `Arm × F` ist mit **`p = 0,85`** nicht signifikant. Die
+   Hypothese „die Rotationsbehandlung skaliert schlechter mit der Zahl
+   starrer Körper" wird von diesen Daten **nicht** gestützt.
+3. **„Leere Schnittmenge" widerlegt:** 48/15/51/94 statt der behaupteten
+   Disjunktheit.
+
+Abbildungen und Datensatz in `Thesis Visualisierungen/`.
+
+## IS-1 geschlossen, negativ
+
+Die informative-Quelle-Frage (CORE 4) ist **negativ** beantwortet.
+EXP-102/IS-2 ist gestrichen und wird nicht wieder vorgeschlagen.
+
+## Trainingsbudget eingeordnet
+
+Paper: 256 Epochen, 384 GPU-h auf 4×A100. Unsere 12h = **5,8 Epochen** =
+**2,3 %** davon. Der 72h-Lauf landet bei ~36 Epochen (Erwartung 50–90 je
+nach Durchsatz). Beim Beurteilen von PyMOL-Posen mitdenken.
+
+**Vorregistriert vor den Läufen:** Oracle@10/Oracle@1 (aktuell SigmaFlow
+6,8, SigmaDock 4,4), mit allen drei Ausgängen und ihrer Deutung. Nicht
+nachträglich umdeuten.
+
+---
+
+# EXP-110 — Zwei-Kopf-Vektorfeld (2026-08-20)
+
+Vollständiger Stand in
+`SigmaFlow_FM_Specific/EXP-110_two_head_vector_field/STATUS.md`.
+Hier nur, was für den Gesamtfaden zählt.
+
+## Die eine Änderung
+
+`force_block` → `trans_block` + `rot_block` auf geteiltem Rumpf; Mittel-
+Pooling je Fragment statt Newton-Euler; Rahmenwechsel `R_t^T hat(ω) R_t`
+bleibt zwingend, weil das Ziel `log(R_t^T R_1)` invariant, jede äquivariante
+Netzausgabe aber nicht invariant ist.
+
+Alles andere ist byte-identisch zu Minimal @ `16a069a`.
+
+## Commits
+
+| Commit | Inhalt |
+|---|---|
+| `8473a0b` | Variante gebaut |
+| `eb2d924` | Audit, 37 Checks |
+| `4885963` | gematchtes 12h-Skript, Variantenstand |
+| `129e910` | Abbruchsicherheit geprüft und markiert |
+
+## 110 Audit-Checks grün
+
+37 (Vollaudit) + 35 (Checkpoint-Round-Trip) + 22 (Geometrie) + 16
+(Gradientenzuordnung). Der stärkste Befund: `L_trans` erreicht `rot_block`
+mit Gradient **exakt 0** und umgekehrt — strukturelle Entkopplung, die bei
+einem Kopf gar nicht prüfbar war.
+
+## Abbruchsicherheit: nichts zu bauen
+
+Aus dem Code belegt statt angenommen: `val_check_interval=50` bei `accum=1`
+und `check_val_every_n_epoch=None` heißt Checkpoint alle **50
+Trainingsbatches**, **nicht** an Epochengrenzen. Maximaler Verlust bei einem
+Walltime-Kill: **50 Schritte ≈ 2,4 Minuten**. Lightning schreibt über
+`_atomic_save`, ein Abbruch mitten im Schreiben lässt die vorherige Datei
+heil.
+
+`--signal=SIGUSR1` geprüft und **verworfen**: Lightnings
+`_slurm_sigusr_handler_fn` ruft nach dem Speichern `scontrol requeue` und
+startet den Job neu — für ein Zeitbudget-Experiment genau falsch.
+
+Ergänzt wurde nur eine `trap` auf Shell-Ebene, die `RUN_STATUS.json`
+schreibt (`COMPLETED` / `WALLTIME_ODER_SIGTERM` / `ABGEBROCHEN_rcN`).
+
+## Fünf Fehler in der eigenen Vorarbeit, alle beim Ausführen gefunden
+
+1. Sanity Gate als Blacklist gebaut — die ARC-Repowurzel heißt
+   `SigmaFlow_Development_JulianMueller` und hätte das Verbot auf
+   `"SigmaFlow_Development"` bei **jedem** Start ausgelöst. Jetzt exakte
+   Suffixprüfung mit Negativkontrolle.
+2. Parameterzahl in `EXP-110_README.md` war falsch (24.466.418 / +12,99 %)
+   — aus einer handgesetzten Instanziierung, keine echte Konfiguration
+   reproduziert sie. Korrekt aus `RunConfig`: **16.899.826 / +12,82 %**.
+3. `RUN_STATUS.json` per Heredoc gebaut → ungültiges JSON, sobald ein Pfad
+   einen Backslash enthält. Jetzt schreibt Python es.
+4. Round-Trip-Test benutzte zunächst den falschen Loader.
+5. Begründung für Mittel-Pooling war gegenstandslos (`assert M.min() >= 2`
+   im Basispfad); das tragfähige Argument sind lineare 2-Atom-Fragmente mit
+   `cond(I_reg) ≈ 1.5e8`.
+
+## Nebenbei gefunden
+
+`load_from_checkpoint(load_ema=False)` ist **kaputt** — streift genau ein
+`"model."` ab, `ckpt["state_dict"]` trägt aber zwei Ebenen. Gilt in Minimal
+genauso, fällt nicht auf, weil Sampling `load_from_scratch` benutzt und
+`ema_state_dict` eine Ebene weniger hat. Kein Blocker, dokumentiert.
+
+## Bereitschaft
+
+12h-Lauf **vorbereitet, nicht abgeschickt**. Walltime 12:00:00 endgültig.
+**72h für EXP-110: NEIN** — kein Ergebnis auf echten Daten rechtfertigt
+bisher 72 GPU-Stunden. Die eingefrorene 72h-Konfiguration ist unberührt.
