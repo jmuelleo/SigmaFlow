@@ -28,12 +28,17 @@ also nur ihre Quelle, nicht ihre Form.
 Die Drehmomentkonstruktion `omega = I^-1 * sum (x_i - c) x f_i` hat zwei
 Defekte, die für ein *Geschwindigkeits*ziel nicht nötig sind:
 
-- **1-Atom-Fragmente:** `x_i = c`, also `tau ≡ 0`. Die Rotation ist dort
-  **prinzipiell unerreichbar**, egal was das Netz ausgibt. Im Datensatz
-  betrifft das 5 von 208 Liganden vollständig und viele weitere teilweise.
-- **Lineare Fragmente:** `cond(I_reg) ≈ 1.5e8`. Die Inversion verstärkt entlang
-  der entarteten Achse um acht Größenordnungen. Die Eigenwert-Klemmung und der
-  `omega`-Clamp bei ±1e3 in Minimal sind genau dafür da.
+- **Zwei-Atom-Fragmente** — das kleinste von Minimal erlaubte Fragment
+  (`assert M.min() >= 2`) — sind zwangsläufig **linear**. Der Trägheitstensor
+  ist dann singulär: `cond(I_reg) = 1.5e8`, `max|I^-1| = 1.3e8`. Die Rotation
+  um die Bindungsachse ist praktisch unerreichbar. Die Eigenwert-Klemmung und
+  der `omega`-Clamp bei ±1e3 in Minimal existieren genau dafür.
+
+> **Korrektur (Audit 2026-08-20).** Eine frühere Fassung dieses Dokuments
+> begründete die Entscheidung zusätzlich mit „1-Atom-Fragmente haben `tau ≡ 0`".
+> Das ist zwar richtig, betrifft aber einen Fall, den Minimal per
+> `assert M.min() >= 2` **ausschließt**. Das Argument ist damit gegenstandslos
+> und wurde gestrichen. Tragend bleibt das Konditionierungsargument oben.
 
 Dazu kommt ein Inductive-Bias-Argument: `u^R = log(R_t^T R_1)/(1-t)` ist eine
 reine Winkelrate **ohne** Formabhängigkeit. Die Division durch `I` zwingt das
@@ -70,8 +75,17 @@ Alles andere ist byte-identisch zu Minimal — Daten, Fragmentierung, Config,
 `train.py`, Flow-Matcher.
 
 `linear_mechanics`, `newton_maruyama` und `_compute_fragment_dynamics` bleiben
-im Code, werden aber nicht mehr aufgerufen. Bewusst: sie dokumentieren die
-Vorgängerkonstruktion und erlauben einen direkten Vergleich im Audit.
+im Code, werden aus dem Trainings- und Sampling-Pfad aber nicht mehr
+aufgerufen — nachgewiesen im Audit.
+
+⚠️ **Nebenwirkung:** mit `_compute_fragment_dynamics` entfällt auch dessen
+`assert M.min() >= 2`. Für Mittel-Pooling ist ein 1-Atom-Fragment unkritisch
+(Nenner 1, kein Sonderfall), aber die Invariante wird nicht mehr geprüft.
+
+⚠️ `scripts/diagnose_step0.py` ist **nicht** mitgezogen worden und bricht ab:
+es entpackt zwei Rückgabewerte aus `_compute_forces`, das jetzt drei liefert.
+Diagnoseskript, nicht Trainingspfad — aber zu reparieren, bevor jemand es
+benutzt.
 
 ## Audits
 
