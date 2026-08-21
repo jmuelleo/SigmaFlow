@@ -181,7 +181,79 @@ assert tr == ro, "Die Koepfe sind NICHT baugleich -- Konfiguration pruefen"
 print("  Koepfe baugleich : ja")
 PYCOUNT
 
-# Preflight: scheitern, bevor die 19k-Datafront gebaut wird.
+# ---------------------------------------------------------------------------
+# FAIL-FAST-GATTER
+#
+# Es gibt vor diesem Lauf keinen GPU-Vorlauf. Alles, was auf ARC schiefgehen
+# kann und lokal nicht pruefbar war, muss deshalb HIER auffallen, in der
+# ersten Minute, und nicht nach dem 10-35 Minuten dauernden Datafront-Aufbau
+# oder gar nach Stunden.
+#
+# Reihenfolge ist Absicht: erst das Billigste, das den teuersten Fehler
+# faengt.
+# ---------------------------------------------------------------------------
+
+# (1) IMPORTHERKUNFT. Der schlimmste denkbare Ausgang ist nicht ein Absturz,
+#     sondern ein Lauf, der zwoelf Stunden lang den FALSCHEN Code trainiert.
+#     Ein global in site-packages installiertes sigmadock wuerde genau das
+#     verursachen und sonst nirgends auffallen.
+echo
+echo "--- Importherkunft ---"
+$PYTHON - <<'PYIMP'
+import os
+import sys
+
+WANT = "EXP-110_two_head_vector_field"
+import sigmadock
+import sigmadock.config
+import sigmadock.data
+import sigmadock.datafronts
+import sigmadock.trainer
+from sigmadock.diff import sampling, sigma_flow_generator
+from sigmadock.net import model
+
+mods = {
+    "sigmadock": sigmadock,
+    "config": sigmadock.config,
+    "data": sigmadock.data,
+    "datafronts": sigmadock.datafronts,
+    "trainer": sigmadock.trainer,
+    "net.model": model,
+    "diff.sigma_flow_generator": sigma_flow_generator,
+    "diff.sampling": sampling,
+}
+bad = [n for n, m in mods.items() if WANT not in os.path.abspath(m.__file__)]
+for n, m in mods.items():
+    f = os.path.abspath(m.__file__)
+    print(f"  {'OK ' if WANT in f else 'XXX'} {n:28s} {f}")
+assert not bad, f"Diese Module kommen NICHT aus EXP-110: {bad}"
+print("  Importherkunft OK")
+PYIMP
+
+# (2) DATENSAETZE. pdbbind-core und pdbbind-refined sind auf ARC leer, weil sie
+#     nie aus pdbbind/raw/P-L.tar.gz entpackt wurden. Genau daran starben die
+#     Sweeps 8583394/8583395 in allen zehn Konfigurationen. Der etablierte
+#     Prober loest die Pfade ueber die Experiment-Config auf, statt sie zu
+#     konstruieren, und prueft auf nichtleer.
+echo
+echo "--- Datensaetze ---"
+for DS in pdbbind-general posebusters; do
+    echo "  --- ${DS} ---"
+    if ! $PYTHON "${REPO}/arc/probe_datafront_size.py" \
+            --data-dir /data/stat-cadd/shug8458/data \
+            --train "$DS" --val posebusters --test posebusters \
+            --expect-in-path "EXP-110_two_head_vector_field" \
+            > "${TMPDIR}/precheck_${DS}.log" 2>&1; then
+        echo "  ABBRUCH: Datensatz '${DS}' nicht aufloesbar oder leer."
+        tail -15 "${TMPDIR}/precheck_${DS}.log" | sed 's/^/      /'
+        exit 1
+    fi
+    grep -E "^train|^val|^GEMESSEN|Paare" "${TMPDIR}/precheck_${DS}.log" \
+        | head -4 | sed 's/^/      /'
+done
+
+# (3) Preflight: scheitern, bevor die 19k-Datafront gebaut wird.
+echo
 $PYTHON -c "import os, wandb; r = wandb.init(mode='offline', dir=os.environ['WANDB_DIR'], project='preflight'); r.finish(); print('wandb preflight OK')"
 
 # ---------------------------------------------------------------------------
