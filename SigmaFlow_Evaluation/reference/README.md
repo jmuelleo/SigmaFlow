@@ -43,10 +43,30 @@ Benchmark-Autoren wegen Kristallkontakten entfernt haben, und die alphabetisch
 erste davon ist `5S8I_2LY` — genau ihr eigenes Beispiel. Damit ist belegt, dass
 unsere Kopie aus v1 stammt.
 
-Wie aus 428 dann 209 wurden, ist weiterhin nicht dokumentiert und war nicht
-rekonstruierbar. Weder SigmaDocks Repo noch das PoseBusters-Repo erzeugen 209;
-SigmaDocks README kennt nur eine optionale Whitelist
-`posebusters_correct_ids.txt`, die eher in Richtung v2 filtern würde.
+## Warum 209: abgebrochene Entpackung (geklärt 2026-08-21)
+
+Das Zenodo-Archiv liegt auf ARC unter
+`data/posebusters_paper/posebusters_paper_data.zip` (52 MB) und **enthält alle
+428 Komplexe**. Entpackt wurden davon nur **209**.
+
+Drei Indizien belegen den Abbruch:
+
+1. `astex_diverse_set` aus demselben Archiv hat exakt **85** Ordner, ist also
+   vollständig. Beide wurden am 2026-07-05 um 19:31 geschrieben, 13 Minuten
+   nach dem Download des Archivs.
+2. Das Archiv enthält laut README auch `posebusters_benchmark_set_ids.txt`.
+   Im entpackten Verzeichnis **fehlt** diese Datei. Alphabetisch steht sie
+   hinter `posebusters_benchmark_set/`, der Entpackvorgang ist also mitten im
+   grossen Ordner stehengeblieben.
+3. `unzip -l` zaehlt 428 Komplexordner im Archiv, `ls` zaehlt 209 auf Platte.
+
+**Es war also kein Filter und keine Auswahlentscheidung, sondern ein
+unvollstaendiger `unzip`.** Damit erklaert sich auch, warum die 209 keine
+Teilmenge von v2 sind: sie sind ein willkuerlicher Anfangsabschnitt von v1.
+
+Weder SigmaDocks Repo noch das PoseBusters-Repo erzeugen 209; SigmaDocks README
+kennt nur eine optionale Whitelist `posebusters_correct_ids.txt`, die eher in
+Richtung v2 filtern wuerde.
 
 ## Wirkung auf die Ergebnisse (12h-Läufe, Oracle@10)
 

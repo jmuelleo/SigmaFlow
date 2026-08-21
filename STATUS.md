@@ -130,6 +130,10 @@ Schreiben, `RUN_STATUS.json` unterscheidet `COMPLETED` von
    die Entscheidung, ob primär auf den 151 ausgewertet wird. Kostet keine
    GPU-Zeit. Betrifft **nur die Auswertung, nicht das Training**
    (`--train_exps pdbbind-general`).
+   **Ursache 2026-08-21 geklärt:** abgebrochene Entpackung. Das Archiv auf ARC
+   enthält alle 428 Komplexe, entpackt sind 209. Die vollen Daten sind also
+   ohne Download da; für eine Auswertung auf den offiziellen 308 fehlt nur
+   neues Sampling (rund 44 GPU-h je Modell).
 4. `texprobe/` im Repo-Root ist Müll aus einer Werkzeugprüfung, untracked.
 5. SigmaDock-NFE-Tasks `--array=5-6` zurückgestellt.
 6. Oracle-Verhältnis-Spalte in `aggregate_learning_curve.py` fehlt noch.

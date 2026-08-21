@@ -36,7 +36,15 @@ rekonstruierbar.
 in `SigmaFlow_Evaluation/reference/`). Ergebnis: Schnittmenge **151**, bei uns
 aber **57 Komplexe, die NICHT in v2 sind**, und 157 der v2-Komplexe fehlen uns.
 Unsere Kopie ist damit ein Teilsatz des **überholten 428er-Satzes (v1)**, nicht
-von v2. Die 120 Strukturen, die zwischen v1 und v2 wegfielen, wurden von den
+von v2.
+
+**Ursache geklärt 2026-08-21: abgebrochene Entpackung.** Das Zenodo-Archiv
+liegt auf ARC und enthält alle **428** Komplexe, entpackt sind **209**. Der
+astex-Satz aus demselben Archiv ist mit 85 Ordnern vollständig, und die im
+Archiv enthaltene `posebusters_benchmark_set_ids.txt` fehlt auf Platte, obwohl
+sie alphabetisch hinter dem Komplexordner steht. Es war also kein Filter,
+sondern ein unvollständiger `unzip`. Die vollen 428 sind damit ohne Download
+verfügbar. Die 120 Strukturen, die zwischen v1 und v2 wegfielen, wurden von den
 Autoren wegen **Kristallkontakten** entfernt; ihr eigenes Beispiel `5S8I_2LY`
 ist bei uns drin.
 
