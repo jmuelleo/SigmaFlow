@@ -14,20 +14,84 @@ User dort weitermachen will.
 
 ---
 
-# ⏭️ HIER WEITERMACHEN (Stand 2026-08-20)
+# ⏭️ HIER WEITERMACHEN (Stand 2026-08-21)
+
+## Der Engpass ist ARC-Kapazität, nicht mehr der Code
+
+**Alles blockiert derzeit an zwei Jobs, die noch nicht einmal angefangen
+haben:** `8625082` und `8625083`, Durchsatzmessung Stufe 2, seit dem
+2026-08-21 `PENDING` mit Grund `(Priority)`. Ohne ihren Absolutwert lässt
+sich `FINAL_MAX_EPOCHS` nicht rechnen, und ohne den dürfen die 72h-Läufe
+nicht raus.
+
+Die Kette danach ist kurz und steht: Stufe 2 → `calculate_final_epochs.py`
+schreibt `arc/final_horizon.env` → `final_72h_preflight.sh` → `submit_final.sh`.
+
+**Terminrechnung.** Abgabe 2026-09-14. Zwei mal 72 h seriell sind sechs Tage,
+plus rund einen Tag Sampling und Auswertung. Die Läufe sollten daher
+spätestens am **2026-08-29** starten. Am 2026-08-20 ging eine Mail an
+`support@arc.ox.ac.uk` mit der Bitte um Priorität; Stand heute keine Antwort.
+Wenn bis Montag nichts kommt, nachfassen. Das Chunking-Angebot (drei mal 24 h
+mit Checkpoint-Resume statt eines 72h-Blocks) steht und ist vom Skript
+gedeckt.
 
 ## Zwei Stränge, beide bereit, keiner abgeschickt
 
 | Strang | Zustand |
 |---|---|
-| **A — 72h-Paar** (SigmaFlow Minimal vs. SigmaDock) | eingefroren, LAUNCH-READY. `arc/final_horizon.env` existiert **noch nicht** → Durchsatz messen, Horizont rechnen, dann submitten. |
+| **A — 72h-Paar** (SigmaFlow Minimal vs. SigmaDock) | eingefroren, LAUNCH-READY. Wartet nur auf den Horizont aus Stufe 2. |
 | **B — EXP-110 Zwei-Kopf, 12h** | fertig gebaut, 110 Audit-Checks grün, Skript verifiziert, **nicht abgeschickt**. Details in `SigmaFlow_FM_Specific/EXP-110_two_head_vector_field/STATUS.md`. |
 
 Die beiden sind unabhängig. B ist billiger (12 GPU-h) und beantwortet die
-offene Hauptfrage — ob der absolute Rotationsfehler unter das Zufallsniveau
+offene Hauptfrage, ob der absolute Rotationsfehler unter das Zufallsniveau
 kommt. A ist der Produktionsvergleich für die Thesis.
 
----
+## Durchsatzmessung: was Stufe 1 ergab (2026-08-21)
+
+Jobs `8606626`/`8606627` liefen ins 3h-Walltime, sechs von neun
+Konfigurationen sind durch. Verwertbar:
+
+| Befund | Zahl |
+|---|---|
+| Batch 16 schlägt Batch 8 deutlich | 1.214 gegen 0.540 samples/s (SD), 1.267 gegen 0.572 (SF) |
+| Batch 16 passt bequem | Peak 20.1 GB von 48 |
+| TF32 (`--cuda_precision high`) hilft | +3.8 % (SD), +2.7 % (SF) |
+| **bf16 ist kaputt** | `FAIL_rc1` nach 16 bzw. 33 s |
+| beide Arme im Gleichschritt | SigmaFlow durchgehend 4–8 % schneller |
+
+**Nicht verwertbar, zwei Gründe.** Die Absolutwerte enthalten laut
+Skriptkommentar den Datafront-Aufbau und taugen nur zum Vergleich. Und die
+beiden `TIMEOUT`-Konfigurationen sind **konfundiert**: Stufe 1 hat kein
+Priming, es traf die ersten beiden Läufe, und das waren zugleich die einzigen
+mit `val_interval 50`. Debug-Kosten (H-A) und Validierungskosten (H-C) bleiben
+daher unbeantwortet.
+
+**Das macht wenig aus**, weil die eingefrorene 72h-Konfiguration beides ohnehin
+meidet: kein `--debug` (Zeile 451 mit Begründung), `FINAL_CUDA_PRECISION=high`,
+`FINAL_PRECISION=32`, `FINAL_VAL_EVERY_N_EPOCHS=1`. Alles, was Stufe 1 sagen
+konnte, bestätigt die eingefrorene Konfiguration.
+
+Offen bleibt genau eines: `FINAL_BATCH_SIZE=32` ist ungetestet. Genau das misst
+Stufe 2 auf `pdbbind-general`. **Bei OOM** ist der Rückfall
+`BATCH=16 ACCUM=2`, was die effektive Batchgröße 32 erhält.
+
+## Evaluationssatz: geklärt und entschieden (2026-08-21)
+
+Die Frage „warum 209 und nicht 308" ist beantwortet. Das Zenodo-Archiv auf ARC
+enthält alle **428** Komplexe, entpackt waren **209** — eine **abgebrochene
+Entpackung**, kein Filter. Belege und Zahlen in
+`SigmaFlow_Evaluation/reference/README.md`.
+
+Die vollen 428 liegen jetzt zusätzlich unter
+`data/posebusters_full/` (214 MB), das alte 209er-Verzeichnis ist **unberührt**,
+damit alle bisherigen Ergebnisse reproduzierbar bleiben.
+
+**Entscheidung des Users:** vorerst bei den 209 bleiben. Eine Auswertung auf
+den offiziellen 308 erst am Ende, falls Zeit bleibt; sie kostet rund 44 GPU-h
+je Modell an neuem Sampling. Der billige Zwischenschritt bleibt jederzeit
+verfügbar: auf die **151** Komplexe filtern, die in v2 enthalten sind. Das
+kostet keine GPU-Zeit und entfernt alle 57 Strukturen, die die
+Benchmark-Autoren wegen Kristallkontakten verworfen haben.
 
 ## Strang A — 72h-Paar
 
