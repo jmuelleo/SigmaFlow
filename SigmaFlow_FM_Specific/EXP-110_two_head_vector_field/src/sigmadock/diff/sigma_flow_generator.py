@@ -1069,8 +1069,6 @@ class SigmaFlowGenerator(nn.Module):
             "atom_rot_field": lig_rot_field,      # [B x F x A, 3]
             "v_frag": v_frag,                      # [B x F, 3]
             "omega_frag": omega_frag,              # [B x F, 3], Weltrahmen
-            "force_per_fragment": force_per_fragment,  # [B x F, 3]
-            "torque_per_fragment": torque_per_fragment,  # [B x F, 3]
             # Scores
             "pred_u_t_trans": vector_field["pred_u_t_trans"],  # [B x F, 3]
             "pred_u_t_R": vector_field["pred_u_t_R"],  # [B x F, 3, 3]

@@ -121,6 +121,18 @@ assert "pool_fragment_fields" in src_fwd, "forward benutzt das Pooling nicht"
 for dead in ("_compute_fragment_dynamics", "_predict_fragment_updates"):
     assert dead not in src_fwd, f"{dead} ist im aktiven Trainingspfad"
 
+# Die Experiment-Configs muessen existieren. train.py loest --train_exps und
+# --val_exps darueber auf; fehlen sie, stirbt der Job nach Sekunden mit
+# "Experiment config not found". Genau das ist bei dieser Variante passiert:
+# beim Kopieren gingen alle sieben conf/experiments/*.yaml verloren, weil die
+# .gitignore-Regel **/experiments/ greift. Am 2026-08-21 nachgetragen.
+# path = <variante>/src/sigmadock/__init__.py -> drei Ebenen hoch
+variant_dir = os.path.dirname(os.path.dirname(os.path.dirname(path)))
+conf_dir = os.path.join(variant_dir, "conf", "experiments")
+for exp in ("pdbbind-general", "posebusters"):
+    f = os.path.join(conf_dir, exp + ".yaml")
+    assert os.path.isfile(f), "Experiment-Config FEHLT: " + f
+
 print("SANITY GATE OK")
 print("  Variante        : EXP-110 Zwei-Kopf-Vektorfeld")
 print("  Modul           :", path)

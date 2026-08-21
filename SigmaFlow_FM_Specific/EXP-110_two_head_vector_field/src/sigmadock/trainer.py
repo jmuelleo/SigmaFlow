@@ -257,10 +257,12 @@ class SigmaLightningModule(pl.LightningModule):
             + self.rot_score_weight * losses["loss_R"]
         )
 
-        # --- unpacking ---
-        force_per_atom = score_terms["pseudoforces"]  # [B*F*A, 3]
-        force_per_fragment = score_terms["force_per_fragment"]  # [B x F, 3]
-        torque_per_fragment = score_terms["torque_per_fragment"]  # [B x F, 3]
+        # Frueher wurden hier pseudoforces, force_per_fragment und
+        # torque_per_fragment entpackt. Alle drei waren toter Code, sie
+        # wurden zugewiesen und nie benutzt. In der Zwei-Kopf-Variante
+        # existieren die Schluessel ohnehin nicht mehr, das Netz gibt zwei
+        # Atomfelder aus statt eines Pseudokraftfeldes. Die vollstaendigen
+        # score_terms werden unten fuer die Diagnose weiterhin gesammelt.
 
         # Only sync scalars if test or val.
         log_dict: dict[str, float | torch.Tensor] = {

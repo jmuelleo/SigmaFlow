@@ -83,12 +83,13 @@ Beide Köpfe baugleich. `zero_init_last` greift über `self.apply(...)` auf
 
 ## 4. Was bewiesen ist
 
-Alle vier Audits am 2026-08-20 frisch grün, **110 Checks**:
+Alle fünf Audits am 2026-08-21 frisch grün, **135 Checks**:
 
 ```bash
 # aus dem Variantenordner
 PYTHONPATH=src python audits/audit_two_head_full.py          # 37/37
 PYTHONPATH=src python audits/test_checkpoint_roundtrip.py    # 35/35
+PYTHONPATH=src python audits/test_real_training_step.py      # 25/25
 # aus der Repowurzel
 PYTHONPATH=SigmaFlow_FM_Specific/EXP-110_two_head_vector_field/src \
     python audits/test_two_head_vector_field.py              # 22/22
@@ -115,10 +116,35 @@ enthält `assert M.min() >= 2`, solche Fragmente kamen also nie vor. Das
 tragfähige Argument ist ein anderes — 2-Atom-Fragmente sind linear, und ihr
 regularisierter Trägheitstensor hat `cond(I_reg) ≈ 1.5e8`.
 
-**Was die Audits nicht zeigen.** Sie arbeiten mit Stellvertreterrümpfen bzw.
-mit einem untrainierten Modell, nicht mit einem echten Vorwärtslauf auf
-Daten. Geprüft ist die Verdrahtung, nicht das Netz auf echten Komplexen. Es
-gibt **keinen** Lauf auf echten Daten.
+**Echter Trainingsschritt, seit 2026-08-21 geprüft.**
+`audits/test_real_training_step.py` lädt echte Komplexe aus
+`notebooks/dummy_data`, ruft den echten EquiformerV2 auf und geht die volle
+Kette: Vorwärtslauf, Loss, Rückwärtslauf, Optimiererschritt. Gemessen:
+`loss_R` = 8.35 gegen die theoretische Haar-Erwartung
+`2·E[θ²] ≈ 8.4` für `‖Log(R₀ᵀR₁)‖_F²`, und ein Verhältnis von Loss zu
+Zielnorm von exakt 1.000, was bestätigt, dass `zero_init_last` greift.
+Beide Köpfe bekommen Gradient, 100 % der Parameter.
+
+Zusätzlich lief ein vollständiger `scripts/train.py`-Lauf auf CPU durch
+Sanity-Validierung, Trainingsschritte, volle Validierung und
+Checkpoint-Schreibung.
+
+**Drei Blocker, die genau diese Lücke durchgelassen hatte** (alle behoben):
+
+1. **`conf/experiments/` fehlte komplett.** Alle sieben YAMLs gingen beim
+   Kopieren verloren, weil die `.gitignore`-Regel `**/experiments/` greift.
+   `train.py` löst `--train_exps` und `--val_exps` darüber auf, der Job wäre
+   nach Sekunden mit `Experiment config not found` gestorben. Wiederhergestellt,
+   byte-identisch zu Minimal, und das Sanity Gate prüft es jetzt.
+2. **`forward()` gab `force_per_fragment` und `torque_per_fragment` zurück**,
+   Restschlüssel des alten Newton-Euler-Pfads, die es nicht mehr gibt.
+   `NameError` in der Sanity-Validierung.
+3. **`trainer.py` entpackte `score_terms["pseudoforces"]`**, ebenfalls nicht
+   mehr vorhanden. War in Minimal wie hier toter Code, zugewiesen und nie
+   benutzt. Entfernt.
+
+Keiner der drei war durch Codeinspektion oder die vorherigen Audits zu finden.
+Alle drei fielen beim ersten echten Lauf sofort auf.
 
 ---
 
