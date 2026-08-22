@@ -54,7 +54,61 @@ Auswertung, Start also spätestens **2026-08-29**. ARC-Support hat am 21.08.
 die Durchsatzjobs priorisiert und sie liefen sofort an; der Kontakt ist also
 offen und nutzbar.
 
+## EXP-110 endgültig ausgewertet: Nullergebnis (2026-08-22, abends)
+
+Vollständige Auswertung über **10 Seeds** und **mit Proteinprüfung**
+(PoseBusters `redock`). Maßgeblicher Stand, Details in `RESULTS.md`.
+
+| Hypothese zu SigmaFlow-Separate | Ergebnis |
+|---|---|
+| bessere Genauigkeit als Minimal | **nein**, p = 0.16 |
+| bessere Rotation als Minimal | **nein**, −0.06° bei ±1.5° |
+| bessere Validität als Minimal | **nein**, p = 0.72 |
+| bessere Validität als SigmaDock | **nein**, p = 0.78 |
+
+**Der Zwei-Kopf-Ansatz ist bei 12 h Budget ein sauberes Nullergebnis.** Das
+ist berichtbar und braucht keine Rettung. Was bleibt, ist der
+Verfahrensvergleich: SigmaDock trifft rund doppelt so oft unter 2 Å
+(11.3 % gegen 5.3 / 6.2 %, p = 8.7e-14), und alle drei Arme erzeugen weit
+überwiegend Posen, die ins Protein ragen (`minimum_distance_to_protein`
+besteht bei 16–20 %).
+
+Kernzahlen, 209 Komplexe × 10 Seeds je Arm (Minimal / Separate / SigmaDock):
+
+| Größe | Werte |
+|---|---|
+| RMSD < 2 Å | 5.3 / 6.2 / **11.3 %** |
+| PB-valid ohne Protein | 34.4 / 35.8 / 29.3 % |
+| **PB-valid mit Protein** | **7.0 / 6.7 / 6.9 %** (alle gleich) |
+| beides, mit Protein | 1.4 / 1.5 / 2.1 % |
+| P(valid \| genau), mit Protein | 27.3 / 24.8 / 18.2 % (p = 0.071) |
+
+**Drei Befunde sind an diesem Tag gekippt**, alle weil die Auswertung
+weniger prüfte als die Zielgröße: der Top-1-Vorsprung galt nur für Seed 0,
+der Validitätsvorsprung nur ohne Protein, und die Rangfolge der gemeinsamen
+Metrik stand nach 4 Seeds falsch herum. **Regel: keine Zahl in die Thesis,
+die nicht über alle Seeds und mit vollständiger Prüfung gerechnet ist.**
+
+Werkzeuge dafür liegen im Repo: `redock_report.py`, `run_redock.py`,
+`rotation_translation_compare.py` (alle in
+`SigmaFlow_Variants/posebusters_full_comparison/`). Die 209 Protein-PDBs
+liegen lokal unter `pb_proteins/`, md5 des Archivs
+38cf9027b29e46a6284b0f62b4bba339.
+
+### Offen aus diesem Strang
+
+- 40-Seed-Erweiterung und gnina-Ranking sind vorbereitet (`arc/score_gnina.slurm`,
+  `SigmaFlow_Evaluation/rank_and_report.py`), aber **nicht abgeschickt**.
+  Angesichts des Nullergebnisses ist der Nutzen fraglich; erst entscheiden,
+  ob EXP-110 überhaupt weiterverfolgt wird.
+- Symmetrievorbehalt bei den absoluten Rotationswinkeln ungeprüft
+  (`symmetry_flip_analysis.py` läge bereit).
+
 ## EXP-110: das erste echte Ergebnis (2026-08-22)
+
+> **ÜBERHOLT.** Beruht auf Seed 0 und auf Validität ohne Protein. Siehe den
+> Abschnitt darüber.
+
 
 Job `8625634`, Commit `870fcc0`.
 

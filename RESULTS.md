@@ -1042,6 +1042,14 @@ Sensitivitätsanalyse über ein Gitter beider Konstanten.
 
 ## PoseBusters-Validität, alle drei Arme über 10 Seeds (2026-08-22)
 
+> **TEILWEISE ÜBERHOLT am 2026-08-22, später am Tag.** Alle Zahlen dieses
+> Abschnitts sind Modus `regen`, also OHNE Protein. Mit Proteinprüfung
+> (`redock`) verschwindet der Validitätsvorsprung der Flow-Matching-Arme
+> vollständig: 7.0 / 6.7 / 6.9 %, p >= 0.72. Die Aussage "beide
+> Flow-Matching-Arme sind klar plausibler als SigmaDock" gilt NUR für die
+> innere Ligandengeometrie. Siehe "PB-Validität MIT Protein" weiter unten.
+> Die Einzelcheck-Tabelle und die Aussage zum Konformer-Problem bleiben gültig.
+
 Nachgerechnet lokal für alle drei Arme, 209 Komplexe × 10 Seeds = 2090 Posen
 je Arm. Bis dahin gab es Zehn-Seed-PB nur für EXP-110, die anderen beiden
 hatten nur Seed 0.
@@ -1263,3 +1271,130 @@ liefert einen bestimmten Vertreter, nicht den nächstliegenden. Das **bläht den
 gemessenen Fehler auf**, für alle drei Arme gleichermaßen. Der Vergleich
 zwischen den Armen bleibt gültig, die absolute Höhe ist eine Obergrenze. Wie
 groß der Effekt ist, ist ungeprüft.
+
+## PB-Validität MIT Protein: `redock` über alle 10 Seeds (2026-08-22)
+
+Der abschließende und maßgebliche Stand. Alle 2090 Posen je Arm, 209 Komplexe
+× 10 Seeds, `mol_cond_loaded = True` durchgehend geprüft.
+
+**Es wurde nichts neu gesampelt.** `regen` und `redock` sind zwei
+PoseBusters-Presets auf denselben Posen. Der Unterschied ist allein, dass
+`redock` das Protein mitbekommt und die Kollisions- und Volumenprüfungen
+ausführt. Lokal machbar: die 209 Protein-PDBs von ARC geholt (20 MB, md5
+38cf9027b29e46a6284b0f62b4bba339, 209/209 Deckung mit `true_ligands/`), dann
+rund eine Stunde Rechenzeit für alle drei Arme parallel.
+
+### Kopfzahlen
+
+| Arm | `regen` (ohne Protein) | **`redock` (mit Protein)** | Verlust |
+|---|---:|---:|---:|
+| SigmaFlow-Minimal | 34.4 % | **7.0 %** | −27.5 pp |
+| SigmaFlow-Separate | 35.8 % | **6.7 %** | −29.1 pp |
+| SigmaDock | 29.3 % | **6.9 %** | −22.3 pp |
+
+Gepaart über alle 2090 Posen (Komplex × Seed):
+
+| Größe | Vergleich | p |
+|---|---|---:|
+| redock-Validität | Minimal gegen SigmaDock | **1.00** |
+| redock-Validität | Separate gegen SigmaDock | **0.78** |
+| redock-Validität | Separate gegen Minimal | **0.72** |
+| RMSD < 2 Å | Minimal gegen SigmaDock | 8.7e-14 |
+| RMSD < 2 Å | Separate gegen SigmaDock | 5.1e-10 |
+| RMSD < 2 Å | Separate gegen Minimal | 0.16 |
+
+**Der Validitätsvorsprung der Flow-Matching-Arme verschwindet restlos.** Er
+galt ausschließlich für die innere Ligandengeometrie. Nur die Genauigkeit
+trennt die Verfahren noch, und dort gewinnt SigmaDock klar.
+
+### Warum: eine einzige Prüfung dominiert
+
+| Check | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| **`minimum_distance_to_protein`** | **18 %** | **16 %** | **20 %** |
+| `volume_overlap_with_protein` | 66 % | 68 % | 73 % |
+| `minimum_distance_to_organic_cofactors` | 86 % | 87 % | 86 % |
+| übrige sechs | 94–100 % | 94–100 % | 94–100 % |
+
+Rund vier von fünf Posen ragen ins Protein hinein, bei allen drei Armen fast
+gleich stark. Dieser Einbruch von etwa 25 Punkten überschreibt die 5 Punkte
+Unterschied, die unter `regen` das ganze Signal waren.
+
+Nebenbei widerlegt: die Vermutung, SigmaDock stoße wegen der näheren
+Platzierung häufiger an. Beim Volumenüberlapp ist SigmaDock der beste der drei.
+
+### Die Metrik des Papers: RMSD < 2 Å UND PB-valid mit Protein
+
+| Seed | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 0 | 1.0 % (2) | 1.4 % (3) | 2.9 % (6) |
+| 1 | 1.4 % (3) | 1.9 % (4) | 1.9 % (4) |
+| 2 | 1.9 % (4) | 1.4 % (3) | 0.0 % (0) |
+| 3 | 3.3 % (7) | 2.9 % (6) | 1.9 % (4) |
+| 4 | 1.9 % (4) | 1.9 % (4) | 1.9 % (4) |
+| 5 | 0.5 % (1) | 1.0 % (2) | 2.9 % (6) |
+| 6 | 0.5 % (1) | 1.0 % (2) | 2.4 % (5) |
+| 7 | 1.9 % (4) | 1.0 % (2) | 2.9 % (6) |
+| 8 | 1.0 % (2) | 1.4 % (3) | 1.9 % (4) |
+| 9 | 1.0 % (2) | 1.4 % (3) | 1.9 % (4) |
+| **Mittel** | **1.4 %** | **1.5 %** | **2.1 %** |
+| **≥ 1/10** | 9.6 % | 11.0 % | 12.9 % |
+
+SigmaDock führt, aber das sind 0 bis 7 Komplexe von 209 je Seed. Bei dieser
+Größenordnung ist die Rangfolge nicht belastbar. **Warnung aus eigener
+Erfahrung heute:** die Zwischenmeldung nach 4 Seeds ergab 1.9 / 1.9 / 1.7 %
+und zeigte die Rangfolge falsch herum.
+
+Vergleichswert des SigmaDock-Papers: 79.9 %. Wir liegen bei 1–2 %. Das ist
+eine Aussage über 12 h Trainingsbudget ohne Ranking, nicht über die Verfahren.
+
+### Die Zeile, die interessant bleibt
+
+P(PB-valid mit Protein | RMSD < 2 Å), Bootstrap über 209 Komplexe:
+
+| Arm | Schätzer | 95 %-KI | n Treffer |
+|---|---:|---|---:|
+| SigmaFlow-Minimal | 27.3 % | [17.1, 37.9] | 110 |
+| SigmaFlow-Separate | 24.8 % | [16.4, 33.3] | 129 |
+| SigmaDock | 18.2 % | [11.7, 25.4] | 236 |
+
+| Vergleich | Diff | p |
+|---|---:|---:|
+| Minimal minus SigmaDock | +9.0 pp | **0.071** |
+| Separate minus SigmaDock | +6.5 pp | 0.116 |
+| Separate minus Minimal | −2.5 pp | 0.668 |
+
+Die Richtung ist konsistent: SigmaDocks Treffer sind seltener physikalisch
+sauber. **Signifikant ist es nicht** (p = 0.071). Als Hinweis formulieren,
+nicht als Befund.
+
+### Bilanz zu EXP-110 / SigmaFlow-Separate
+
+Über 10 Seeds und mit Proteinprüfung bleibt kein positiver Befund:
+
+| Hypothese | Ergebnis |
+|---|---|
+| bessere Genauigkeit als Minimal | nein, p = 0.16 |
+| bessere Rotation als Minimal | nein, −0.06° bei ±1.5° |
+| bessere Validität als Minimal | nein, p = 0.72 |
+| bessere Validität als SigmaDock | nein, p = 0.78 |
+
+**Der Zwei-Kopf-Ansatz ist bei diesem Trainingsbudget ein sauberes
+Nullergebnis.** Das ist berichtbar: eine vorregistrierte Hypothese, sauber
+gemessen, widerlegt.
+
+Was bleibt, ist der Verfahrensvergleich: Diffusion trifft bei gleichem Budget
+rund doppelt so oft wie Flow Matching, und beide erzeugen weit überwiegend
+Posen, die ins Protein ragen.
+
+### Methodische Lehre dieses Tages
+
+Drei Befunde sind an einem Tag gekippt, alle in dieselbe Richtung, alle durch
+dieselbe Ursache: **eine Auswertung, die weniger prüft als die Zielgröße.**
+
+1. Top-1-Vorsprung von EXP-110: galt nur für Seed 0 (5/10 Seeds, p = 0.13).
+2. Validitätsvorsprung der Flow-Arme: galt nur ohne Protein (p = 0.78 mit).
+3. Rangfolge der gemeinsamen Metrik: nach 4 Seeds falsch herum.
+
+Regel für den Rest der Arbeit: keine Zahl in die Thesis, die nicht über alle
+Seeds und mit der vollständigen Prüfung gerechnet ist.

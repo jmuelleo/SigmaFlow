@@ -85,3 +85,10 @@ Thesis_Draft_Proposal/**/*.log
 Thesis_Draft_Proposal/**/*.out
 Thesis_Draft_Proposal/**/*.toc
 Thesis_Draft_Proposal/**/*.blg
+
+# PoseBusters-Auswertungstabellen und Protein-PDBs (erzeugte Daten)
+SigmaFlow_Variants/posebusters_full_comparison/pb_*_seed*.csv
+SigmaFlow_Variants/posebusters_full_comparison/rd_*_seed*.csv
+SigmaFlow_Variants/posebusters_full_comparison/rd_*.log
+SigmaFlow_Variants/posebusters_full_comparison/pb_proteins/
+SigmaFlow_Variants/posebusters_full_comparison/pb_proteins.tar.gz
