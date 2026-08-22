@@ -293,6 +293,10 @@ def main() -> int:
     p.add_argument("--model", default=None)
     p.add_argument("--label", default="run")
     p.add_argument("--out_json", default=None, type=Path)
+    p.add_argument("--per_pose_csv", default=None, type=Path,
+                   help="RMSD je EINZELNER Pose (complex,seed,rmsd). Ohne das "
+                        "laesst sich Top-1 eines Rankers nicht berechnen, nur "
+                        "die Obergrenze Oracle@K.")
     p.add_argument("--per_complex_csv", default=None, type=Path,
                    help="Eine Zeile je Komplex: RMSD (Seed 0, best, Median, worst) "
                         "und Erfolgsflags. Zum Verknuepfen mit Ligandeigenschaften.")
@@ -354,6 +358,18 @@ def main() -> int:
     # "bei welchen Liganden geht es schief". Genau dafuer braucht es eine Zeile
     # je Komplex -- erst damit laesst sich Erfolg gegen Ligandeigenschaften
     # auftragen, etwa gegen die Fragmentzahl aus arc/count_fragments.py.
+    # Je EINZELNE Pose. Der Per-Komplex-Export unten aggregiert bereits ueber
+    # die Seeds und verliert damit genau die Information, die ein Ranker
+    # braucht: welcher Seed welchen RMSD hatte.
+    if args.per_pose_csv:
+        with open(args.per_pose_csv, "w", newline="", encoding="utf-8") as fh:
+            w = csv.writer(fh)
+            w.writerow(["complex", "seed", "rmsd"])
+            for r in sorted(records, key=lambda x: (x.complex_id, x.pose_id)):
+                seed = r.pose_id.replace("seed", "")
+                w.writerow([r.complex_id, seed, f"{r.rmsd:.4f}"])
+        print(f"[eval] Per-Pose-Tabelle: {args.per_pose_csv}")
+
     if args.per_complex_csv:
         per_c = defaultdict(list)
         for r in records:
