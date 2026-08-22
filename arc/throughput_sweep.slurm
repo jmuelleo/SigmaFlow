@@ -282,6 +282,22 @@ else
 BATCH="${BATCH:?BATCH setzen}"
 precheck_dataset pdbbind-general || exit 1
 ACCUM="${ACCUM:-1}"
+
+# WARUM NICHT --accum_grad_batches: das Feld existiert in RunConfig, ist aber
+# in KEINEM der Baeume als CLI-Flag registriert. argparse bricht damit mit
+# "unrecognized arguments" und rc=2 ab -- genau daran scheiterten 8625082 und
+# 8625083 in allen drei Messlaeufen, bei peak_vram=3 MiB, also ohne dass die
+# GPU je benutzt wurde. Die Trainings-Config wird deshalb NICHT angefasst;
+# stattdessen der von train.py unterstuetzte YAML-Weg, und nur dann, wenn
+# ueberhaupt akkumuliert werden soll.
+ACCUM_FLAGS=()
+if [ "$ACCUM" -gt 1 ]; then
+    ACCUM_YAML="${RUN_DIR}/accum.yaml"
+    printf 'accum_grad_batches: %s
+' "$ACCUM" > "$ACCUM_YAML"
+    ACCUM_FLAGS=(--config "$ACCUM_YAML")
+    echo "[cfg] Akkumulation ${ACCUM} ueber ${ACCUM_YAML}"
+fi
 EXTRA_STR="${EXTRA:-}"
 read -r -a EXTRA_ARR <<< "$EXTRA_STR"
 S_A="${S_A:-150}"
@@ -299,20 +315,20 @@ echo "############################################################"
 STEPS=30
 PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
   run_one "s2_priming_DISCARD" pdbbind-general "$BATCH" 500 \
-    --accum_grad_batches "$ACCUM" "${EXTRA_ARR[@]}"
+    ${ACCUM_FLAGS[@]+"${ACCUM_FLAGS[@]}"} "${EXTRA_ARR[@]}"
 
 # --- 1) Messpunkt A ---------------------------------------------------------
 STEPS="$S_A"
 PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
   run_one "s2_pointA_s${S_A}" pdbbind-general "$BATCH" 500 \
-    --accum_grad_batches "$ACCUM" "${EXTRA_ARR[@]}"
+    ${ACCUM_FLAGS[@]+"${ACCUM_FLAGS[@]}"} "${EXTRA_ARR[@]}"
 WALL_A="$(awk -F, -v n="s2_pointA_s${S_A}" '$3==n {print $11}' "$CSV" | tail -1)"
 
 # --- 2) Messpunkt B ---------------------------------------------------------
 STEPS="$S_B"
 PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
   run_one "s2_pointB_s${S_B}" pdbbind-general "$BATCH" 500 \
-    --accum_grad_batches "$ACCUM" "${EXTRA_ARR[@]}"
+    ${ACCUM_FLAGS[@]+"${ACCUM_FLAGS[@]}"} "${EXTRA_ARR[@]}"
 WALL_B="$(awk -F, -v n="s2_pointB_s${S_B}" '$3==n {print $11}' "$CSV" | tail -1)"
 
 # --- 3) Echte Laenge der Trainings-Datafront --------------------------------
