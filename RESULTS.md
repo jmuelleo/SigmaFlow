@@ -944,6 +944,12 @@ Punkte genau, die Kette ist also konsistent.
 
 ## Der Befund: die beiden Ebenen trennen sich
 
+> **ÜBERHOLT am 2026-08-22.** Die Top-1-Spalte unten beruht auf **Seed 0
+> allein**. Über alle zehn Seeds hält sie nicht: EXP-110 liegt nur in 5 von 10
+> Seeds vor Minimal, und das Aggregat ist nicht signifikant (p = 0.13). Siehe
+> den Abschnitt "Korrektur des Top-1-Befunds" weiter unten. Die Oracle@10-Spalte
+> und die Aussagen zu SigmaDock bleiben gültig.
+
 Gepaarter exakter McNemar über dieselben 209 Komplexe:
 
 | Vergleich | Top-1 | Oracle@10 |
@@ -1033,3 +1039,227 @@ berichtenswerter Befund.
 `pb_exponent` stehen nirgends im SigmaDock-Repository. Die reinen Modi
 `vinardo` und `pb` sind exakt nachbaubar, die Mischung nur als
 Sensitivitätsanalyse über ein Gitter beider Konstanten.
+
+## PoseBusters-Validität, alle drei Arme über 10 Seeds (2026-08-22)
+
+Nachgerechnet lokal für alle drei Arme, 209 Komplexe × 10 Seeds = 2090 Posen
+je Arm. Bis dahin gab es Zehn-Seed-PB nur für EXP-110, die anderen beiden
+hatten nur Seed 0.
+
+**Gegenprobe bestanden:** die neu erzeugten Seed-0-Tabellen stimmen mit den
+alten *komplexweise* überein, 209/209 für Minimal und für SigmaDock. Die
+Kette ist also dieselbe.
+
+### Wichtige Einschränkung zum Modus
+
+Alle Tabellen laufen im PoseBusters-Modus **`regen`**, nicht `redock`. Belegt
+in den Daten: jede Zeile trägt `mol_cond_loaded = False`, und die Spalten
+`minimum_distance_to_protein` und `volume_overlap_with_protein` fehlen.
+PoseBusters wählt `regen` automatisch, wenn `mol_pred` und `mol_true`
+vorliegen, aber kein Protein (`posebusters/cli.py:_select_mode`).
+
+**Die Protein-Ligand-Prüfungen fehlen damit.** Geprüft wird nur die innere
+Geometrie des Liganden. Die 79.9 % im SigmaDock-Paper sind `redock`-Zahlen.
+Unsere Werte sind eine **Obergrenze**: Proteinprüfungen können nur weitere
+Posen aussortieren. Nicht mit der Literatur vergleichbar.
+
+### Kopfzahlen
+
+| | PB-valid | Streuung über Seeds | RMSD < 2 Å | beides |
+|---|---:|---:|---:|---:|
+| SigmaFlow-Minimal | 34.4 % | 27.3–37.3 | 5.3 % | 4.0 % |
+| SigmaDock | 29.3 % | 25.4–31.6 | 11.3 % | 6.2 % |
+| **EXP-110 Zwei-Kopf** | **35.8 %** | 30.6–40.2 | 6.2 % | 4.4 % |
+
+| | ≥1/10 valid | ≥1/10 genau | ≥1/10 beides |
+|---|---:|---:|---:|
+| SigmaFlow-Minimal | 70.8 % | 31.6 % | 23.4 % |
+| SigmaDock | 60.3 % | 49.3 % | 30.1 % |
+| **EXP-110** | **71.3 %** | 35.4 % | 25.8 % |
+
+### Der Befund: Plausibilität und Genauigkeit sind entkoppelt
+
+**SigmaDock ist der genaueste und zugleich der am wenigsten plausible Arm.**
+Gepaarter exakter McNemar auf PB-Validität:
+
+| Vergleich | je Seed signifikant | Richtung | gepoolt |
+|---|---|---|---|
+| Minimal gegen SigmaDock | 3/10 | Minimal besser in 9/10 | p = 8.5e-07 |
+| Minimal gegen EXP-110 | 1/10 | EXP-110 besser in 5/10 | p = 0.19 |
+| SigmaDock gegen EXP-110 | 5/10 | **EXP-110 besser in 10/10** | p = 5.1e-10 |
+
+Die beiden Flow-Matching-Varianten sind untereinander gleich plausibel und
+beide klar plausibler als SigmaDock. Der Vorsprung von EXP-110 gegenüber
+SigmaDock gilt in **jedem einzelnen der zehn Seeds**, was ihn belastbar macht;
+der gepoolte p-Wert allein wäre optimistisch, weil Seeds innerhalb eines
+Komplexes nicht unabhängig sind.
+
+Die Streuung der Validität über Seeds ist mit 30.6–40.2 (EXP-110) deutlich
+enger als die der Genauigkeit (3.3–9.1, Faktor 2.8). Plausibilität ist
+offenbar eine Eigenschaft des Modells, Platzierungsgenauigkeit stark eine
+Eigenschaft der Ziehung.
+
+### Woran die Validität scheitert
+
+Alle topologischen Prüfungen bestehen zu 100 % in allen drei Armen
+(Sanitisierung, Formel, Bindungen, Ringplanarität, Radikale). Es liegt
+ausschließlich an vier geometrischen Prüfungen (Mittel über 2090 Posen,
+Reihenfolge Minimal / SigmaDock / EXP-110):
+
+| Check | Minimal | SigmaDock | EXP-110 | Spanne |
+|---|---:|---:|---:|---:|
+| `bond_lengths` | 54.4 % | 45.1 % | 51.2 % | 9.2 |
+| `bond_angles` | 45.6 % | 39.5 % | 46.5 % | 7.0 |
+| `internal_steric_clash` | 45.5 % | 44.1 % | 47.5 % | 3.4 |
+| `internal_energy` | 59.4 % | 56.7 % | 59.9 % | 3.3 |
+| `tetrahedral_chirality` | 90.9 % | 92.5 % | 91.9 % | 1.6 |
+
+**Das ist ein Konformer-Problem, kein Platzierungsproblem.** Die starren
+Fragmente werden bewegt, aber Bindungslängen und Winkel innerhalb der
+Fragmente beziehungsweise an den Verbindungsstellen stimmen nicht. Bei 12 h
+Trainingsbudget erwartbar, und es trifft alle drei Arme. Als Vergleichsgröße
+zwischen den Armen daher schwach, als Aussage über das Budget aussagekräftig.
+
+### Konsequenz für das Ranking
+
+`≥1/10 beides` ist die Obergrenze für jeden Ranker, der Plausibilität und
+Genauigkeit zugleich fordert: 25.8 % für EXP-110 gegenüber 35.4 % bei reiner
+Genauigkeit. Zusammen mit dem Befund, dass das PB-Mittel als Ranker (6.2 %)
+schlechter abschneidet als ein beliebiger Seed (7.2 %), heißt das: chemische
+Plausibilität trägt hier **kein** Rankingsignal.
+
+### Offen
+
+Die echte, literaturvergleichbare PB-Validität braucht `redock` mit Protein
+und damit einen ARC-Job; lokal liegen nur 2 der 209 Protein-PDBs.
+
+## Rotationsqualität der drei Arme (2026-08-22)
+
+Gemessen mit `SigmaFlow_Variants/posebusters_full_comparison/rotation_translation_compare.py`
+über alle 2090 Posen je Arm (209 Komplexe × 10 Seeds), rund 7100 Fragmente je
+Arm. Fragmentierung aus den Posen selbst zurückgewonnen: Bindungen, deren
+Länge zwischen wahrer und vorhergesagter Pose erhalten bleibt, liegen
+innerhalb eines starren Fragments. Kopienwahl über `best_copy`, weil 84 der
+209 Dateien mehrere kristallographische Kopien enthalten.
+
+**Nullhypothese**, numerisch nachgerechnet statt erinnert: bei Haar-verteilter
+Rotation hat der Winkel die Dichte (1 − cos t)/π auf [0, π], Mittel **126.5°**,
+Median 132.3°, Anteil unter 30° = 6.7 %.
+
+### (1) Absoluter Fragment-Rotationsfehler
+
+| Arm | Mittel | Median | 25 % | 75 % | < 30° |
+|---|---:|---:|---:|---:|---:|
+| SigmaFlow-Minimal | 126.7° | 136.7° | 100.4° | 161.2° | 2.6 % |
+| SigmaDock | **113.6°** | 121.7° | 77.0° | 154.2° | **5.7 %** |
+| EXP-110 Zwei-Kopf | 126.7° | 136.8° | 100.4° | 161.0° | 2.8 % |
+| Haar-Zufall | 126.5° | 132.3° | 101.4° | 157.3° | 6.7 % |
+
+**Minimal und EXP-110 sind von Zufall nicht zu unterscheiden.** Nur SigmaDock
+liegt meßbar darunter. Der absolute Fehler enthält allerdings den globalen
+Orientierungsfehler des ganzen Moleküls, deshalb die zweite Größe.
+
+### (2) Relativer Fehler zwischen Fragmentpaaren
+
+R_rel = R_f^T R_g; ein gemeinsamer Fehler beider Fragmente kürzt sich exakt
+heraus.
+
+| Arm | gebunden | ungebunden | Abstand |
+|---|---:|---:|---:|
+| SigmaFlow-Minimal | 109.7° | 124.4° | −14.7° |
+| SigmaDock | 105.1° | 123.5° | **−18.4°** |
+| EXP-110 | 108.6° | 124.8° | −16.3° |
+| Haar-Zufall | 126.5° | 126.5° | 0.0° |
+
+Alle drei haben lokale Geometrie gelernt; EXP-110 liegt zwischen Minimal und
+SigmaDock. Die *innere Konsistenz* ist also erlernt, die *globale
+Orientierung* bei den Flow-Matching-Armen nicht.
+
+### Gepaarter Test, Bootstrap über 209 Komplexe
+
+Unabhängige Einheit ist der Komplex, nicht das Fragment: Fragmente eines
+Moleküls teilen sich dieses Molekül.
+
+| Vergleich | Rotation | 95 %-KI | p |
+|---|---:|---|---:|
+| EXP-110 minus Minimal | **−0.06°** | [−1.58, +1.49] | **0.93** |
+| EXP-110 minus SigmaDock | +13.66° | [+11.65, +15.68] | 0.0001 |
+| Minimal minus SigmaDock | +13.72° | [+11.66, +15.79] | 0.0001 |
+
+| Vergleich | Translation | 95 %-KI | p |
+|---|---:|---|---:|
+| EXP-110 minus Minimal | **−0.02 Å** | [−0.13, +0.08] | **0.65** |
+| EXP-110 minus SigmaDock | +0.33 Å | [+0.20, +0.45] | 0.0001 |
+| Minimal minus SigmaDock | +0.35 Å | [+0.23, +0.47] | 0.0001 |
+
+**Der zweite Rotationskopf hat die Rotation nicht verbessert.** −0.06° bei
+einem Konfidenzintervall von ±1.5° ist nicht "klein", sondern nicht vorhanden.
+Dasselbe für die Translation. Das ist ein Nullergebnis gegen die
+Konstruktionsidee von EXP-110, und es ist belastbar: 2090 gepaarte Posen.
+
+### Korrektur des Top-1-Befunds
+
+Der Rotationsbefund zwang zur Gegenprobe: wenn weder Rotation noch
+Translation besser sind, woher käme dann ein Genauigkeitsgewinn? Antwort: er
+existiert über zehn Seeds nicht. Der frühere Befund beruhte auf **Seed 0
+allein**.
+
+Erfolgsrate je einzelner Ziehung (RMSD < 2 Å), je Seed:
+
+| Seed | Minimal | SigmaDock | EXP-110 |
+|---:|---:|---:|---:|
+| 0 | 2.9 % | 10.0 % | 7.2 % |
+| 1 | 5.3 % | 12.0 % | 6.2 % |
+| 2 | 6.2 % | 8.6 % | 3.3 % |
+| 3 | 9.1 % | 12.0 % | 8.1 % |
+| 4 | 7.2 % | 11.5 % | 7.2 % |
+| 5 | 2.4 % | 14.4 % | 4.8 % |
+| 6 | 6.2 % | 8.1 % | 7.2 % |
+| 7 | 5.7 % | 12.9 % | 4.3 % |
+| 8 | 4.3 % | 11.5 % | 4.3 % |
+| 9 | 3.3 % | 12.0 % | 9.1 % |
+| **Mittel** | **5.3 %** | **11.3 %** | **6.2 %** |
+
+Seed 0 war für Minimal der zweitschlechteste von zehn (2.9 % gegen 5.3 %
+Mittel) und für EXP-110 überdurchschnittlich. Der Vergleich auf Seed 0 war
+damit Glück, nicht Signal.
+
+Gepaarter exakter McNemar je Seed, Minimal gegen EXP-110: EXP-110 liegt in
+**5 von 10** Seeds vorn, zwei Seeds sind signifikant (0 und 9), beide
+zugunsten von EXP-110, acht zeigen nichts.
+
+Aggregat, Erfolge je Komplex aus 10 Ziehungen, Bootstrap über 209 Komplexe:
+
+| Arm | Erfolge je Komplex |
+|---|---:|
+| SigmaFlow-Minimal | 0.53 |
+| SigmaDock | 1.13 |
+| EXP-110 | 0.62 |
+
+| Vergleich | Diff | 95 %-KI | p |
+|---|---:|---|---:|
+| EXP-110 minus Minimal | +0.09 | [−0.02, +0.21] | **0.13** |
+| EXP-110 minus SigmaDock | −0.51 | [−0.70, −0.33] | 0.0001 |
+| Minimal minus SigmaDock | −0.60 | [−0.81, −0.41] | 0.0001 |
+
+**EXP-110 schlägt Minimal bei der Einzelziehung nicht signifikant.** Die
+Richtung ist durchgehend leicht positiv (+0.09 Erfolge je Komplex), das
+Intervall enthält die Null. SigmaDock schlägt beide klar, in 10 von 10 Seeds.
+
+### Was davon bestehen bleibt
+
+Bestätigt und unverändert: EXP-110 ist der **plausibelste** Arm (PB-Validität,
+10/10 Seeds vor SigmaDock, p = 5.1e-10) und liegt bei der Ziehungsvarianz auf
+SigmaDocks Niveau (Verhältnis Oracle@10/Oracle@1: 4.80 gegen 4.71).
+
+Aufgegeben: die Aussage, EXP-110 verbessere Genauigkeit oder Rotation
+gegenüber Minimal. Beides ist über zehn Seeds nicht nachweisbar.
+
+### Vorbehalt Symmetrie
+
+Für ein symmetrisches Fragment (Phenyl, tert-Butyl) ist die Rotation nur bis
+auf die Symmetriegruppe bestimmt. Kabsch auf der gegebenen Atomnummerierung
+liefert einen bestimmten Vertreter, nicht den nächstliegenden. Das **bläht den
+gemessenen Fehler auf**, für alle drei Arme gleichermaßen. Der Vergleich
+zwischen den Armen bleibt gültig, die absolute Höhe ist eine Obergrenze. Wie
+groß der Effekt ist, ist ungeprüft.
