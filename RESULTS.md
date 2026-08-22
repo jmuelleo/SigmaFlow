@@ -1398,3 +1398,233 @@ dieselbe Ursache: **eine Auswertung, die weniger prüft als die Zielgröße.**
 
 Regel für den Rest der Arbeit: keine Zahl in die Thesis, die nicht über alle
 Seeds und mit der vollständigen Prüfung gerechnet ist.
+
+## Lokale Vertiefung auf 10 Seeds (2026-08-22, spät)
+
+Alle Zahlen aus `threshold_and_overlap.py`, `error_budget.py` und
+`pose_geometry.py` (alle in `SigmaFlow_Variants/posebusters_full_comparison/`).
+Basis: 2090 gepaarte Posen je Arm, 209 Komplexe, RMSD durchgehend
+symmetriekorrigiert (spyrmsd) — damit stimmen die Zahlen exakt mit den
+dokumentierten Oracle@10-Werten überein.
+
+**Hinweis zu zwei RMSD-Quellen:** PoseBusters rechnet einen eigenen RMSD. Er
+stimmt zu 99.4–99.7 % mit spyrmsd überein; alle Abweichungen liegen zwischen
+2.00 und 2.16 Å, also direkt an der Schwelle. Wo Komplexzahlen berichtet
+werden, gilt **spyrmsd**, sonst verschieben sich Zählungen um bis zu vier
+Komplexe.
+
+### 1. Die Arme lösen unterschiedliche Komplexe
+
+Mindestens ein Treffer unter 2 Å aus 10 Ziehungen:
+
+| Arm | gelöst |
+|---|---:|
+| SigmaFlow-Minimal | 63 (30.1 %) |
+| SigmaFlow-Separate | 72 (34.4 %) |
+| SigmaDock | 99 (47.4 %) |
+| **Vereinigung aller drei** | **126 (60.3 %)** |
+| Schnitt aller drei | 33 |
+
+**Ein perfekter Ensemble-Ranker käme auf 60.3 %, der beste Einzelarm auf
+47.4 %.** Die Verfahren sind komplementär, nicht nur unterschiedlich stark.
+Das ist der bislang stärkste Punkt zugunsten von Flow Matching in dieser
+Arbeit.
+
+### 2. Fehlerhaushalt: exakte Zerlegung statt Korrelation
+
+**Korrektur einer früheren Aussage.** Ich hatte Spearman-Korrelationen
+verglichen: Translation in Ångström gegen Rotation in Grad, jeweils mit dem
+RMSD. Das ist keine Zerlegung, sondern ein Vergleich zweier Einheiten, und er
+verzerrt zugunsten der Translation: der Versatz eines Fragments ist fast schon
+dessen RMSD-Beitrag, ein Winkel wirkt erst über den Trägheitsradius.
+
+Die exakte Identität, mit t = mean(P) − mean(Q) je Fragment:
+
+    (1/n) Summe |P_i − Q_i|^2  =  |t|^2  +  (1/n) Summe |P_i^c − Q_i^c|^2
+
+Der Kreuzterm verschwindet, weil die zentrierten Abweichungen im Mittel null
+sind. Beide Terme in Å^2, direkt vergleichbar. Die Identität wird in
+`error_budget.py` bei **jeder einzelnen Pose** per `assert` geprüft und hielt
+in allen 6270 Fällen.
+
+| Arm | MSD gesamt | Translation | Rotation | Anteil Translation |
+|---|---:|---:|---:|---:|
+| SigmaFlow-Minimal | 32.66 | 25.38 | 7.28 | 77.7 % |
+| SigmaFlow-Separate | 32.28 | 25.30 | 6.98 | 78.4 % |
+| SigmaDock | 28.10 | 22.17 | 5.93 | 78.9 % |
+
+Aufgeschlüsselt nach Fragmentzahl der Pose (Anteil Translation):
+
+| Fragmente | n | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|---:|
+| **1** | 171 | **17.4 %** | **44.1 %** | **53.3 %** |
+| 2 | 374 | 56.0 % | 54.4 % | 59.5 % |
+| 3 | 401 | 71.0 % | 71.8 % | 69.3 % |
+| 4–5 | 664 | 82.0 % | 81.8 % | 82.0 % |
+| >= 6 | 480 | 88.1 % | 87.4 % | 87.7 % |
+
+**Bei einfragmentigen Liganden kehrt es sich um**: Minimals Fehler liegt dort
+zu 82.6 % in der Rotation. Die 78 % im Mittel stammen aus den
+mehrfragmentigen Molekülen, und dort ist der Translationsterm nicht nur
+globale Verschiebung, sondern auch die relative Anordnung der Fragmente.
+
+Richtige Formulierung: **78 % des Fehlers liegen darin, WO die Fragmente
+sind, 22 % darin, WIE sie gedreht sind.** Für EXP-110 heißt das: der zweite
+Kopf adressiert rund ein Fünftel des Fehlers, und ausgerechnet bei
+einfragmentigen Molekülen, wo Rotation dominiert, hat er nicht geholfen
+(11.1 % gegen 11.7 % Treffer).
+
+**Randbedingung, die die Zerlegung gültig macht:** mit
+`graph.sample_conformer=false` stammt die innere Fragmentgeometrie aus der
+gebundenen Pose. Innerhalb eines Fragments unterscheiden sich Vorhersage und
+Wahrheit daher nur durch eine starre Bewegung, und der Rotationsterm enthält
+keine Konformerabweichung.
+
+### 3. Die Fragmentierung ist randomisiert
+
+`fragmentation_strategy: Literal[...] = "random"` in
+`SigmaFlow_Minimal/src/sigmadock/data.py:75`. Die Zerlegung wird **je Lauf neu
+gezogen**. Belegt in den Daten: nur 35 % der Fragmentzahlen stimmen zwischen
+den Armen überein, 193 von 209 Komplexen schwanken schon innerhalb eines Arms
+über die Seeds.
+
+Die Fragmentzahl ist damit eine Eigenschaft der einzelnen Pose, nicht des
+Moleküls. Binning je Pose ist richtig; eine Zahl "die Fragmentzahl von Komplex
+X" gibt es nicht.
+
+### 4. Alles nach Fragmentzahl
+
+**Median-RMSD in Å**
+
+| Fragmente | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 3.32 | 3.18 | 2.70 |
+| 2 | 3.67 | 3.47 | 3.23 |
+| 3 | 4.33 | 4.59 | 3.91 |
+| 4–5 | 5.38 | 5.33 | 4.84 |
+| >= 6 | 6.77 | 6.75 | 6.29 |
+
+**RMSD < 2 Å**
+
+| Fragmente | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 11.7 % | 11.1 % | 24.6 % |
+| 2 | 10.4 % | 14.2 % | 20.1 % |
+| 3 | 5.7 % | 6.7 % | 12.5 % |
+| 4–5 | 2.9 % | 2.9 % | 7.4 % |
+| >= 6 | 0.2 % | 0.8 % | 1.7 % |
+
+**PB-valid OHNE Protein**
+
+| Fragmente | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 98.2 % | 94.2 % | 87.1 % |
+| 2 | 67.4 % | 70.9 % | 56.4 % |
+| 3 | 42.4 % | 46.1 % | 38.4 % |
+| 4–5 | 17.3 % | 19.1 % | 12.3 % |
+| >= 6 | 3.1 % | 2.3 % | 3.3 % |
+
+**PB-valid MIT Protein**
+
+| Fragmente | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 33.3 % | 24.6 % | 29.8 % |
+| 2 | 11.8 % | 13.4 % | 13.6 % |
+| 3 | 5.7 % | 8.2 % | 8.2 % |
+| 4–5 | 2.9 % | 2.3 % | 0.9 % |
+| >= 6 | 0.6 % | 0.0 % | 0.8 % |
+
+Die innere Validität ist fast reine Fragmentarithmetik: 98 % bei einem
+Fragment, 3 % bei sechs. Jede Schnittstelle ist eine Gelegenheit, eine
+Bindungslänge oder einen Winkel zu verfehlen, und die Wahrscheinlichkeiten
+multiplizieren sich. **Der Validitätsvorsprung der Flow-Arme kommt aus den
+mittleren Klassen (2 bis 5 Fragmente)**, nicht aus den Randfällen. Mit Protein
+verschwindet das Muster: dann liegen alle drei in jeder Klasse dicht
+beieinander.
+
+### 5. Wirkung der RMSD-Schwelle
+
+**Die PB-Validität selbst hängt nicht von der Schwelle ab** — sie prüft
+Geometrie und kennt den RMSD nicht. Fest: 34.4 / 35.8 / 29.3 % ohne Protein,
+7.0 / 6.7 / 6.9 % mit.
+
+**Trefferquote je Ziehung**
+
+| Schwelle | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1.0 Å | 0.2 % | 0.5 % | 0.9 % |
+| 2.0 Å | 4.9 % | 5.8 % | 10.7 % |
+| 2.5 Å | 10.0 % | 11.8 % | 18.5 % |
+| 3.0 Å | 18.1 % | 21.5 % | 28.2 % |
+
+**RMSD < X UND valid MIT Protein**
+
+| Schwelle | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1.0 Å | 0.2 % | 0.3 % | 0.4 % |
+| 2.0 Å | 1.4 % | 1.5 % | 2.1 % |
+| 2.5 Å | 2.0 % | 2.1 % | 2.7 % |
+| 3.0 Å | 2.3 % | 2.8 % | 3.8 % |
+
+**Die gemeinsame Metrik sättigt.** Von 2.0 auf 3.0 Å steigt SigmaDocks reine
+Trefferquote von 10.7 auf 28.2 %, die gemeinsame Metrik aber nur von 2.1 auf
+3.8 %. Die zusätzlichen Treffer zwischen 2 und 3 Å sind fast alle physikalisch
+unbrauchbar. Die Schwelle zu lockern kauft nichts, wenn Validität mitverlangt
+wird.
+
+**P(valid MIT Protein | RMSD < X)**
+
+| Schwelle | Minimal | Separate | SigmaDock | n (Min/Sep/SD) |
+|---:|---:|---:|---:|---|
+| 1.0 Å | 80.0 % | 60.0 % | 47.4 % | 5 / 10 / 19 |
+| 2.0 Å | 28.4 % | 25.4 % | 19.2 % | 102 / 122 / 224 |
+| 2.5 Å | 19.6 % | 17.8 % | 14.5 % | 209 / 247 / 386 |
+| 3.0 Å | 13.0 % | 13.1 % | 13.6 % | 378 / 449 / 590 |
+| alle | 7.0 % | 6.7 % | 6.9 % | 2090 |
+
+Ohne Protein bei 1.0 Å: Minimal und Separate zu 100 % valide (5 bzw. 10
+Posen).
+
+**Genauigkeit und Plausibilität sind gekoppelt**, monoton und stark. Bei jeder
+Schwelle bis 2.5 Å sind die Flow-Arme bedingt sauberer als SigmaDock; bei
+3.0 Å verschwindet der Abstand.
+
+Zwei Vorbehalte. **Die 1-Å-Zeile trägt nicht**: 5, 10 und 19 Posen, die 80 %
+sind vier von fünf. **Die Kopplung ist teilweise eingebaut**: kleine RMSDs
+treten überproportional bei einfragmentigen Liganden auf, und die sind fast
+immer valide. Ein Teil des Anstiegs von 7 auf 28 % ist Fragmentzahl, nicht
+Genauigkeit.
+
+**Empfehlung für die Thesis:** falls eine zweite Schwelle berichtet wird, dann
+**2.5 Å** — sie verdoppelt die Fallzahlen, erhält die Rangfolge und den
+bedingten Validitätsvorsprung der Flow-Arme. 3.0 Å nicht, dort verschwindet
+genau dieser Unterschied.
+
+### 6. Oracle@k sättigt nicht
+
+Erwartungstreu über zufällige Auswahl von k der 10 Seeds:
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 5.3 % | 6.3 % | 11.4 % |
+| 2 | 9.7 % | 11.1 % | 19.7 % |
+| 3 | 13.6 % | 15.5 % | 25.9 % |
+| 5 | 20.1 % | 22.7 % | 35.3 % |
+| 10 | 31.6 % | 35.4 % | 49.3 % |
+
+Nahezu linear bis k = 10, kein Abflachen. Die 40 Seeds werden weiter Ertrag
+bringen.
+
+### 7. Größenabhängigkeit (pose-unabhängige Achse)
+
+Nach Schweratomen der wahren Struktur, RMSD < 2 Å je Ziehung:
+
+| Schweratome | Komplexe | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|---:|
+| <= 20 | 82 | 9.3 % | 12.0 % | 20.0 % |
+| 21–28 | 53 | 3.4 % | 3.0 % | 8.7 % |
+| 29–36 | 45 | 1.8 % | 1.8 % | 2.9 % |
+| >= 37 | 29 | **0.0 %** | **0.0 %** | 0.3 % |
+
+Bei großen Liganden trifft kein Flow-Matching-Arm auch nur einmal in 290
+Ziehungen. Die Gesamtzahlen sind fast vollständig ein Kleinmolekül-Ergebnis.

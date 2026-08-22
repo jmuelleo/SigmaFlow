@@ -54,6 +54,127 @@ Auswertung, Start also spätestens **2026-08-29**. ARC-Support hat am 21.08.
 die Durchsatzjobs priorisiert und sie liefen sofort an; der Kontakt ist also
 offen und nutzbar.
 
+## ARC-Fahrplan: 40 Seeds vollständig machen (Stand 2026-08-22 abends)
+
+Reihenfolge einhalten. Schritt 1 blockiert alles, was SigmaDock betrifft.
+
+### Stand der Posen
+
+| Arm | Seeds auf ARC | Ort |
+|---|---:|---|
+| sigmaflow_minimal | **40** (8360 SDF) | `arc_runs/sampling/sigmaflow_minimal__controlled__raw__nfe25__cpu` |
+| exp110 | **40** (8360 SDF) | `arc_runs/sampling/exp110__controlled__raw__nfe25__cpu` |
+| sigmadock | **0** | Verzeichnis existiert, ist leer |
+
+**SigmaDock fehlt vollständig.** Job 8629868 (Seeds 0–9) und Array 8629911
+(Seeds 10–39) sind beide am selben Fehler gescheitert: die Skripte übergaben
+unbedingt `ode.num_steps`, SigmaDock hat aber keinen `ode`-Block, der
+Schlüssel heißt dort `diffusion.num_steps`. Behoben in Commit `789efdc`.
+
+Die SigmaDock-Posen, auf denen alle bisherigen Zahlen beruhen, liegen nur
+lokal (`eval_sd_root/`, 2090 SDF) und stammen aus einem Lauf mit dem Tag
+`last`, dessen Verzeichnis auf ARC nicht mehr auffindbar ist. Herkunft daher
+**nicht belegbar** — der Neulauf ersetzt sie.
+
+### Schritt 1: SigmaDock neu sampeln
+
+Probe `8630732` läuft bereits mit dem korrigierten Skript. Erst prüfen:
+
+```bash
+D=/data/stat-cadd/shug8458/arc_runs/sampling/sigmadock__controlled__raw__nfe25__cpu
+sacct -j 8630732 --format=JobID%16,State%12,Elapsed,ExitCode -X
+ls "$D"/results/posebusters/*/seed_0/*.sdf | wc -l    # muss 209 sein
+```
+
+Nur wenn beides stimmt (COMPLETED und 209):
+
+```bash
+cd /data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlow
+CKPT_SD=/data/stat-cadd/shug8458/SigmaDock_Reproduction_JulianMueller/sigmadock/experiments/sigmadock/0-08-11_17-57-05/checkpoints/last.ckpt
+MODEL=sigmadock CKPT="$CKPT_SD" sbatch --array=1-39 arc/sample_pb_seeds_cpu.slurm
+```
+
+`CKPT_SD` muss in **derselben Shell** gesetzt werden wie das `sbatch`.
+
+### Schritt 2: Validität mit Protein, alle Arme, 40 Seeds
+
+Script `arc/posebusters_redock.slurm` (Commit `5981fdd`). Erst eine Probe:
+
+```bash
+MODEL=exp110 sbatch --array=0 arc/posebusters_redock.slurm
+```
+
+Der Task druckt die drei Raten ins Log. Wenn plausibel:
+
+```bash
+MODEL=exp110            sbatch --array=1-39 arc/posebusters_redock.slurm
+MODEL=sigmaflow_minimal sbatch --array=0-39 arc/posebusters_redock.slurm
+MODEL=sigmadock         sbatch --array=0-39 arc/posebusters_redock.slurm   # nach Schritt 1
+```
+
+Ergebnis: `arc_runs/posebusters_redock/<model>/rd_<model>_seed<N>.csv`
+
+### Schritt 3: Prüfen, dann herunterladen
+
+Immer beides — SLURM COMPLETED ist kein Nachweis:
+
+```bash
+for M in sigmaflow_minimal exp110 sigmadock; do
+  D=/data/stat-cadd/shug8458/arc_runs/sampling/${M}__controlled__raw__nfe25__cpu
+  R=/data/stat-cadd/shug8458/arc_runs/posebusters_redock/${M}
+  echo "$M: $(find $D -type d -name 'seed_*' 2>/dev/null | wc -l) Seeds, \
+$(find $D -name '*.sdf' 2>/dev/null | wc -l) SDF, \
+$(ls $R/*.csv 2>/dev/null | wc -l) redock-Tabellen"
+done
+```
+
+Soll je Arm: **40 Seeds, 8360 SDF, 40 Tabellen**.
+
+Packen, mit Zählung und Prüfsumme (ein früherer Transfer war abgeschnitten
+und fiel nur an der Dateizahl auf):
+
+```bash
+cd /data/stat-cadd/shug8458/arc_runs
+for M in sigmaflow_minimal exp110 sigmadock; do
+  tar czf ~/${M}_40seeds.tar.gz -C sampling/${M}__controlled__raw__nfe25__cpu results
+  echo "$M SDF: $(tar tzf ~/${M}_40seeds.tar.gz | grep -c '\.sdf$')  \
+$(du -h ~/${M}_40seeds.tar.gz | cut -f1)  $(md5sum ~/${M}_40seeds.tar.gz | cut -d' ' -f1)"
+done
+tar czf ~/redock_40seeds.tar.gz -C /data/stat-cadd/shug8458/arc_runs posebusters_redock
+echo "redock CSV: $(tar tzf ~/redock_40seeds.tar.gz | grep -c '\.csv$')  \
+$(md5sum ~/redock_40seeds.tar.gz | cut -d' ' -f1)"
+```
+
+Lokal (Zielverzeichnis `SigmaFlow_Variants/posebusters_full_comparison/`):
+
+```
+scp shug8458@arc-login.arc.ox.ac.uk:~/{sigmaflow_minimal,exp110,sigmadock}_40seeds.tar.gz \
+    shug8458@arc-login.arc.ox.ac.uk:~/redock_40seeds.tar.gz \
+    "C:/Users/julia/Documents/SigmaFlow/SigmaFlow_Variants/posebusters_full_comparison/"
+```
+
+MD5-Summen mitschicken, sie werden lokal gegengeprüft.
+
+### Was danach lokal gerechnet wird
+
+`evaluate_run.py --per_pose_csv` → `error_budget.py` → `threshold_and_overlap.py`.
+Alle drei liegen im Repo und laufen auf 40 Seeds unverändert.
+
+**Der entscheidende Test:** Separate gegen Minimal lag bei +0.09 Erfolgen je
+Komplex, Intervall [−0.02, +0.21], p = 0.13; auf der stetigen RMSD-Skala
+−0.15 Å bei p = 0.079. Bei vierfacher Datenmenge halbiert sich der
+Standardfehler. Wird die Richtung signifikant, ist Separate doch besser; geht
+der Punktschätzer gegen null, ist das Nullergebnis bestätigt. **Beides ist
+verwertbar.**
+
+### Nicht vergessen
+
+- `arc/score_gnina.slurm` (Ranking) ist vorbereitet, aber nie gelaufen. Erst
+  entscheiden, ob es die Rechenzeit wert ist.
+- Stage-2-Durchsatzjobs `8628662`/`8628663` hängen weiter auf `PD (Priority)`.
+  Sie blockieren `FINAL_MAX_EPOCHS` und damit das 72h-Paar.
+  **Spätester sinnvoller Start: 2026-08-29.**
+
 ## EXP-110 endgültig ausgewertet: Nullergebnis (2026-08-22, abends)
 
 Vollständige Auswertung über **10 Seeds** und **mit Proteinprüfung**
