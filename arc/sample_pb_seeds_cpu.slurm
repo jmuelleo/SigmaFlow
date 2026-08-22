@@ -137,6 +137,18 @@ else
     SCORING_ARGS=()
 fi
 
+# Die Schrittzahl heisst in beiden Welten anders. SigmaDock integriert KEINE
+# ODE und hat gar keinen ode-Block; ein unbedingtes ode.num_steps laesst Hydra
+# mit "Key 'ode' is not in struct" abbrechen -- so geschehen in Array 8629911,
+# alle 30 Tasks nach rund 35 s. Der Wert bedeutet in beiden Faellen dasselbe:
+# die Zahl der Integrationsschritte, also die NFE, und genau die soll im
+# "controlled comparison" auf beiden Seiten gleich sein.
+if [ "$KIND" = "dock" ]; then
+    STEP_ARG=(diffusion.num_steps="${NUM_STEPS}")   # SigmaDock, conf/sampling/base.yaml
+else
+    STEP_ARG=(ode.num_steps="${NUM_STEPS}")         # SigmaFlow-Varianten
+fi
+
 $PYTHON scripts/sample.py \
     ckpt="${CKPT}" \
     data_dir="${ARC_DATA}" \
@@ -145,7 +157,7 @@ $PYTHON scripts/sample.py \
     run_tag="${MODEL}_${COMPARISON}_${RANKING}_s${SEED}" \
     seed="${SEED}" \
     num_seeds=1 \
-    ode.num_steps="${NUM_STEPS}" \
+    "${STEP_ARG[@]}" \
     graph.sample_conformer=false \
     hardware.accelerator=cpu \
     hardware.devices=1 \
