@@ -279,15 +279,43 @@ in `.gitignore`.
 
 | | |
 |---|---|
-| 12h-Lauf vorbereitet | **ja** — `slurm/train_two_head_12h.slurm` |
-| 12h-Lauf abgeschickt | **nein** |
-| Walltime | **12:00:00, endgültig** — wird nicht erhöht |
-| 72h-Produktionslauf | **NEIN.** Kein Ergebnis auf echten Daten rechtfertigt bisher 72 GPU-Stunden. Die eingefrorene 72h-Konfiguration bleibt unberührt. |
+| 12h-Lauf | **GELAUFEN**, Job `8625634`, 2026-08-22 |
+| Ergebnis | `COMPLETED`, 11:10:59 von 12:00:00, 6 von 6 Epochen, 99,11 % des Anneals |
+| Checkpoint | `experiments/sigmadock/0-08-21_21-24-48/checkpoints/last.ckpt`, 273 MB, gesund |
+| Sampling | Array `8628676`, 10 Seeds, nfe 25, raw |
+| Walltime | 12:00:00, eingehalten mit 49 min Marge |
+| 72h-Produktionslauf | **weiterhin NEIN**, bis die Sampling-Ergebnisse vorliegen |
 
-Das 12h-Skript ist bis auf den Auslesekopf zeichengleich mit dem
-Referenzlauf. Statisch geprüft: `bash -n`, SBATCH-Ressourcen identisch,
-`train.py`-Flagblock identisch, alle 15 Flags akzeptiert, Sanity Gate gegen
-den echten Baum grün und gegen `SigmaFlow_Minimal` korrekt abweisend.
+### Die Walltime-Sorge war unbegründet
+
+Vor dem Lauf wurde ein Aufschlag von 10 bis 15 % geschätzt, hergeleitet aus
+der Parameterzahl und aus einem CPU-Benchmark. Gemessen wurde das Gegenteil:
+
+| Schätzverfahren | Vorhersage für 6 Epochen |
+|---|---|
+| Parameterzahl (+12,82 %) | 12,51 h, hätte nicht gepasst |
+| CPU-Benchmark (Faktor 1,36) | 15,09 h, weit daneben |
+| **gemessen auf GPU** | **11,18 h** |
+
+EXP-110 lief mit **0,3515 Schritten/s gegen 0,3443/s** beim Minimal-Referenzlauf,
+also **2,1 % schneller**. Der zusätzliche Attention-Block verschwindet auf der
+GPU in der Parallelität. **Parameterzahl ist kein Laufzeitproxy, und
+CPU-Verhältnisse übertragen sich nicht auf GPU.** Für künftige Varianten zählt
+nur die GPU-Messung. Die Entscheidung, `--max_epochs` bei 6 zu lassen, war
+richtig.
+
+### Drei Blocker vor dem Lauf
+
+Alle drei hätten den Job in den ersten Minuten getötet, keiner war durch
+Codeinspektion zu finden, alle drei fielen beim ersten echten Lauf auf:
+fehlendes `conf/experiments/` (von der `.gitignore`-Regel `**/experiments/`
+beim Kopieren verschluckt), zwei Restschlüssel `force_per_fragment` und
+`torque_per_fragment` in `forward()`, und eine tote Entpackung von
+`score_terms["pseudoforces"]` in `trainer.py`.
+
+Das 12h-Skript war bis auf den Auslesekopf zeichengleich mit dem Referenzlauf,
+und die aufgelöste Konfiguration wich in genau einem von 99 Feldern ab
+(`exp_dir`, paketrelativ und zwingend).
 
 ---
 
