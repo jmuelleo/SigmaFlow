@@ -13,6 +13,7 @@
 #   sbatch --array=0-9 arc/sample_pb_seeds.slurm
 #
 #   MODEL=exp100 CKPT=... sbatch --array=0-9 arc/sample_pb_seeds.slurm
+#   MODEL=exp110 CKPT=... sbatch --array=0-9 arc/sample_pb_seeds.slurm
 #   MODEL=sigmadock CKPT=... sbatch --array=0-9 arc/sample_pb_seeds.slurm
 #
 # NUM_STEPS steuert die NFE. Fuer den "controlled comparison" auf beiden Seiten
@@ -34,7 +35,7 @@ REPO_ROOT="/data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlo
 # shellcheck source=/dev/null
 source "${REPO_ROOT}/arc/_common.sh"
 
-MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | exp100 | sigmadock}"
+MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | exp100 | exp110 | sigmadock}"
 CKPT="${CKPT:?CKPT auf den last.ckpt-Pfad setzen}"
 NUM_STEPS="${NUM_STEPS:-25}"
 SEED="${SLURM_ARRAY_TASK_ID:-0}"
@@ -64,6 +65,8 @@ case "$MODEL" in
       CODE_DIR="${ARC_REPO}/SigmaFlow_Minimal";            ENV="$ARC_SF_ENV"; KIND=flow ;;
   exp100)
       CODE_DIR="${ARC_REPO}/SigmaFlow_FM_Specific/EXP-100_state_reparam"; ENV="$ARC_SF_ENV"; KIND=flow ;;
+  exp110)
+      CODE_DIR="${ARC_REPO}/SigmaFlow_FM_Specific/EXP-110_two_head_vector_field"; ENV="$ARC_SF_ENV"; KIND=flow ;;
   sigmadock)
       CODE_DIR="${ARC_SIGMADOCK}";                          ENV="$ARC_SD_ENV"; KIND=dock ;;
   *) echo "Unbekanntes MODEL: $MODEL"; exit 1 ;;
