@@ -55,6 +55,11 @@ PYTHON="${ARC_SF_ENV}/bin/python"
 cd "$CODE_DIR"
 export PYTHONPATH="${CODE_DIR}/src:${PYTHONPATH:-}"
 
+# RUN_DIR wird von write_run_metadata gesetzt, nicht von _common.sh selbst.
+# Ohne diesen Aufruf waere RUN_DIR unter set -u undefiniert und der Job
+# stuerbe sofort.
+write_run_metadata "SAMPLE-CPU-PROBE-${MODEL}" "$CODE_DIR" "$PYTHON"
+
 OUT="${RUN_DIR}/cpu_probe"
 mkdir -p "$OUT"
 
