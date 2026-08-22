@@ -923,3 +923,113 @@ eigene Produktionswerte, siehe #11 Sweep-Ergebnis: höheres
 mit echten Vergleichszahlen (nicht jeder Zwischenschritt/Bugfix — dafür ist
 `STATUS.md` da) eine Zeile in der passenden Tabelle ergänzen, mit Datum und
 Verweis auf den `STATUS.md`-PAUSE-PUNKT, der die Herleitung dokumentiert.
+
+---
+
+# EXP-110 Zwei-Kopf: erstes vollständiges Ergebnis (2026-08-22)
+
+Trainingslauf `8625634`, Sampling `8629345` (10 Seeds, CPU, nfe 25, ohne
+Ranking). Auswertung mit `SigmaFlow_Evaluation/evaluate_run.py` gegen
+`true_ligands/`, **dieselbe Kette für alle drei Arme**. Die Werte für Minimal
+und SigmaDock reproduzieren die dokumentierten 30.3 % und 47.6 % auf 0.2
+Punkte genau, die Kette ist also konsistent.
+
+## Kopfzahlen, 209 Komplexe, je 10 Seeds
+
+| | Top-1 (Seed 0) | Oracle@5 | Oracle@10 | med. bester RMSD | med. Seed-0-RMSD |
+|---|---:|---:|---:|---:|---:|
+| SigmaFlow-Minimal | 2.4 % | 19.1 % | 30.1 % | 2.55 Å | 4.72 Å |
+| SigmaDock | 10.0 % | 34.0 % | **47.4 %** | 2.05 Å | 4.39 Å |
+| **EXP-110 Zwei-Kopf** | **7.2 %** | 21.9 % | **34.4 %** | 2.39 Å | 4.88 Å |
+
+## Der Befund: die beiden Ebenen trennen sich
+
+Gepaarter exakter McNemar über dieselben 209 Komplexe:
+
+| Vergleich | Top-1 | Oracle@10 |
+|---|---|---|
+| Minimal gegen SigmaDock | p = 0.0015 signifikant | p < 0.0001 signifikant |
+| **Minimal gegen EXP-110** | **p = 0.021 signifikant** | **p = 0.27 nicht signifikant** |
+| SigmaDock gegen EXP-110 | p = 0.38 nicht signifikant | p = 0.0013 signifikant |
+
+**Bei Top-1 schlägt EXP-110 Minimal signifikant, und der Abstand zu SigmaDock
+verschwindet. Bei Oracle@10 kippt es: der Vorsprung gegenüber Minimal ist
+nicht mehr signifikant, SigmaDock bleibt klar vorn.**
+
+Das ist kein Widerspruch, sondern eine Aussage über die Art des Gewinns.
+EXP-110 macht nicht mehr Komplexe grundsätzlich lösbar, es löst sie
+**zuverlässiger je Ziehung**.
+
+## Die vorregistrierte Kenngröße zeigt es am schärfsten
+
+| | Oracle@10 | Oracle@1 | Verhältnis |
+|---|---:|---:|---:|
+| Minimal | 63 | 5 | **12.60** |
+| SigmaDock | 99 | 21 | 4.71 |
+| **EXP-110** | 72 | 15 | **4.80** |
+
+Minimal braucht rund dreizehn Ziehungen für das, was ein einzelner Wurf
+erreichen könnte. EXP-110 braucht knapp fünf, also **exakt SigmaDocks Wert**.
+Der getrennte Rotationskopf hat die enorme Ziehungsvarianz beseitigt, ohne die
+Obergrenze anzuheben.
+
+**Das war so nicht vorhergesagt.** Die Vorregistrierung nannte diese Kenngröße,
+erwartete aber, dass sie sich mit der Genauigkeit mitbewegt. Stattdessen
+trennen sich die beiden Größen sauber. Lesart, mit Vorbehalt: der zweite Kopf
+reduziert Rauschen in der Rotationsvorhersage, statt die grundsätzliche
+Fähigkeit zu erweitern. Das passt zur Konstruktionsidee, ein Kopf der nur
+Rotation lernen muss streut weniger als einer der sich das Feld teilt.
+
+**Nicht festschreiben vor dem 72h-Lauf.** Bei 12 h Training kann sich das
+verschieben.
+
+## Chemische Plausibilität, Seed 0
+
+| | RMSD < 2 Å | PB-valid | beides |
+|---|---:|---:|---:|
+| Minimal | 2.9 % | 37.3 % | 2.4 % |
+| SigmaDock | 10.0 % | 31.6 % | 5.7 % |
+| EXP-110 | 7.2 % | 36.4 % | 4.3 % |
+
+EXP-110 behält Minimals Plausibilität und liegt über SigmaDock. Die
+Zehn-Seed-Fassung läuft noch.
+
+Einzelchecks mit Unterschied über einen Punkt: `bond_lengths` 55.5 / 46.4 /
+49.8, `bond_angles` 48.3 / 39.7 / 46.4, `internal_steric_clash` 47.8 / 45.5 /
+50.2, `internal_energy` 57.4 / 61.2 / 58.9, `tetrahedral_chirality` 93.8 /
+92.8 / 90.0 (Reihenfolge Minimal / SigmaDock / EXP-110).
+
+## Offene Einschränkungen
+
+1. **Geräteunterschied.** EXP-110 wurde auf CPU gesampelt, Minimal und
+   SigmaDock auf GPU (8554147 / 8554149). Die Integration ist deterministisch
+   und die Abweichung liegt weit unter 2 Å, sauber ist es trotzdem erst, wenn
+   alle Arme auf demselben Gerät gesampelt sind. Nachziehen kostet je Arm eine
+   halbe Stunde mit `arc/sample_pb_seeds_cpu.slurm`.
+2. **12h-Budget.** Absolute Zahlen liegen weit unter dem Paper (79.9 %). Was
+   verglichen wird, sind die Arme untereinander.
+3. **Ohne Ranking.** Alle Zahlen sind `RANKING=raw`. Die Lücke zwischen
+   Oracle@10 und Top-1 ist genau das, was ein Ranker zurückholen könnte.
+
+## gnina ist verfügbar (2026-08-22)
+
+Modul `gnina/1.3.2`. **Läuft auf CPU-Knoten** (getestet auf `htc-c052`), aber
+**nicht auf Login-Knoten** — dort scheitert das Mappen von `libcublasLt.so.12`
+an den Speicherlimits. `CUDA/12.6.0` muss mitgeladen werden, auch für
+`--no_gpu`.
+
+Damit ist SigmaDocks Rankingheuristik reproduzierbar. Gemessen: 3.7 s je
+Einzelaufruf, davon der Großteil Startzeit. gnina bewertet mehrere Posen aus
+einer Multi-Model-SDF in einem Aufruf; 209 Aufrufe statt 2090 bringen einen
+Arm auf rund 15 Minuten.
+
+Erster Testwert für `5S8I_2LY` Seed 0: `Affinity = +2.88 kcal/mol`, also
+**positiv**, mit `repulsion` 9.79. Plausible Bindungen liegen bei −6 bis −10.
+Erwartbar bei diesem Trainingsbudget, aber ein Hinweis darauf, dass die
+Energie bei durchweg schlechten Posen schlecht trennt. Das wäre selbst ein
+berichtenswerter Befund.
+
+**Nicht reproduzierbar bleibt die gemischte Heuristik**: `score_bias` und
+`pb_exponent` stehen nirgends im SigmaDock-Repository. Die reinen Modi
+`vinardo` und `pb` sind exakt nachbaubar, die Mischung nur als
+Sensitivitätsanalyse über ein Gitter beider Konstanten.

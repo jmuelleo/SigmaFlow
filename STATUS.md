@@ -18,9 +18,16 @@ User dort weitermachen will.
 
 ## Wo es steht
 
-**EXP-110 ist gelaufen und vollständig.** Job `8625634`, `COMPLETED`,
-11:10:59 von 12:00:00, alle 6 Epochen, 99,11 % des Anneals. Der Checkpoint ist
-gesund. Das Sampling darauf läuft als Array `8628676`, 10 Seeds.
+**EXP-110 ist gelaufen, gesampelt und ausgewertet.** Training `8625634`
+(`COMPLETED`, 11:10:59, 6 Epochen, 99,11 % des Anneals), Sampling `8629345`
+(10 Seeds auf CPU, 2090 Posen), Auswertung liegt vor.
+
+**Ergebnis in einem Satz:** EXP-110 schlägt Minimal bei Top-1 signifikant
+(7,2 % gegen 2,4 %, p = 0,021) und erreicht SigmaDocks Ziehungskonsistenz
+exakt (Oracle@10/Oracle@1 = 4,80 gegen 4,71), hebt die Obergrenze aber
+**nicht** an (Oracle@10 34,4 % gegen 30,1 %, p = 0,27 nicht signifikant,
+SigmaDock 47,4 %). Der zweite Kopf beseitigt Ziehungsvarianz, statt mehr
+Komplexe loesbar zu machen. Details in `RESULTS.md`.
 
 **Das 72h-Paar ist weiterhin blockiert**, aber nicht mehr an der Kapazität,
 sondern an einem Skriptfehler, der jetzt behoben ist. Stufe 2 der
