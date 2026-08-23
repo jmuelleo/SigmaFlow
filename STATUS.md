@@ -14,7 +14,126 @@ User dort weitermachen will.
 
 ---
 
-# HIER WEITERMACHEN (Stand 2026-08-23)
+# HIER WEITERMACHEN (Stand 2026-08-23, abends)
+
+## Der Tag hat die Aussage der Arbeit geändert
+
+Zwei Befunde, beide belegt, beide in `RESULTS.md` ausgeführt.
+
+### 1. Der Rotationsprior erklärt den gesamten Genauigkeitsunterschied
+
+SigmaDock zieht die Startrotation aus IGSO(3) bei `max_sigma = 1.5`, nicht
+gleichverteilt (`so3_diffuser.sample_ref`, mit dem Kommentar der
+Originalautoren `# NOTE: replace with sample uniform?`). Mittlerer Winkel
+114,97° statt 126,48° beim Haar-Maß. Mit `graph.sample_conformer=false` ist
+die Identitätsrotation die **wahre** Orientierung — der Prior ist informativ.
+
+Der direkte Test mit `sample_conformer=true`, 40 Seeds, alle drei Arme:
+
+| Arm | Startrotation | < 2 Å |
+|---|---|---|
+| SigmaDock bound | 115,20° | 9,37 % |
+| **SigmaDock sampled** | **126,47°** | **4,77 %** |
+| Minimal bound → sampled | 127,16 → 126,74° | 4,40 → 4,50 % |
+| Separate bound → sampled | 126,67 → 126,65° | 4,65 → 4,72 % |
+
+126,48° ist die Haar-Erwartung. Übereinstimmung auf eine Hundertstel Grad.
+**Nur der Arm ändert sich, dessen Prior nicht uniform ist.**
+
+Gepaart im Modus `sampled` ist **kein Paar signifikant** (p = 0,42 bis 0,88).
+
+**Damit ist überholt:** „SigmaDock trifft rund doppelt so oft unter 2 Å,
+p = 8,7e-14" und der absolute Rotationsvorsprung von 12,76°. Beide Messungen
+sind korrekt, ihre Deutung als Methodenunterschied ist es nicht.
+
+**Es steht:** bei gleicher Startbedingung sind Flow Matching und Diffusion
+bei diesem Trainingsbudget nicht unterscheidbar.
+
+### 2. Flow Matching ist robust gegen grobe Integration, Diffusion nicht
+
+40 Seeds je Arm und Schrittzahl:
+
+| Arm | nfe 5 | nfe 25 |
+|---|---|---|
+| Minimal | 4,13 % | 4,40 % |
+| Separate | 4,61 % | 4,65 % |
+| **SigmaDock** | **0,63 %** | 9,37 % |
+
+SigmaDock bricht bei fünf Schritten vollständig zusammen: Median-RMSD
+23,45 Å, 146 von 209 Komplexen über 20 Å, **kein einziger** unter 5 Å.
+Konfiguration geprüft, `diffusion.num_steps: 5` war gesetzt.
+
+Der Mechanismus ist strukturell: der Flow-Matching-Pfad ist die Geodäte, also
+nahezu gerade — Euler trifft sie mit wenigen Schritten. SigmaDocks
+Rückwärtsprozess integriert über einen EDM-Rauschplan von σ = 1,5 bis 0,005;
+bei fünf Schritten sind die Sprünge zu groß.
+
+**Das ist der erste unkonfundierte Methodenvorteil der Arbeit.** Praktisch:
+SigmaFlow liefert mit einem Fünftel der Netzwerkauswertungen dieselbe
+Qualität.
+
+### 3. Die Rotation wird von keinem Verfahren gelernt
+
+Aus den Trajektorien in `predictions.pt`, 25 Schritte: der Rotationsfehler
+ändert sich über die ganze Integration um weniger als ein Grad (−0,03 /
++0,35 / −0,82°), obwohl jedes Fragment kumuliert rund **59°** gedreht wird.
+Bei fünf Schritten sind es 52° bei identischem Endfehler — die Nutzlosigkeit
+hängt nicht an der Integrationsauflösung.
+
+Alle drei Arme laufen über ihr Optimum hinaus: bestes RMSD bei Schritt 19
+(Flow) bzw. 12 (SigmaDock) von 25.
+
+## Zwei Datenverluste verhindert
+
+`posebusters_redock.slurm` leitete den Ausgabepfad nur aus `MODEL` ab. Weder
+die Konformerquelle noch die Schrittzahl standen darin. Ein Redock der
+`confsampled`- oder der nfe-5-Posen hätte die vorhandenen 240 Tabellen
+überschrieben. Behoben in `6428614` und `301421c`; bei den Vorgabewerten
+bleiben die Pfade byte-identisch.
+
+## Ein Auswertungsfehler, gefunden und behoben
+
+`x0` aus `predictions.pt` ist nur bei `sample_conformer=false` die wahre Pose.
+Mit `true` trägt es den generierten Konformer, im Mittel **50,4 Å** daneben.
+Die erste Messung ergab entsprechend RMSD 49,7 Å und 0 % Treffer.
+`trajectory_geometry.py` und `confsampled_compare.py` benutzen jetzt den
+Referenzliganden aus der SDF-Datei.
+
+## Datenstand
+
+| Datensatz | Umfang | Ausgewertet |
+|---|---|---|
+| bound, nfe 25 | 80 Seeds, 3 Arme | vollständig, inkl. Validität, Oracle, gnina-Ranking |
+| confsampled, nfe 25 | 40 Seeds, 3 Arme (40–79 rechnen) | RMSD und Rotation; Validität rechnet |
+| nfe 5 | 40 Seeds, 3 Arme | RMSD und Oracle; Validität rechnet |
+| nfe 200 | Seed 0 fertig, 0–39 rechnen | offen |
+
+Alle Rohdaten liegen lokal unter
+`SigmaFlow_Variants/posebusters_full_comparison/` in `min80`, `exp80`, `sd80`,
+`mincs`, `expcs`, `sdcs`, `min5`, `exp5`, `sd5`.
+
+## Nächste Schritte
+
+1. **ARC-Support wegen `8634116`/`8634117`.** Die beiden 72h-Läufe stehen
+   seit dem 23.08. nachmittags auf `PD (Priority)`; `long` hat laut
+   Login-Banner strukturell niedrige Priorität. Abgabe ist der 14.09.,
+   zwei mal 72 h seriell brauchen sechs Tage.
+2. Validität für `confsampled` auswerten — hält SigmaFlows Chemievorsprung
+   (+5,5 bis +6,6 pp bei `bound`) im Paper-Setup?
+3. Validität für nfe 5, dann nfe 200 sampeln und auswerten.
+4. Die überholten Stellen weiter unten in dieser Datei und in den
+   Textdateien kennzeichnen. `RESULTS.md` ist auf Stand.
+
+## Was aus dem Tag als Regel bleibt
+
+Ein Ausgabepfad muss **jede** Unterscheidung des Eingabepfads tragen. Zwei
+Fälle an einem Tag, beide hätten fertige Datensätze überschrieben, beide
+wären erst bei der Auswertung als Methodenunterschied aufgefallen.
+
+---
+
+
+# HIER WEITERMACHEN (Stand 2026-08-23, mittags) - UEBERHOLT, siehe Abschnitt darueber
 
 ## Zwei Dinge laufen, eines blockiert
 
