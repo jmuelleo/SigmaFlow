@@ -12,18 +12,28 @@ from rdkit import RDLogger
 RDLogger.DisableLog("rdApp.*")
 
 arm, root = sys.argv[1], sys.argv[2]
+# Optionaler Seed-Bereich [start, stop). Erlaubt es, die 40 Seeds auf
+# mehrere Prozesse aufzuteilen, ohne dass zwei denselben Seed rechnen --
+# die "existiert"-Pruefung unten schuetzt nur vor Wiederholung, nicht
+# vor einem Wettlauf zweier gleichzeitig laufender Prozesse.
+S0 = int(sys.argv[3]) if len(sys.argv) > 3 else 0
+S1 = int(sys.argv[4]) if len(sys.argv) > 4 else 10**9
 prot = {os.path.basename(p).replace("_protein.pdb", ""): p
         for p in glob.glob("pb_proteins/**/*_protein.pdb", recursive=True)}
 buster = PoseBusters(config="redock")
 
-for seed in range(10):
+seed_dirs = sorted(
+    (int(os.path.basename(p).split("_")[1]), p)
+    for p in glob.glob(f"{root}/**/seed_*", recursive=True) if os.path.isdir(p))
+seed_dirs = [(n, p) for n, p in seed_dirs if S0 <= n < S1]
+if not seed_dirs:
+    raise SystemExit(f"ABBRUCH: keine seed_*-Verzeichnisse unter {root}")
+print(f"{arm}: {len(seed_dirs)} Seeds gefunden", flush=True)
+
+for seed, sd in seed_dirs:
     out = f"rd_{arm}_seed{seed}.csv"
     if os.path.isfile(out):
         print(f"{arm} seed{seed}: existiert", flush=True); continue
-    sd = next((p for p in glob.glob(f"{root}/**/seed_{seed}", recursive=True)
-               if os.path.isdir(p)), None)
-    if sd is None:
-        print(f"{arm} seed{seed}: kein Verzeichnis", flush=True); continue
     rows = []
     for f in sorted(glob.glob(os.path.join(sd, "*.sdf"))):
         cid = os.path.basename(f).split("__")[0]

@@ -38,9 +38,12 @@ import sys
 
 import numpy as np
 
-ARMS = [("Minimal", "minimal"), ("Separate", "exp110"), ("SigmaDock", "sigmadock")]
+# Dateikuerzel der drei Arme. Vorgabe ist der 10-Seed-Satz; fuer andere
+# Laeufe die Kuerzel als drei Argumente uebergeben, z.B.
+#   python threshold_and_overlap.py minimal40 exp110_40 sigmadock40
+_KEYS = sys.argv[1:4] if len(sys.argv) > 3 else ["minimal", "exp110", "sigmadock"]
+ARMS = list(zip(["Minimal", "Separate", "SigmaDock"], _KEYS))
 THRESHOLDS = [1.0, 2.0, 2.5, 3.0]
-N_SEEDS = 10
 
 
 def tf(v) -> bool:
@@ -87,14 +90,28 @@ def main() -> int:
 
     keys = sorted(set.intersection(*[set(V[l]) & set(RM[l]) for l, _ in ARMS]))
     cids = sorted({c for c, _ in keys})
-    print(f"\n  {len(keys)} gepaarte Posen aus {len(cids)} Komplexen")
+    SEEDS = sorted({s for _, s in keys})
+
+    # Die Seedzahl wird NICHT vorausgesetzt, sondern aus den Daten gelesen --
+    # eine feste 10 haette bei 40 vorhandenen Seeds still nur ein Viertel
+    # gerechnet und wie ein vollstaendiges Ergebnis ausgesehen. Unvollstaendige
+    # Komplexe brechen ab, statt die Mittelwerte zu verzerren.
+    luecken = [(l, c) for l, _ in ARMS for c in cids
+               if any((c, s) not in RM[l] for s in SEEDS)]
+    if luecken:
+        print(f"ABBRUCH: {len(luecken)} Arm/Komplex-Paare unvollstaendig, "
+              f"z.B. {luecken[:3]}")
+        return 2
+    print(f"\n  {len(keys)} gepaarte Posen aus {len(cids)} Komplexen "
+          f"x {len(SEEDS)} Seeds")
 
     # --- (1) Komplementaritaet ---------------------------------------------
     print("\n" + "=" * 74)
-    print("  KOMPLEMENTARITAET: welche Komplexe loest welcher Arm? (>=1 von 10, <2 A)")
+    print(f"  KOMPLEMENTARITAET: welche Komplexe loest welcher Arm? "
+          f"(>=1 von {len(SEEDS)}, <2 A)")
     print("=" * 74 + "\n")
     solved = {l: {c for c in cids
-                  if any(RM[l].get((c, s), 9e9) < 2.0 for s in range(N_SEEDS))}
+                  if any(RM[l].get((c, s), 9e9) < 2.0 for s in SEEDS)}
               for l, _ in ARMS}
     for l, _ in ARMS:
         print(f"  {l:12}{len(solved[l]):>4}  ({100*len(solved[l])/len(cids):.1f} %)")
@@ -137,12 +154,12 @@ def main() -> int:
         print(f"\n  {name}")
         print(f"  {'k':>4}" + "".join(f"{l:>13}" for l, _ in ARMS))
         print("  " + "-" * 44)
-        M = {l: np.array([[ok(l, c, s) for s in range(N_SEEDS)] for c in cids])
+        M = {l: np.array([[ok(l, c, s) for s in SEEDS] for c in cids])
              for l, _ in ARMS}
-        for k in (1, 2, 3, 5, 10):
+        for k in [k for k in (1, 2, 3, 5, 10, 20, 40) if k <= len(SEEDS)]:
             row = f"  {k:>4}"
             for l, _ in ARMS:
-                reps = [M[l][:, rng.permutation(N_SEEDS)[:k]].any(axis=1).mean()
+                reps = [M[l][:, rng.permutation(len(SEEDS))[:k]].any(axis=1).mean()
                         for _ in range(400)]
                 row += f"{100*np.mean(reps):>12.1f}%"
             print(row)

@@ -19,11 +19,14 @@ true_paths = sorted(glob.glob("true_ligands/*_ligands.sdf"))
 out = open(f"geom_{arm}.csv", "w", encoding="utf-8", newline="")
 out.write("complex,seed,n_atoms,n_frag,rot_mean,rot_max,trans_mean,trans_com\n")
 
-for seed in range(10):
-    sd = next((p for p in glob.glob(f"{root}/**/seed_{seed}", recursive=True)
-               if os.path.isdir(p)), None)
-    if sd is None:
-        continue
+seed_dirs = sorted(
+    (int(os.path.basename(p).split("_")[1]), p)
+    for p in glob.glob(f"{root}/**/seed_*", recursive=True) if os.path.isdir(p))
+if not seed_dirs:
+    raise SystemExit(f"ABBRUCH: keine seed_*-Verzeichnisse unter {root}")
+print(f"  {arm}: {len(seed_dirs)} Seeds gefunden", flush=True)
+
+for seed, sd in seed_dirs:
     for tp in true_paths:
         cid = os.path.basename(tp).replace("_ligands.sdf", "")
         c = glob.glob(os.path.join(sd, f"{cid}__*.sdf"))
