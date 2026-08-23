@@ -14,7 +14,97 @@ User dort weitermachen will.
 
 ---
 
-# ⏭️ HIER WEITERMACHEN (Stand 2026-08-22)
+# HIER WEITERMACHEN (Stand 2026-08-23)
+
+## Zwei Dinge laufen, eines blockiert
+
+| Strang | Zustand |
+|---|---|
+| **72h-Paar** | `8634116` (SigmaFlow) und `8634117` (SigmaDock) abgeschickt, stehen auf `PD (Priority)` |
+| **80-Seed-Auswertung** | **abgeschlossen**, alle drei Arme, mit und ohne Protein |
+| Revision der Altzahlen | teilweise — `RESULTS.md` hat den neuen Stand, Einzelstellen weiter unten sind noch nicht markiert |
+
+## Das 72h-Paar
+
+Horizont in `arc/final_horizon.env` (committet, md5-geprueft gegen die auf ARC
+erzeugte Fassung): **255 Epochen / 151.470 Schritte** fuer SigmaFlow, **239 /
+141.966** fuer SigmaDock, Batch 32 x 1, TF32, 64 h Budget von 72 h Walltime.
+Politik `matched_walltime`: 6,6 % Durchsatzunterschied liegen ueber der
+5-%-Toleranz, deshalb gleiche Stunden und ungleiche Epochen. **Beim Berichten
+muss beides genannt werden.**
+
+Preflight: `ARC RUNTIME READINESS: GREEN`, `LOCAL READINESS: AMBER`. Die vier
+Warnungen sind drei Sachverhalte, alle geklaert:
+Konfigurationsvergleich und EMA-Politik lokal gefahren (29 Parameter
+identisch, VERDIKT GREEN), und die zwei ungetrackten Verzeichnisse auf ARC
+(`SigmaFlow_Development/`, `slurm_logs/`) werden vom Lauf nicht benutzt.
+
+**Der Kontrollpunkt nach 6 Stunden ist wichtig.** Erwartet werden ~0,66 it/s
+bei SigmaFlow und ~0,62 bei SigmaDock, also rund 14.250 bzw. 13.400 Schritte.
+Liegt es deutlich darunter, ist der Horizont zu hoch und der LR-Anneal bliebe
+unvollstaendig — dann abbrechen und neu starten, das kostet 6 statt 72 Stunden.
+
+```bash
+for J in 8634116 8634117; do
+  echo "### $J"
+  L=/data/stat-cadd/shug8458/arc_runs/slurm_logs/${J}.out
+  tr '\r' '\n' < $L \
+    | grep -aoE '[0-9]+/[0-9]+ \[[0-9:]+<[0-9:?]+, *[0-9.]+(s/it|it/s)' | tail -3
+done
+```
+
+## Offener Vorbehalt beim Durchsatz
+
+Die 21,1 Beispiele/s stammen aus rund 250 Schritten am Laufanfang und liegen
+**5,9x ueber der Paper-Angabe pro GPU-Stunde** (Paper: 256 Epochen in 384
+GPU-h auf 4xA100 = 12.963 Beispiele je GPU-h). Eine L40S ist nicht sechsmal
+eine A100. Intern ist die Messung stimmig (Batch 8 mit 0,35–0,37 it/s ueber
+zwei echte 12h-Laeufe, Batch 32 mit 0,62–0,66 it/s, Faktor 7 beidseitig
+gemessen). Die Diskrepanz zum Paper ist **nicht aufgeloest**. Sie blockiert
+den Lauf nicht, verbietet aber die Aussage „wir erreichen das Trainingsbudget
+des Papers“.
+
+## Was bei der 80-Seed-Auswertung herauskam
+
+Vollstaendig in `RESULTS.md`, Abschnitt „80 Seeds, alle drei Arme“. Kurz:
+
+- **Flow Matching gewinnt die Ligandenchemie** (+5,5 bzw. +6,6 pp gegen
+  SigmaDock, p < 0,001) — robustester Befund der Arbeit, hat 10, 40 und 80
+  Seeds ueberstanden.
+- **SigmaDock gewinnt die Genauigkeit** (doppelte Trefferquote, −0,63 Å
+  Median).
+- **Mit Protein ist kein Paar auf der gemeinsamen Metrik signifikant**
+  (1,39 / 1,37 / 1,64 %, alle p > 0,21).
+- **EXP-110 hat genau zwei robuste Effekte**: Validitaet ohne Protein
+  (+1,12 pp, p = 0,007) und Schwerpunktplatzierung (−0,034 Å, p < 0,001).
+  **Die Rotation ist keiner davon** (+0,40°, p = 0,15).
+- **Die Rotation beider Flow-Arme ist von Zufall nicht zu unterscheiden**:
+  126,49° und 126,90° gegen 126,48° Haar-Erwartung.
+
+## Drei Befunde sind durch die 80 Seeds gefallen
+
+1. Der **vorregistrierte Median-RMSD-Effekt** (40 Seeds: −0,137 Å, p = 0,013;
+   80 Seeds: −0,010 Å, p = 0,82). Permutationstest erklaert es: der
+   je-Komplex-Median schwankt zwischen zwei Haelften desselben Laufs mit
+   SD 0,069 Å.
+2. Die **44,1-%-Zeile im Fehlerhaushalt** (korrekt 14,3 % ueber 1322 Posen).
+3. Die **Groesse des Komplementaritaetsvorteils** (12,9 pp bei 10 Ziehungen,
+   5,2 pp bei 40).
+
+## Naechste Schritte
+
+1. 6-Stunden-Check der beiden 72h-Jobs, sobald sie laufen
+2. Einzelstellen weiter unten in `STATUS.md` als ueberholt markieren
+3. `arc/score_gnina.slurm` entscheiden — die Luecke zwischen Oracle@1 (1,4–1,7 %)
+   und Oracle@80 (32–36 %) ist Faktor 20 und der groesste ungenutzte Hebel
+4. Symmetrievorbehalt bei den absoluten Rotationswinkeln
+   (`symmetry_flip_analysis.py`) — bei einem Befund „nicht von Zufall
+   unterscheidbar“ der naheliegende Einwand eines Pruefers
+
+---
+
+
+# HIER WEITERMACHEN (Stand 2026-08-22) — UEBERHOLT, siehe Abschnitt darueber
 
 ## Wo es steht
 

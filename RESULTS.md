@@ -1628,3 +1628,252 @@ Nach Schweratomen der wahren Struktur, RMSD < 2 Å je Ziehung:
 
 Bei großen Liganden trifft kein Flow-Matching-Arm auch nur einmal in 290
 Ziehungen. Die Gesamtzahlen sind fast vollständig ein Kleinmolekül-Ergebnis.
+
+## 80 Seeds, alle drei Arme, mit und ohne Protein (2026-08-23)
+
+**Maßgeblicher Stand.** Ersetzt alle 10- und 40-Seed-Zahlen der Abschnitte
+darüber. 209 Komplexe × 80 Ziehungen × 3 Arme = **50.160 Posen**,
+TFD-Abdeckung 100 %, keine Pose verworfen. RMSD durchgehend
+symmetriekorrigiert (spyrmsd), Kristallkopien über `best_copy`. PoseBusters
+im Modus `redock`: 15 ligandenintrinsische Checks, 9 mit Protein/Kofaktor/
+Wasser.
+
+Herkunft belegt: Sampling `8629867`/`8629909`/`8629910` (Seeds 0–39) und
+`8633967`–`8633969` (Seeds 40–79), Redock `8632472`/`8632473`/`8632877` und
+`8634241`–`8634243`. Vor dem Nachsampeln hat
+`arc/preflight_more_seeds.sh` geprüft, dass alle vorhandenen Seeds je Arm aus
+**genau einem** Checkpoint stammen und die neuen denselben benutzen — sonst
+wären sie nicht additiv.
+
+### Zwei Verifikationen, die vor den Zahlen kommen
+
+**Maschinenunabhängigkeit.** Für Minimal und Separate wurden die Seeds 0–39
+zweimal unabhängig durch PoseBusters geschickt: lokal (RDKit 2026.03.5) und
+auf ARC. Ergebnis der aggregierten Raten:
+
+| | ohne Protein | mit Protein |
+|---|---:|---:|
+| Minimal lokal / ARC | 34,14 % / **34,14 %** | 6,63 % / **6,63 %** |
+| Separate lokal / ARC | 35,22 % / **35,22 %** | 6,77 % / **6,77 %** |
+
+Identisch. Bemerkenswert ist, dass **52 % der einzelnen
+`internal_energy`-Urteile abweichen** — der Check erzeugt Konformer-Ensembles
+(ETKDG) und optimiert mit UFF, ist also umgebungsabhängig. Er ist aber nie
+ausschlaggebend: wo er kippt, ist ohnehin ein anderer Check gefallen. Lässt
+man ihn ganz weg, ändert sich die Rate um 0,09 Punkte. Alle übrigen 23 Checks
+stimmen bis auf 3 von 8360 Posen überein.
+
+**Abgrenzung der Checkgruppen.** `redock_noprotein.yml` (redock minus die 8
+protein-abhängigen Module) liefert exakt die 15 intrinsischen Checks, keinen
+Protein-Check, und reproduziert die aus der Redock-Tabelle abgeleiteten
+Urteile 209/209. Die Aufteilung „ohne Protein" / „mit Protein" ist damit
+belegt, nicht behauptet.
+
+### Anteil je Ziehung (16.720 Posen je Arm, 95 %-Wilson)
+
+| Größe | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| RMSD < 1 Å | 0,38 % [0,30–0,49] | 0,42 % [0,34–0,54] | **0,83 %** [0,70–0,98] |
+| RMSD < 2 Å | 5,43 % [5,10–5,78] | 5,86 % [5,51–6,22] | **10,34 %** [9,89–10,81] |
+| RMSD < 2,5 Å | 11,54 % [11,06–12,03] | 12,08 % [11,59–12,58] | **18,34 %** [17,76–18,93] |
+| RMSD < 3 Å | 19,72 % [19,12–20,33] | 20,51 % [19,91–21,13] | **27,39 %** [26,72–28,07] |
+| PB-valid OHNE Protein | 33,89 % [33,18–34,61] | **35,02 %** [34,30–35,74] | 28,43 % [27,75–29,12] |
+| PB-valid MIT Protein | 6,89 % [6,52–7,28] | **6,97 %** [6,59–7,36] | 6,19 % [5,83–6,57] |
+| < 2 Å UND valid OHNE Protein | 4,01 % [3,72–4,32] | 4,31 % [4,01–4,63] | **5,71 %** [5,37–6,07] |
+| < 2 Å UND valid MIT Protein | 1,39 % [1,22–1,58] | 1,37 % [1,20–1,56] | **1,64 %** [1,46–1,85] |
+
+### Gepaarte Vergleiche
+
+Bootstrap über die **209 Komplexe**, nicht über die 16.720 Posen: die 80
+Ziehungen eines Komplexes sind nicht unabhängig, ein Test über Posen würde
+die Freiheitsgrade um den Faktor 80 überschätzen.
+
+| Größe | Sep − Min | SD − Min | SD − Sep |
+|---|---|---|---|
+| Treffer < 2 Å je Komplex | +0,43 pp, p = 0,044 | +4,91 pp, p < 0,001 | +4,48 pp, p < 0,001 |
+| Median-RMSD je Komplex | −0,010 Å, p = 0,819 | −0,630 Å, p < 0,001 | −0,620 Å, p < 0,001 |
+| PB-valid OHNE Protein | **+1,12 pp, p = 0,007** | −5,46 pp, p < 0,001 | −6,58 pp, p < 0,001 |
+| PB-valid MIT Protein | +0,08 pp, p = 0,79 | −0,70 pp, p = 0,082 | −0,78 pp, p = 0,088 |
+| < 2 Å und valid OHNE | +0,31 pp, p = 0,105 | +1,70 pp, p < 0,001 | +1,40 pp, p = 0,003 |
+| < 2 Å und valid MIT | −0,02 pp, p = 0,91 | +0,26 pp, p = 0,22 | +0,28 pp, p = 0,22 |
+
+### Oracle@k, erwartungstreu über zufällige Seed-Teilmengen
+
+Gemittelt über 400 zufällige k-Teilmengen der 80 Seeds, nicht „die ersten k" —
+sonst hängt das Ergebnis an der Seed-Reihenfolge.
+
+**RMSD < 2 Å** — sättigt bei 80 noch nicht
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 5,45 % | 5,91 % | 10,35 % |
+| 5 | 20,38 % | 21,87 % | 34,01 % |
+| 10 | 31,83 % | 33,75 % | 47,27 % |
+| 20 | 44,64 % | 47,31 % | 59,22 % |
+| 40 | 56,61 % | 60,19 % | 68,62 % |
+| 80 | **65,55 %** | **70,81 %** | **76,08 %** |
+
+**PB-valid OHNE Protein** — sättigt vollständig
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 34,13 % | 34,95 % | 28,47 % |
+| 10 | 69,37 % | 68,90 % | 57,51 % |
+| 40 | 83,96 % | 84,03 % | 72,07 % |
+| 80 | **89,00 %** | **89,00 %** | 77,99 % |
+
+**PB-valid MIT Protein**
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 6,90 % | 6,93 % | 6,14 % |
+| 10 | 29,82 % | 29,76 % | 25,96 % |
+| 40 | 47,92 % | 48,05 % | 42,22 % |
+| 80 | 55,98 % | **56,46 %** | 48,33 % |
+
+**< 2 Å UND valid OHNE Protein** — hier kreuzen sich die Kurven
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 3,99 % | 4,35 % | **5,75 %** |
+| 10 | 23,82 % | 24,68 % | **29,11 %** |
+| 40 | 44,81 % | 45,97 % | **47,05 %** |
+| 60 | 50,64 % | **52,27 %** | 50,82 % |
+| 80 | 54,55 % | **56,46 %** | 53,11 % |
+
+**< 2 Å UND valid MIT Protein** — die harte Größe
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 1,37 % | 1,37 % | **1,68 %** |
+| 10 | 9,69 % | 9,43 % | **11,69 %** |
+| 40 | 22,58 % | 22,20 % | **26,84 %** |
+| 80 | 32,06 % | 31,58 % | **35,89 %** |
+
+### Sechs Befunde
+
+1. **Flow Matching gewinnt die Ligandenchemie deutlich und stabil.** +5,5
+   bzw. +6,6 Prozentpunkte gegenüber SigmaDock, p < 0,001. Der Befund hat 10,
+   40 und 80 Seeds überstanden und ist der robusteste Vorteil der Arbeit.
+2. **SigmaDock gewinnt die Genauigkeit ebenso deutlich.** Doppelte
+   Trefferquote unter 2 Å, Median-RMSD −0,63 Å, alle p < 0,001.
+3. **Mit Protein liegt SigmaDock leicht hinten** (6,19 % gegen 6,89/6,97 %,
+   p ≈ 0,08) — nicht signifikant, aber das Vorzeichen hat sich gegenüber 40
+   Seeds gefestigt.
+4. **Auf der gemeinsamen Metrik mit Protein ist kein Paar signifikant.**
+   1,39 / 1,37 / 1,64 %, alle p > 0,21. Genauigkeitsvorsprung und
+   Validitätsvorsprung heben sich auf.
+5. **Ein Kreuzungspunkt bei „genau und sauber ohne Protein":** SigmaDock
+   führt bis k ≈ 40 und wird dann von beiden Flow-Armen überholt.
+6. **Die Sättigung trennt die Größen.** Validität ohne Protein läuft bei
+   89,00 % aus, bei Minimal und Separate auf zwei Nachkommastellen gleich.
+   `RMSD < 2 Å` steigt bei 80 noch. Was die Arme unterscheidet, ist
+   Genauigkeit; was sie teilen, ist die Menge der überhaupt lösbaren Komplexe.
+
+### EXP-110 gegen Minimal: ein einziger robuster Unterschied
+
+**Validität ohne Protein, +1,12 pp, p = 0,007** — überlebt die
+Bonferroni-Korrektur über drei Vergleiche (Schwelle 0,017). Alle anderen
+Größen sind null (p = 0,11 bis 0,91).
+
+Der zweite Kopf verbessert die **chemische Plausibilität**, nicht die
+Platzierung. Das ist nicht, wofür die Variante gebaut wurde — sie sollte die
+Rotation behandeln, und die ist bei beiden Armen von Zufall nicht zu
+unterscheiden (126,9° gegen 126,48° Haar-Erwartung, gemessen bei 40 Seeds).
+
+### Fehlerhaushalt, 80 Seeds
+
+Exakte Zerlegung des Lagefehlers, Identität bei **jeder** der 50.160 Posen per
+`assert` geprüft:
+
+| Arm | MSD gesamt | Translation | Rotation | Anteil Translation |
+|---|---:|---:|---:|---:|
+| Minimal | 31,67 | 24,54 | 7,14 | 77,5 % |
+| Separate | 31,87 | 24,87 | 6,99 | 78,0 % |
+| SigmaDock | 28,36 | 22,46 | 5,90 | 79,2 % |
+
+Anteil Translation nach Fragmentzahl der Pose:
+
+| Fragmente | n (Min/Sep/SD) | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|---:|
+| 1 | 1333/1322/1167 | 14,7 % | 14,3 % | 23,6 % |
+| 2 | 3115/3113/3180 | 56,7 % | 56,8 % | 57,5 % |
+| 3 | 3187/3035/3085 | 70,7 % | 70,5 % | 72,0 % |
+| 4–5 | 5319/5341/5599 | 82,3 % | 82,6 % | 83,2 % |
+| ≥ 6 | 3766/3909/3689 | 87,7 % | 88,0 % | 88,3 % |
+
+**78 % des Fehlers liegen darin, WO die Fragmente sind, 22 % darin, WIE sie
+gedreht sind.** Bei einfragmentigen Posen kehrt es sich um: dort liegen ~85 %
+in der Rotation.
+
+### Rotations- und Translationsgeometrie, 80 Seeds
+
+Nullhypothese numerisch nachgerechnet: bei Haar-verteilter Rotation hat der
+Winkel die Dichte (1 − cos t)/π auf [0, π], Mittel **126,48°** (Monte Carlo
+über 400.000 Quaternionen: 126,49°).
+
+| Größe | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| Rotationsfehler je Fragment | **126,49°** | **126,90°** | 113,73° |
+| größter Fragmentwinkel | 154,21° | 154,59° | 145,83° |
+| Fragmentversatz | 4,06 Å | 4,08 Å | 3,82 Å |
+| Schwerpunktversatz Ligand | 1,34 Å | **1,31 Å** | 1,58 Å |
+
+**Minimals Rotationsfehler beträgt 126,49° gegen eine Zufallserwartung von
+126,48°.** Nach 12 h Training ist die globale Fragmentorientierung bei beiden
+Flow-Matching-Armen von Zufall nicht zu unterscheiden. SigmaDock liegt mit
+113,73° messbar darunter, aber ebenfalls weit von „gelernt" entfernt.
+
+Gepaart, Bootstrap über 209 Komplexe:
+
+| | Rotation | Schwerpunktversatz |
+|---|---|---|
+| Separate − Minimal | +0,404°, p = 0,15 | **−0,034 Å, p < 0,001** |
+| SigmaDock − Minimal | **−12,76°, p < 0,001** | +0,241 Å, p < 0,001 |
+| SigmaDock − Separate | **−13,16°, p < 0,001** | +0,274 Å, p < 0,001 |
+
+### Der mechanistische Gegensatz
+
+SigmaFlow setzt den **Schwerpunkt des Moleküls besser** (1,31–1,34 gegen
+1,58 Å), SigmaDock die **innere Anordnung** (Rotation 13° besser,
+Fragmentversatz kleiner). Flow Matching findet die Tasche, ordnet aber innen
+falsch an; Diffusion ordnet innen besser, sitzt als Ganzes aber daneben.
+Beides hochsignifikant und gegenläufig.
+
+### EXP-110 bei 80 Seeds: zwei robuste Effekte, keiner davon die Rotation
+
+| Behauptung | Befund |
+|---|---|
+| bessere Rotation als Minimal | **nein** — +0,40°, p = 0,15, Vorzeichen sogar falsch |
+| bessere Genauigkeit (Median-RMSD) | **nein** — −0,010 Å, p = 0,82 |
+| bessere Trefferquote < 2 Å | grenzwertig — +0,43 pp, p = 0,044 |
+| **bessere Validität ohne Protein** | **ja** — +1,12 pp, p = 0,007 |
+| **bessere Schwerpunktplatzierung** | **ja** — −0,034 Å, p < 0,001 |
+| bessere Validität mit Protein | nein — +0,08 pp, p = 0,79 |
+| bessere gemeinsame Metrik mit Protein | nein — −0,02 pp, p = 0,91 |
+
+Der zweite Kopf wurde gebaut, um die **Rotation** zu behandeln. Bei 80 Seeds
+wirkt er messbar auf **Translation und Ligandenchemie** und nachweislich
+nicht auf die Rotation. Das ist berichtbar, aber es ist nicht die Wirkung,
+die die Konstruktion begründet hat.
+
+### Was durch die 80 Seeds gefallen ist
+
+- **Der vorregistrierte Median-RMSD-Effekt.** Bei 40 Seeds −0,137 Å
+  (p = 0,013), bei 80 Seeds −0,010 Å (p = 0,82). Ein Permutationstest über
+  2000 zufällige Halbierungen zeigt, warum: der je-Komplex-Median schwankt
+  zwischen zwei Hälften desselben Laufs mit SD 0,069 Å. Der gemessene Effekt
+  war nur das Doppelte dieses Rauschens und hat die Verdoppelung der Daten
+  nicht überstanden.
+- **Die 44,1-%-Zeile im Fehlerhaushalt** (Separate, ein Fragment, 10 Seeds).
+  Bei 80 Seeds sind es 14,3 % über 1322 Posen. Die 10-Seed-Zahl beruhte auf
+  171 Posen; MSD ist varianzartig und bricht bei kleinen Stichproben zuerst.
+- **Die Größe des Komplementaritätsvorteils.** Bei 10 Ziehungen holte ein
+  Ensemble aller drei Arme 12,9 Punkte über den besten Einzelarm, bei 40 noch
+  5,2. Die Arme lösen nicht dauerhaft verschiedene Komplexe — sie streuen
+  unterschiedlich.
+
+**Regel, die sich daraus ergibt:** keine Zahl in die Thesis, die nicht über
+alle Seeds, mit vollständiger Prüfung und mit einem gepaarten Test über
+Komplexe gerechnet ist. In diesem Projekt sind inzwischen sechs Befunde an
+genau dieser Stelle gekippt.
