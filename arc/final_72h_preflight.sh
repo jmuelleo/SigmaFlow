@@ -27,6 +27,14 @@ MODEL="${1:?Usage: final_72h_preflight.sh <sigmadock|sigmaflow_minimal|sigmaflow
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "${HERE}/.." && pwd)"
 
+# ARC_REPO, ARC_SIGMADOCK, ARC_DATA und ARC_RUNS kommen aus _common.sh.
+# Ohne sie baut B2 den Pfad "/SigmaFlow_Minimal" und meldet ihn als fehlend,
+# und B4 kann den Speicherplatz nicht pruefen -- beides falsche Alarme.
+if [ -f "${HERE}/_common.sh" ]; then
+    # shellcheck source=/dev/null
+    source "${HERE}/_common.sh" 2>/dev/null || true
+fi
+
 LOCAL_FAIL=0; LOCAL_WARN=0
 RT_FAIL=0;    RT_WARN=0;   RT_PENDING=0
 SECTION="LOCAL"
@@ -154,9 +162,16 @@ run_test() {
 PY_BIN="$(command -v python3 || command -v python)"
 if [ -n "$PY_BIN" ]; then
     run_test "Scheduler-Horizont-Tests" "$PY_BIN" "${HERE}/test_scheduler_horizon.py"
-    run_test "Konfigurationsvergleich"  "$PY_BIN" "${HERE}/compare_final_configs.py" \
-        --sigmaflow-config "${REPO}/SigmaFlow_Minimal/src/sigmadock/config.py" \
-        --sigmadock-config "${REPO}/SigmaDock/src_sigmadock/config.py" --fail-on-confounder
+    if [ -f "${REPO}/SigmaDock/src_sigmadock/config.py" ]; then
+        run_test "Konfigurationsvergleich"  "$PY_BIN" "${HERE}/compare_final_configs.py" \
+            --sigmaflow-config "${REPO}/SigmaFlow_Minimal/src/sigmadock/config.py" \
+            --sigmadock-config "${REPO}/SigmaDock/src_sigmadock/config.py" --fail-on-confounder
+    else
+        # /SigmaDock/ steht in .gitignore und erreicht den ARC-Checkout nicht.
+        # Die Pruefung braucht kein ARC -- sie MUSS lokal gelaufen sein.
+        warn "Konfigurationsvergleich hier nicht moeglich (SigmaDock/ ist gitignored)"
+        warn "  -> lokal ausfuehren: python arc/compare_final_configs.py"
+    fi
     if [ -f "${REPO}/audits/test_rotation_gradient_reachability.py" ]; then
         run_test "Gradient-Erreichbarkeit" "$PY_BIN" "${REPO}/audits/test_rotation_gradient_reachability.py"
     else
