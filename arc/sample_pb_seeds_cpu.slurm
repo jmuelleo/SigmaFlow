@@ -56,6 +56,27 @@ source "${REPO_ROOT}/arc/_common.sh"
 MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | exp100 | exp110 | sigmadock}"
 CKPT="${CKPT:?CKPT auf den last.ckpt-Pfad setzen}"
 NUM_STEPS="${NUM_STEPS:-25}"
+
+# CONFORMER waehlt die Quelle der Fragmentgeometrie.
+#   bound   graph.sample_conformer=false -- Fragmente aus der GEBUNDENEN
+#           Pose. Isoliert die Platzierung von der Konformergenerierung
+#           und macht die Zerlegung in Translation und Rotation gueltig,
+#           weil sich Vorhersage und Wahrheit innerhalb eines Fragments
+#           dann nur durch eine starre Bewegung unterscheiden.
+#           ACHTUNG: dabei ist die wahre Rotation exakt die Identitaet.
+#           SigmaDocks Prior IGSO(3) bei sigma_max=1.5 hat dort mehr
+#           Masse als das Haar-Mass (mittlerer Winkel 115.0 statt 126.5
+#           Grad) und startet damit systematisch naeher an der Antwort.
+#   sampled graph.sample_conformer=true -- generierter Konformer, so wie
+#           es SigmaDocks eigene Vorgabe in conf/sampling/base.yaml:49
+#           vorsieht. Die Orientierung ist dann willkuerlich, der
+#           Prior-Vorteil sollte verschwinden.
+CONFORMER="${CONFORMER:-bound}"
+case "$CONFORMER" in
+  bound)   CONF_FLAG=false; CONF_TAG="" ;;
+  sampled) CONF_FLAG=true;  CONF_TAG="__confsampled" ;;
+  *) echo "CONFORMER: bound|sampled"; exit 1 ;;
+esac
 SEED="${SLURM_ARRAY_TASK_ID:-0}"
 
 # COMPARISON trennt die beiden wissenschaftlich verschiedenen Vergleiche
@@ -76,7 +97,9 @@ case "$RANKING"    in raw|ranked)         ;; *) echo "RANKING: raw|ranked";     
 # COMPARISON darin wuerde ein Ranked-Lauf mit gleicher NFE die Raw-Posen
 # ueberschreiben - ein stiller Datenverlust, der erst bei der Auswertung
 # auffiele, und dann als Methodenunterschied fehlinterpretiert werden koennte.
-OUT_ROOT="${ARC_RUNS}/sampling/${MODEL}__${COMPARISON}__${RANKING}__nfe${NUM_STEPS}__cpu"
+# CONF_TAG ist bei CONFORMER=bound LEER, damit der Pfad byte-identisch
+# zu allen bisherigen Laeufen bleibt und nichts nachtraeglich umzieht.
+OUT_ROOT="${ARC_RUNS}/sampling/${MODEL}__${COMPARISON}__${RANKING}__nfe${NUM_STEPS}__cpu${CONF_TAG}"
 
 case "$MODEL" in
   sigmaflow_minimal)
@@ -123,6 +146,7 @@ mkdir -p "$OUT_ROOT"
     echo "comparison  = ${COMPARISON}"
     echo "ranking     = ${RANKING}"
     echo "nfe         = ${NUM_STEPS}"
+    echo "conformer   = ${CONFORMER} (graph.sample_conformer=${CONF_FLAG})"
     echo "seed        = ${SEED}"
     echo "checkpoint  = ${CKPT}"
     echo "code_dir    = ${CODE_DIR}"
@@ -158,7 +182,7 @@ $PYTHON scripts/sample.py \
     seed="${SEED}" \
     num_seeds=1 \
     "${STEP_ARG[@]}" \
-    graph.sample_conformer=false \
+    graph.sample_conformer=${CONF_FLAG} \
     hardware.accelerator=cpu \
     hardware.devices=1 \
     "${SCORING_ARGS[@]}" \
