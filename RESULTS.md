@@ -1877,3 +1877,190 @@ die die Konstruktion begründet hat.
 alle Seeds, mit vollständiger Prüfung und mit einem gepaarten Test über
 Komplexe gerechnet ist. In diesem Projekt sind inzwischen sechs Befunde an
 genau dieser Stelle gekippt.
+
+## Ranking und Auswahl mit gnina/Vinardo, 80 Seeds (2026-08-23)
+
+Alle Zahlen aus `SigmaFlow_Variants/posebusters_full_comparison/build_thesis_datasets.py`,
+Datensätze in `Thesis Visualisierungen/data/`. Scoring auf ARC, Jobs `8634498`
+bis `8634500`, gnina 1.3.2, `--scoring vinardo --cnn_scoring none --no_gpu`,
+je 209 Aufrufe mit allen 80 Posen eines Komplexes in einer Multi-Model-SDF.
+16.720 Werte je Arm, kein übersprungener Komplex.
+
+### Warum die Auswahl legitim ist
+
+Der Affinitätsscore braucht nur die **vorhergesagte Pose** und die
+**Proteinstruktur**. Keine Referenzpose, kein RMSD. Beides liegt zur
+Inferenzzeit vor, und `gnina --score_only` ist bei gegebener Pose
+deterministisch. Es ist damit eine echte Auswahlregel und keine nachträgliche
+Beschönigung.
+
+Ein Vorbehalt: bei der PB-Validität *mit* Protein misst man etwas, das mit der
+Affinität konzeptuell verwandt ist — beide bestrafen Kollision. Zirkulär ist
+es nicht (der Score ist keiner der Checks), aber die Verwandtschaft gehört
+beim Berichten genannt.
+
+### SigmaDock kennt vier Rankingmodi
+
+`SigmaDock/src_sigmadock/src_sigmadock_chem/statistics#Evaluationspipeline.py`,
+Funktion `compute_ordering`, Zeilen 650–760:
+
+| Modus | Sortierschlüssel |
+|---|---|
+| `None` | zufällige Permutation, fester Seed — die Nullreferenz |
+| `"vinardo"` / `"cnn"` | eine benannte gnina-Kennzahl; `Affinity` und `Intramolecular energy` aufsteigend, `CNNscore` absteigend |
+| `"pb"` | Mittelwert über gewählte PoseBusters-Checks, absteigend |
+| `"heuristic"` | Produkt aus richtungsnormalisiertem Score und `(score_bias + avg_pb ** pb_exponent)` |
+
+Verfügbare Kennzahlen (`postprocessor.py:11`): `Affinity`, `CNNscore`,
+`CNNaffinity`, `CNNvariance`, `Intramolecular energy`.
+`conf/sampling/base.yaml:84` setzt zur Samplingzeit `scoring: vinardo`.
+
+**Ausgewertet ist Modus 2 mit score_name = Affinity.** Der `cnn`-Modus fehlt —
+er braucht `--cnn_scoring all` und damit gninas neuronalen Teil, der für
+Posenauswahl trainiert ist und vermutlich besser abschneidet. Offen.
+
+### Der Score ist informativ, aber schwach
+
+Spearman zwischen Affinität und RMSD, je Komplex über 80 Ziehungen. Positiv
+ist richtig: bessere (negativere) Affinität soll kleinerem RMSD entsprechen.
+
+| Arm | Median rho | rho > 0 | p < 0,05 und rho > 0 |
+|---|---:|---:|---:|
+| Minimal | +0,113 | 72,2 % | 28,7 % |
+| Separate | +0,108 | 73,2 % | 32,1 % |
+| SigmaDock | **+0,172** | **82,8 %** | **39,7 %** |
+
+Bemerkenswert ist die Größenordnung der Affinitäten selbst: Median **+8,05**
+(Minimal, Separate) und **+5,67** (SigmaDock) kcal/mol, nur 18–25 % negativ,
+Maximum bis +299. Vinardo-Werte sind normalerweise negativ. Die Mehrheit der
+Posen sitzt also energetisch ungünstig — sie kollidiert mit dem Protein. Das
+deckt sich damit, dass nur rund 7 % die Proteinprüfung bestehen.
+
+### Auswahl nach Affinität: Anteil der gewählten Posen
+
+**Minimal**
+
+| Kenngröße | k=1 | k=5 | k=10 | k=20 | k=40 | k=80 |
+|---|---:|---:|---:|---:|---:|---:|
+| RMSD < 1,0 Å | 0,38 % | 1,32 % | 1,91 % | 2,76 % | 3,57 % | 3,83 % |
+| RMSD < 2,0 Å | 5,44 % | 11,15 % | 14,19 % | 17,84 % | 21,70 % | 25,36 % |
+| RMSD < 2,5 Å | 11,62 % | 19,26 % | 22,76 % | 26,73 % | 30,42 % | 33,01 % |
+| RMSD < 3,0 Å | 19,90 % | 28,41 % | 32,52 % | 37,13 % | 41,07 % | 44,02 % |
+| PB-valid ohne Protein | 34,06 % | 35,01 % | 35,43 % | 35,96 % | 36,78 % | 38,76 % |
+| PB-valid mit Protein | 6,98 % | 16,30 % | 20,26 % | 23,67 % | 26,28 % | 29,67 % |
+| < 2 Å und valid ohne | 4,00 % | 7,75 % | 9,87 % | 12,57 % | 15,72 % | 19,14 % |
+| **< 2 Å und valid mit** | **1,44 %** | 4,13 % | 6,01 % | 8,35 % | 10,95 % | **13,88 %** |
+
+**Separate**
+
+| Kenngröße | k=1 | k=5 | k=10 | k=20 | k=40 | k=80 |
+|---|---:|---:|---:|---:|---:|---:|
+| RMSD < 1,0 Å | 0,42 % | 1,35 % | 2,12 % | 3,12 % | 4,35 % | 5,26 % |
+| RMSD < 2,0 Å | 5,82 % | 11,44 % | 14,40 % | 17,83 % | 21,37 % | 24,88 % |
+| RMSD < 2,5 Å | 12,03 % | 19,50 % | 22,94 % | 26,70 % | 30,20 % | 33,01 % |
+| RMSD < 3,0 Å | 20,56 % | 28,74 % | 32,06 % | 35,69 % | 39,32 % | 43,06 % |
+| PB-valid ohne Protein | 35,03 % | 36,94 % | 36,97 % | 37,19 % | 37,24 % | 37,80 % |
+| PB-valid mit Protein | 7,00 % | 16,32 % | 20,15 % | 23,65 % | 26,82 % | 29,19 % |
+| < 2 Å und valid ohne | 4,27 % | 7,98 % | 9,65 % | 11,48 % | 13,15 % | 15,31 % |
+| **< 2 Å und valid mit** | **1,39 %** | 4,01 % | 5,42 % | 7,28 % | 8,98 % | **11,00 %** |
+
+**SigmaDock**
+
+| Kenngröße | k=1 | k=5 | k=10 | k=20 | k=40 | k=80 |
+|---|---:|---:|---:|---:|---:|---:|
+| RMSD < 1,0 Å | 0,82 % | 2,89 % | 4,49 % | 6,38 % | 8,50 % | **11,48 %** |
+| RMSD < 2,0 Å | 10,30 % | 19,98 % | 24,55 % | 28,62 % | 32,15 % | **36,36 %** |
+| RMSD < 2,5 Å | 18,26 % | 30,46 % | 35,79 % | 40,50 % | 44,38 % | **48,80 %** |
+| RMSD < 3,0 Å | 27,25 % | 39,35 % | 44,34 % | 48,70 % | 51,70 % | **54,07 %** |
+| PB-valid ohne Protein | 28,30 % | 30,38 % | 31,06 % | 31,36 % | 31,39 % | 31,10 % |
+| PB-valid mit Protein | 6,18 % | 13,85 % | 17,43 % | 20,78 % | 23,77 % | 26,32 % |
+| < 2 Å und valid ohne | 5,68 % | 10,10 % | 12,14 % | 14,12 % | 15,70 % | 17,22 % |
+| **< 2 Å und valid mit** | **1,63 %** | 4,78 % | 6,74 % | 9,06 % | 11,33 % | **14,35 %** |
+
+### Der Score wirkt sehr ungleich
+
+Zuwachs von k = 1 auf k = 80, Beispiel Minimal:
+
+| Kenngröße | Faktor |
+|---|---:|
+| PB-valid ohne Protein | **1,1x** |
+| RMSD < 3 Å | 2,2x |
+| PB-valid mit Protein | 4,3x |
+| RMSD < 2 Å | 4,7x |
+| < 2 Å und valid mit Protein | **9,6x** |
+| RMSD < 1 Å | **10,1x** |
+
+Vinardo bewertet die Protein-Ligand-Wechselwirkung. Über die innere Geometrie
+des Liganden weiß es nichts — deshalb bewegt sich die ligandenintrinsische
+Validität kaum. Über Kollisionen weiß es alles — daher der Faktor 4 bei der
+Proteinvalidität. **Der Score ist ein Platzierungsfilter, kein Chemiefilter.**
+
+Und je schärfer die Schwelle, desto mehr bringt die Auswahl: Faktor 10 bei
+1 Å, Faktor 2 bei 3 Å. Grobe Treffer hätte man auch zufällig erwischt.
+
+### Rückholquote: welcher Anteil der Lücke geschlossen wird
+
+Definiert als (Top-1 minus Zufall) geteilt durch (Oracle minus Zufall), k = 80:
+
+| Kenngröße | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| PB-valid ohne Protein | 8,8 % | 5,2 % | 5,4 % |
+| < 2 Å und valid ohne Protein | 29,9 % | 21,1 % | 24,3 % |
+| RMSD < 2 Å | 33,1 % | 29,3 % | 39,6 % |
+| < 2 Å und valid mit Protein | 40,7 % | 31,9 % | 37,1 % |
+| PB-valid mit Protein | **46,4 %** | **44,9 %** | **47,8 %** |
+
+Bei k = 2 liegt die Rückholquote der Proteinvalidität sogar bei 72–77 % — die
+billigsten Gewinne kommen zuerst.
+
+### Von den vier Modi ist der einfachste der beste
+
+Zielgröße RMSD < 2 Å, Top-1@80. Nicht zirkulär, weil der RMSD in keinen Ranker
+eingeht. Gleichstände zufällig aufgelöst — die PB-Mittelwerte haben nur 25
+Stufen, sonst entschiede die Seed-Reihenfolge.
+
+| Ranker | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| Zufall | 4,31 % | 3,83 % | 10,05 % |
+| **Affinität (vinardo)** | **25,36 %** | **24,88 %** | **36,36 %** |
+| pb: alle 24 Checks | 13,25 % | 14,64 % | 24,25 % |
+| pb: 15 intrinsische | 8,10 % | 8,80 % | 14,54 % |
+| pb: 9 mit Protein | 10,91 % | 11,42 % | 20,60 % |
+| Oracle | 65,55 % | 70,81 % | 76,08 % |
+
+Die Heuristik über ein Gitter aus 24 Parameterkombinationen erreicht
+28,23 / 26,79 / 38,28 % im besten Feld, also **ein bis drei Punkte über der
+reinen Affinität** — bei einer Gitterstreuung derselben Größenordnung und
+einem Standardfehler von rund drei Punkten. Kein Feld ist von der reinen
+Affinität zu unterscheiden, und ein nachträglich ausgewähltes bestes Feld wäre
+wertlos.
+
+**Ein struktureller Defekt der Heuristik:** sie multipliziert einen
+vorzeichenbehafteten Wert mit einem positiven Faktor. Ist der normalisierte
+Score positiv, hebt ein besserer PB-Faktor den Wert; ist er negativ, senkt er
+ihn — bessere Chemie wird dann bestraft. Anteil der Posen mit negativem
+Score: **81,7 / 81,1 / 75,4 %**. Für rund vier Fünftel aller Posen wirkt die
+Formel in die falsche Richtung. Die additive Gegenprobe erreicht
+28,71 / 28,71 / 39,71 %, also ebenfalls nur ein bis drei Punkte — die schwache
+Wirkung liegt nicht am Vorzeichen, sondern daran, dass die PB-Checks über den
+RMSD wenig aussagen.
+
+### Zwei Beobachtungen ohne statistische Absicherung
+
+**Separate verliert unter Ranking.** Bei k = 1 gleichauf (1,39 gegen 1,44 %),
+bei k = 80 deutlich hinten (11,00 gegen 13,88 %). Bei den reinen
+RMSD-Schwellen passiert das nicht; bei < 1 Å ist Separate sogar besser (5,26
+gegen 3,83 %). Der gepaarte Test über 209 Komplexe gibt p = 0,34 — **das ist
+eine Beobachtung, kein Befund.**
+
+**Unter Ranking sind alle drei Arme auf der harten Kenngröße
+ununterscheidbar:** 13,88 / 11,00 / 14,35 %, kein Paar signifikant (p = 0,29
+bis 0,93). Nur SigmaDocks RMSD-Vorsprung überlebt (+11,00 pp gegen Minimal,
+p = 0,006).
+
+### Was das für den Ausblick bedeutet
+
+Der Ausblick auf ein Confidence-Modell hat jetzt eine Untergrenze: **ein
+klassischer Score ohne jedes Lernen holt rund 40 % der Lücke** und hebt die
+harte Kenngröße von 1,4 % auf 13,9 %. Was ein gelerntes Modell darüber hinaus
+schafft, ist offen — aber der Boden steht.

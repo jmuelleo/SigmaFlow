@@ -136,3 +136,61 @@ Die zusammengeführte CSV enthält nur die 208 gemessenen Liganden — die
 Abbildungen können daraus die fehlende Messung nicht mehr ausweisen. Die
 vollständige Liste inklusive der leeren Zeile liegt auf ARC unter
 `arc_runs/FRAGCOUNT-posebusters_8607523/fragment_counts_posebusters.csv`.
+
+---
+
+## Datensätze zum 80-Seed-Vergleich (Stand 2026-08-23)
+
+Erzeugt von `SigmaFlow_Variants/posebusters_full_comparison/build_thesis_datasets.py`
+aus den Rohtabellen. Ein Skript, damit die Zahlen in `RESULTS.md` und die
+Zahlen hinter den Abbildungen nicht auseinanderdriften. Alle Zufallsschritte
+mit festem Seed.
+
+```bash
+cd SigmaFlow_Variants/posebusters_full_comparison
+python build_thesis_datasets.py
+```
+
+Grundlage: 209 PoseBusters-Komplexe × 80 Ziehungen × 3 Arme = 50.160 Posen.
+Arme sind `Minimal` (SigmaFlow), `Separate` (EXP-110 Zwei-Kopf) und
+`SigmaDock`. PoseBusters im Modus `redock`: 15 ligandenintrinsische Checks,
+9 mit Protein.
+
+| Datei | Spalten | Zeilen | Wofür |
+|---|---|---:|---|
+| `per_draw_80seeds.csv` | arm, metric, pct, ci_lo, ci_hi, n_poses | 24 | Balkendiagramm der acht Kenngrößen je Arm, mit 95-%-Wilson-Intervall |
+| `selection_curves_80seeds.csv` | arm, metric, k, random_pct, top1_affinity_pct, oracle_pct | 192 | Die Kernabbildung: drei Kurven je Kenngröße und Arm über k = 1…80 |
+| `ranker_comparison_80seeds.csv` | arm, ranker, k, hit_rmsd_lt_2A_pct | 144 | Vergleich der fünf Ranker plus Oracle, Zielgröße RMSD < 2 Å |
+| `heuristic_grid_80seeds.csv` | arm, score_bias, pb_exponent, k, hit_rmsd_lt_2A_pct | 72 | Heatmap über SigmaDocks Heuristik-Parameter |
+
+### Werte von `metric`
+
+```
+rmsd_lt_1.0A                 rmsd_lt_2.0A                 rmsd_lt_2.5A
+rmsd_lt_3.0A                 pb_valid_no_protein          pb_valid_with_protein
+lt2A_and_valid_no_protein    lt2A_and_valid_with_protein
+```
+
+### Werte von `ranker`
+
+```
+random             zufällige Auswahl, die Untergrenze
+affinity_vinardo   gnina/Vinardo-Affinität, negativste gewinnt
+pb_all             Mittel über alle 24 PoseBusters-Checks
+pb_intrinsic       Mittel über die 15 ligandenintrinsischen
+pb_protein         Mittel über die 9 mit Protein
+oracle             beste der k Ziehungen, die Obergrenze
+```
+
+### Zwei Punkte, die beim Zeichnen zu beachten sind
+
+**Zirkularität.** Der Rankervergleich ist ausschließlich gegen `RMSD < 2 Å`
+ausgewertet. Wer nach PoseBusters-Checks rankt und dann PB-Validität misst,
+misst sich selbst. In `selection_curves_80seeds.csv` ist das kein Problem,
+weil dort nur nach Affinität ausgewählt wird — und die Affinität ist keiner
+der Checks.
+
+**k = 80 ist ein Einzelfall.** Für k < 80 sind die Werte über 400 zufällige
+k-Teilmengen gemittelt, bei k = 80 gibt es nur eine Teilmenge. Die
+`random_pct`-Spalte ist deshalb bei k = 80 verrauschter als bei kleinerem k;
+sie sollte als waagerechte Referenzlinie gezeichnet werden, nicht als Kurve.
