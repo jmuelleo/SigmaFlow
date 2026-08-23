@@ -34,14 +34,36 @@ import csv
 import glob
 import os
 import re
+import sys
 
 import numpy as np
 
-ARMS = [("Minimal", "minimal80", "sigmaflow_minimal"),
-        ("Separate", "exp110_80", "exp110"),
-        ("SigmaDock", "sigmadock80", "sigmadock")]
+# Zwei Auswertungskonfigurationen, siehe RESULTS.md.
+#   bound    graph.sample_conformer=false, Fragmente aus der gebundenen Pose.
+#            80 Seeds, mit gnina-Scores.
+#   sampled  graph.sample_conformer=true -- die Vorgabe des Papers. 40 Seeds,
+#            ohne gnina (dafuer wurde nie gescort).
+MODUS = sys.argv[1] if len(sys.argv) > 1 else "bound"
+if MODUS == "bound":
+    ARMS = [("Minimal", "minimal80", "sigmaflow_minimal"),
+            ("Separate", "exp110_80", "exp110"),
+            ("SigmaDock", "sigmadock80", "sigmadock")]
+    RD = {"Minimal": "minimal80", "Separate": "exp110_80", "SigmaDock": "sigmadock80"}
+    KS = (1, 2, 3, 5, 10, 20, 40, 80)
+    TAG = "80seeds"
+    MIT_GNINA = True
+elif MODUS == "sampled":
+    ARMS = [("Minimal", "minimalcs", None),
+            ("Separate", "exp110cs", None),
+            ("SigmaDock", "sigmadockcs", None)]
+    RD = {"Minimal": "minimalcs2", "Separate": "exp110cs2", "SigmaDock": "sigmadockcs2"}
+    KS = (1, 2, 3, 5, 10, 20, 40)
+    TAG = "papersetup40"
+    MIT_GNINA = False
+else:
+    raise SystemExit(f"MODUS unbekannt: {MODUS} (bound|sampled)")
+
 OUT = os.path.join("..", "..", "Thesis Visualisierungen", "data")
-KS = (1, 2, 3, 5, 10, 20, 40, 80)
 REP = 400
 RNG = np.random.default_rng(0)
 
@@ -71,7 +93,7 @@ def einlesen():
     V, RM, SC, PBa, meta = {}, {}, {}, {}, {}
     for arm, key, gkey in ARMS:
         V[arm], roh = {}, {}
-        for f in glob.glob(f"rd_{key}_seed*.csv"):
+        for f in glob.glob(f"rd_{RD[arm]}_seed*.csv"):
             s = int(re.search(r"seed(\d+)\.csv$", f).group(1))
             rows = list(csv.DictReader(open(f, encoding="utf-8", errors="replace")))
             checks, intra, prot = spalten(rows)
@@ -85,11 +107,14 @@ def einlesen():
                                  "prot": np.mean([tf(r[c]) for c in prot])}
         RM[arm] = {(r["complex"], int(r["seed"])): float(r["rmsd"])
                    for r in csv.DictReader(open(f"pose_{key}.csv", encoding="utf-8"))}
-        g = glob.glob(f"GNINA-SCORE-*{gkey}_*/gnina_scores_{gkey}.csv")
-        if len(g) != 1:
-            raise SystemExit(f"ABBRUCH: gnina-Datei nicht eindeutig fuer {gkey}: {g}")
-        SC[arm] = {(r["complex"], int(r["seed"])): float(r["affinity"])
-                   for r in csv.DictReader(open(g[0], encoding="utf-8"))}
+        if MIT_GNINA:
+            g = glob.glob(f"GNINA-SCORE-*{gkey}_*/gnina_scores_{gkey}.csv")
+            if len(g) != 1:
+                raise SystemExit(f"ABBRUCH: gnina-Datei nicht eindeutig fuer {gkey}: {g}")
+            SC[arm] = {(r["complex"], int(r["seed"])): float(r["affinity"])
+                       for r in csv.DictReader(open(g[0], encoding="utf-8"))}
+        else:
+            SC[arm] = None
         PBa[arm] = roh
     return V, RM, SC, PBa, meta
 
@@ -106,8 +131,11 @@ def wilson(k: int, n: int) -> tuple[float, float]:
 
 def main() -> int:
     V, RM, SC, PBroh, meta = einlesen()
-    keys = sorted(set.intersection(*[set(V[a]) & set(RM[a]) & set(SC[a])
-                                     for a, _, _ in ARMS]))
+    if MIT_GNINA:
+        keys = sorted(set.intersection(*[set(V[a]) & set(RM[a]) & set(SC[a])
+                                         for a, _, _ in ARMS]))
+    else:
+        keys = sorted(set.intersection(*[set(V[a]) & set(RM[a]) for a, _, _ in ARMS]))
     cids = sorted({c for c, _ in keys})
     seeds = sorted({s for _, s in keys})
     NC, NS = len(cids), len(seeds)
@@ -118,7 +146,8 @@ def main() -> int:
     print(f"Checks: {meta['n_intra']} intrinsisch + {meta['n_prot']} mit Protein "
           f"= {meta['n_checks']}")
 
-    A = {a: np.array([[SC[a][(c, s)] for s in seeds] for c in cids]) for a, _, _ in ARMS}
+    A = ({a: np.array([[SC[a][(c, s)] for s in seeds] for c in cids])
+          for a, _, _ in ARMS} if MIT_GNINA else None)
     R = {a: np.array([[RM[a][(c, s)] for s in seeds] for c in cids]) for a, _, _ in ARMS}
     Vo = {a: np.array([[V[a][(c, s)][0] for s in seeds] for c in cids]) for a, _, _ in ARMS}
     Vm = {a: np.array([[V[a][(c, s)][1] for s in seeds] for c in cids]) for a, _, _ in ARMS}
@@ -138,7 +167,7 @@ def main() -> int:
     os.makedirs(OUT, exist_ok=True)
 
     # --- 1) Anteil je Ziehung -----------------------------------------------
-    pfad = os.path.join(OUT, "per_draw_80seeds.csv")
+    pfad = os.path.join(OUT, f"per_draw_{TAG}.csv")
     with open(pfad, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["arm", "metric", "pct", "ci_lo", "ci_hi", "n_poses"])
@@ -152,10 +181,13 @@ def main() -> int:
     print("geschrieben:", pfad)
 
     # --- 2) Auswahlkurven ----------------------------------------------------
-    pfad = os.path.join(OUT, "selection_curves_80seeds.csv")
+    pfad = os.path.join(OUT, f"selection_curves_{TAG}.csv")
     with open(pfad, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["arm", "metric", "k", "random_pct", "top1_affinity_pct", "oracle_pct"])
+        kopf = ["arm", "metric", "k", "random_pct", "oracle_pct"]
+        if MIT_GNINA:
+            kopf.insert(4, "top1_affinity_pct")
+        w.writerow(kopf)
         for arm, _, _ in ARMS:
             for name, f in METRIKEN:
                 H = f(arm)
@@ -166,11 +198,21 @@ def main() -> int:
                         h = H[:, idx]
                         ran.append(h.mean())
                         ora.append(h.any(axis=1).mean())
-                        pick = A[arm][:, idx].argmin(axis=1)   # negativste Affinitaet
-                        top.append(h[np.arange(NC), pick].mean())
-                    w.writerow([arm, name, k, f"{100 * np.mean(ran):.4f}",
-                                f"{100 * np.mean(top):.4f}", f"{100 * np.mean(ora):.4f}"])
+                        if MIT_GNINA:
+                            pick = A[arm][:, idx].argmin(axis=1)   # negativste Affinitaet
+                            top.append(h[np.arange(NC), pick].mean())
+                    zeile = [arm, name, k, f"{100 * np.mean(ran):.4f}",
+                             f"{100 * np.mean(ora):.4f}"]
+                    if MIT_GNINA:
+                        zeile.insert(4, f"{100 * np.mean(top):.4f}")
+                    w.writerow(zeile)
     print("geschrieben:", pfad)
+
+    if not MIT_GNINA:
+        # Ohne gnina-Scores gibt es weder Rankervergleich noch Heuristik.
+        print("Modus sampled: Rankervergleich und Heuristik uebersprungen "
+              "(keine gnina-Scores fuer diese Posen)")
+        return 0
 
     def top1(score: np.ndarray, hit: np.ndarray, k: int, hoeher_besser: bool = True) -> float:
         s0 = score if hoeher_besser else -score
@@ -182,7 +224,7 @@ def main() -> int:
         return float(np.mean(out))
 
     # --- 3) Rankervergleich, Zielgroesse RMSD < 2 A --------------------------
-    pfad = os.path.join(OUT, "ranker_comparison_80seeds.csv")
+    pfad = os.path.join(OUT, f"ranker_comparison_{TAG}.csv")
     with open(pfad, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["arm", "ranker", "k", "hit_rmsd_lt_2A_pct"])
@@ -208,7 +250,7 @@ def main() -> int:
     # Die beiden Parameter haben im SigmaDock-Repository KEINE Vorgabewerte,
     # deshalb ein Gitter statt eines Wertes. Ein einzelnes, nachtraeglich
     # ausgewaehltes bestes Feld waere wertlos.
-    pfad = os.path.join(OUT, "heuristic_grid_80seeds.csv")
+    pfad = os.path.join(OUT, f"heuristic_grid_{TAG}.csv")
     with open(pfad, "w", encoding="utf-8", newline="") as fh:
         w = csv.writer(fh)
         w.writerow(["arm", "score_bias", "pb_exponent", "k", "hit_rmsd_lt_2A_pct"])

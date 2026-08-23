@@ -2363,3 +2363,90 @@ Fünfmal so viele Schritte erzeugen 14 % mehr Gesamtdrehung — die Weglänge is
 also nahezu erhalten, wie es für die Integration derselben ODE sein muss. Der
 Rotationsfehler bleibt in beiden Fällen unverändert. **Die Rotation wird nicht
 gelernt, und das hängt nicht an der Integrationsauflösung.**
+
+### Oracle@k im Paper-Setup
+
+209 Komplexe, 40 Seeds, erwartungstreu über zufällige k-Teilmengen (400
+Wiederholungen). Datensatz: `Thesis Visualisierungen/data/selection_curves_papersetup40.csv`.
+
+**RMSD < 2 Å — die Kurven liegen aufeinander**
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 5,43 % | 5,81 % | 5,84 % |
+| 5 | 20,74 % | 21,41 % | 21,80 % |
+| 10 | 32,81 % | 33,12 % | 33,45 % |
+| 20 | 46,96 % | 46,48 % | 46,47 % |
+| 40 | **59,81 %** | 59,33 % | 57,42 % |
+
+Bei kleinem k führt SigmaDock minimal, ab k = 20 dreht es sich. Zum Vergleich
+bei `bound`: dort stand SigmaDock bei k = 40 auf **68,62 %** gegen 56,61 und
+60,19. Der gesamte Abstand ist verschwunden.
+
+**Übrige Schwellen bei k = 40**
+
+| Schwelle | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| < 1 Å | 7,66 % | **8,61 %** | **8,61 %** |
+| < 2,5 Å | 75,60 % | **77,03 %** | 73,68 % |
+| < 3 Å | 85,17 % | **87,56 %** | 86,12 % |
+
+**PB-valid ohne Protein — hier öffnet sich die Schere mit k**
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 33,83 % | 34,97 % | 28,47 % |
+| 3 | 52,34 % | 52,69 % | 41,80 % |
+| 10 | 69,82 % | 70,68 % | 55,86 % |
+| 20 | 77,20 % | 79,26 % | 63,23 % |
+| 40 | 82,30 % | **85,17 %** | **70,33 %** |
+
+Der Abstand wächst von **6,5 Punkten** bei einer Ziehung auf **14,8 Punkte**
+bei vierzig. SigmaDock erreicht selbst mit 40 Versuchen für rund 30 % der
+Komplexe keine einzige chemisch saubere Pose, die Flow-Arme nur für 15–18 %.
+
+Bemerkenswert im Vergleich zu `bound`: dort liefen Minimal und Separate bei
+k = 40 auf **exakt denselben** Wert (85,65 %). Im Paper-Setup trennen sie sich,
+Separate liegt vorn.
+
+**PB-valid mit Protein**
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 6,67 % | 6,99 % | 5,52 % |
+| 10 | 28,22 % | 28,51 % | 22,37 % |
+| 40 | **44,98 %** | 44,50 % | 35,89 % |
+
+**< 2 Å UND valid ohne Protein**
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 3,83 % | 4,46 % | 3,25 % |
+| 10 | 24,10 % | 24,95 % | 19,74 % |
+| 40 | **44,98 %** | 44,02 % | 35,89 % |
+
+**< 2 Å UND valid mit Protein — die harte Größe**
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 1,15 % | **1,48 %** | 0,94 % |
+| 5 | 4,85 % | **6,31 %** | 4,09 % |
+| 10 | 8,16 % | **10,45 %** | 7,15 % |
+| 20 | 13,17 % | **16,13 %** | 11,42 % |
+| 40 | 20,57 % | **22,49 %** | 16,75 % |
+
+**Separate führt hier über den gesamten k-Bereich.** Gegen SigmaDock sind es
+bei k = 40 fast sechs Punkte.
+
+### Was die Kurven zeigen und die Einzelzahlen nicht
+
+**Die Trennung der Verfahren liegt nicht in der Genauigkeit, sondern in der
+Chemie — und sie wächst mit k.** Bei `RMSD < 2 Å` laufen alle drei Kurven
+aufeinander. Bei `PB-valid ohne Protein` öffnet sich die Schere von 6,5 auf
+14,8 Punkte. SigmaDock erzeugt nicht nur seltener saubere Posen, es erreicht
+auch mit vielen Versuchen weniger Komplexe überhaupt.
+
+**EXP-110 gewinnt genau dort, wo beide Kriterien zusammenkommen.** Auf
+`RMSD < 2 Å` allein liegt es gleichauf mit Minimal, auf `PB-valid` knapp vorn
+— aber auf der Kombination führt es über jeden Wert von k. Das ist konsistent
+mit den gepaarten Tests und betrifft die Kenngröße, die praktisch zählt.

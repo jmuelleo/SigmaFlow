@@ -194,3 +194,38 @@ der Checks.
 k-Teilmengen gemittelt, bei k = 80 gibt es nur eine Teilmenge. Die
 `random_pct`-Spalte ist deshalb bei k = 80 verrauschter als bei kleinerem k;
 sie sollte als waagerechte Referenzlinie gezeichnet werden, nicht als Kurve.
+
+### Zweite Auswertungskonfiguration: das Paper-Setup (2026-08-23)
+
+Dasselbe Skript erzeugt beide Konfigurationen:
+
+```bash
+cd SigmaFlow_Variants/posebusters_full_comparison
+python build_thesis_datasets.py bound     # graph.sample_conformer=false, 80 Seeds
+python build_thesis_datasets.py sampled   # graph.sample_conformer=true,  40 Seeds
+```
+
+| Datei | Konfiguration | Zeilen |
+|---|---|---:|
+| `per_draw_80seeds.csv` | `bound`, 80 Seeds | 24 |
+| `selection_curves_80seeds.csv` | `bound`, 80 Seeds | 192 |
+| `ranker_comparison_80seeds.csv` | `bound`, 80 Seeds | 144 |
+| `heuristic_grid_80seeds.csv` | `bound`, 80 Seeds | 72 |
+| **`per_draw_papersetup40.csv`** | **`sampled`, 40 Seeds** | 24 |
+| **`selection_curves_papersetup40.csv`** | **`sampled`, 40 Seeds** | 168 |
+
+**`bound`** nimmt die Fragmentgeometrie aus der gebundenen Pose. Das isoliert
+die Platzierung von der Konformergenerierung, macht aber die
+Identitätsrotation zur richtigen Antwort — und SigmaDocks Rotationsprior
+(IGSO(3) bei σ = 1,5 statt Haar) hat dort mehr Masse. Der Genauigkeitsvorteil
+in diesen Daten stammt daher, nicht aus dem Modell.
+
+**`sampled`** ist die Vorgabe des Papers (`conf/sampling/base.yaml:49`). Dort
+ist die Identität nicht die Antwort, und der Vorteil verschwindet. **Für
+Aussagen über die Verfahren gelten diese Daten.**
+
+Die `sampled`-Dateien haben keine `top1_affinity_pct`-Spalte und es gibt
+keinen Rankervergleich — für diese Posen wurde nie mit gnina gescort.
+
+Details in `RESULTS.md`, Abschnitte „Der Rotationsprior erklärt den gesamten
+Methodenunterschied" und „MASSGEBLICH: Der volle Metriksatz im Paper-Setup".
