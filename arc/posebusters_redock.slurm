@@ -56,6 +56,12 @@ BENCH="${ARC_TRUE_DIR}"                       # posebusters_benchmark_set/<cid>/
 # Bei SUFFIX=__cpu bleibt OUT_TAG leer, der Pfad also byte-identisch zu
 # allen bisherigen Laeufen.
 OUT_TAG="${SUFFIX#__cpu}"
+# Dasselbe gilt fuer die Schrittzahl. Sie steht im Eingabepfad, muss also
+# auch im Ausgabepfad stehen. Die 25 bleiben ohne Kennzeichnung, damit die
+# vorhandenen Tabellen nicht umziehen -- alles andere bekommt __nfe<N>.
+if [ "$NUM_STEPS" != "25" ]; then
+    OUT_TAG="__nfe${NUM_STEPS}${OUT_TAG}"
+fi
 OUT_DIR="${ARC_RUNS}/posebusters_redock/${MODEL}${OUT_TAG}"
 OUT="${OUT_DIR}/rd_${MODEL}_seed${SEED}.csv"
 
