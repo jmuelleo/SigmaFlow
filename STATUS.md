@@ -112,6 +112,37 @@ Alle Rohdaten liegen lokal unter
 `SigmaFlow_Variants/posebusters_full_comparison/` in `min80`, `exp80`, `sd80`,
 `mincs`, `expcs`, `sdcs`, `min5`, `exp5`, `sd5`.
 
+## Nachtrag am Abend: der volle Metriksatz im Paper-Setup
+
+Der Chemievorsprung von Flow Matching ueberlebt den Prior-Test vollstaendig,
+und auf der gemeinsamen Metrik kehrt sich das Verhaeltnis um.
+
+| Kenngroesse | Min sampled | Sep sampled | SD sampled |
+|---|---:|---:|---:|
+| RMSD < 2 A | 5,33 % | 5,85 % | 5,80 % |
+| PB-valid ohne Protein | 33,85 % | 34,96 % | 28,19 % |
+| PB-valid mit Protein | 6,61 % | 6,94 % | 5,60 % |
+| < 2 A und valid ohne Prot. | 3,84 % | **4,43 %** | 3,22 % |
+| < 2 A und valid mit Prot. | 1,15 % | **1,48 %** | 0,94 % |
+
+Bei `bound` fuehrte SigmaDock die gemeinsame Metrik mit 5,80 gegen 3,86 und
+4,29 %. Im Paper-Setup ist es umgekehrt: 3,22 gegen 3,84 und 4,43 %, gegen
+Separate mit p = 0,0003. SigmaDock verliert den Startvorteil, seine
+Genauigkeit faellt auf das Niveau der anderen, und weil seine Ligandenchemie
+ohnehin sechs Punkte schlechter ist, faellt die Kombination darunter.
+
+**EXP-110 ist auf beiden gemeinsamen Metriken der beste Arm.** Der
+Zwei-Kopf-Ansatz, der als Nullergebnis begann, hat damit zwei robuste
+Effekte: bessere Ligandenchemie und in der Folge die beste kombinierte
+Kenngroesse.
+
+Vollstaendig in `RESULTS.md`, Abschnitt „MASSGEBLICH: Der volle Metriksatz im
+Paper-Setup". Fuenfzehn Vergleiche insgesamt; die beiden staerksten
+(Ligandenchemie, p < 0,0001) ueberleben jede Korrektur fuer multiples Testen,
+die Werte um p = 0,02 bis 0,05 einzeln nicht -- sie zeigen aber alle in
+dieselbe Richtung und ueber zwei Konformerquellen hinweg.
+
+
 ## Nächste Schritte
 
 1. **ARC-Support wegen `8634116`/`8634117`.** Die beiden 72h-Läufe stehen

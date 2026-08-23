@@ -2231,3 +2231,135 @@ Modi auf 0,0000 Å mit der geschriebenen SDF überein, und
 `trajectory[-1] × 2,7 + com` ebenfalls. Nur die Referenz war falsch.
 `trajectory_geometry.py` und `confsampled_compare.py` benutzen jetzt den
 Referenzliganden aus der SDF-Datei.
+
+## MASSGEBLICH: Der volle Metriksatz im Paper-Setup (2026-08-23, spät)
+
+**Dieser Abschnitt ersetzt die Tabellen der `bound`-Auswertung als
+maßgeblichen Stand.** Die dortigen Zahlen bleiben gültig als Messung, aber sie
+gelten für eine Auswertungskonfiguration, in der die Identitätsrotation die
+Antwort ist und SigmaDocks Prior deshalb informativ. Siehe den Abschnitt
+„Der Rotationsprior erklärt den gesamten Methodenunterschied".
+
+40 Seeds, 8360 Posen je Arm und Modus, RMSD durchgehend symmetriekorrigiert
+(spyrmsd), Referenz über `best_copy`. PoseBusters `redock`: 15
+ligandenintrinsische Checks, 9 mit Protein.
+
+`bound` = `graph.sample_conformer=false`, Fragmente aus der gebundenen Pose.
+`sampled` = `true`, generierter Konformer — **die Vorgabe des Papers**
+(`conf/sampling/base.yaml:49`).
+
+### Anteil je Ziehung
+
+| Kenngröße | Min bound | **Min sampled** | Sep bound | **Sep sampled** | SD bound | **SD sampled** |
+|---|---:|---:|---:|---:|---:|---:|
+| RMSD < 2 Å | 5,32 % | **5,33 %** | 5,79 % | **5,85 %** | 10,33 % | **5,80 %** |
+| PB-valid ohne Protein | 34,14 % | **33,85 %** | 35,22 % | **34,96 %** | 28,64 % | **28,19 %** |
+| PB-valid mit Protein | 6,63 % | **6,61 %** | 6,77 % | **6,94 %** | 6,51 % | **5,60 %** |
+| < 2 Å und valid ohne Prot. | 3,86 % | **3,84 %** | 4,29 % | **4,43 %** | 5,80 % | **3,22 %** |
+| < 2 Å und valid mit Prot. | 1,27 % | **1,15 %** | 1,30 % | **1,48 %** | 1,72 % | **0,94 %** |
+
+**Nur SigmaDock bewegt sich.** Die beiden Flow-Arme ändern sich beim Wechsel
+der Konformerquelle um Hundertstel bis Zehntel Prozentpunkte; SigmaDocks
+Trefferquote halbiert sich von 10,33 auf 5,80 %. Das ist der Prior-Effekt,
+und er trifft ausschließlich den Arm, dessen Startverteilung nicht das
+Haar-Maß ist.
+
+### Gepaarte Vergleiche im Paper-Setup
+
+Bootstrap über die 209 Komplexe, nicht über die 8360 Posen.
+
+| Kenngröße | Separate − Minimal | SigmaDock − Minimal | SigmaDock − Separate |
+|---|---|---|---|
+| RMSD < 2 Å | +0,51 pp, p = 0,12 | +0,47 pp, p = 0,20 | −0,05 pp, p = 0,89 |
+| PB-valid ohne Protein | **+1,11 pp, p = 0,030** | **−5,66 pp, p < 0,0001** | **−6,77 pp, p < 0,0001** |
+| PB-valid mit Protein | +0,32 pp, p = 0,30 | −1,02 pp, p = 0,054 | **−1,34 pp, p = 0,003** |
+| < 2 Å und valid ohne Prot. | **+0,59 pp, p = 0,023** | **−0,62 pp, p = 0,039** | **−1,21 pp, p = 0,0003** |
+| < 2 Å und valid mit Prot. | +0,33 pp, p = 0,052 | −0,20 pp, p = 0,21 | **−0,54 pp, p = 0,003** |
+
+### Die Umkehrung auf der gemeinsamen Metrik
+
+Bei `bound` führte SigmaDock deutlich: **5,80 gegen 3,86 und 4,29 %**. Im
+Paper-Setup ist es umgekehrt: **3,22 gegen 3,84 und 4,43 %** — SigmaDock ist
+der schlechteste der drei, gegen Separate mit p = 0,0003.
+
+Mit Protein dasselbe: aus 1,72 gegen 1,27/1,30 wird 0,94 gegen 1,15/1,48.
+
+Der Mechanismus ist durchgehend derselbe. SigmaDock verliert den Startvorteil,
+seine Genauigkeit fällt auf das Niveau der anderen — und weil seine
+Ligandenchemie ohnehin rund sechs Punkte schlechter ist, fällt die
+**Kombination** aus Genauigkeit und Validität unter die der Flow-Arme.
+
+### Stand der Methodenfrage
+
+| Größe | Ergebnis im Paper-Setup |
+|---|---|
+| Genauigkeit allein | **kein Unterschied**, alle p > 0,11 |
+| Ligandenchemie | **Flow Matching**, +5,7 bis +6,8 pp, p < 0,0001 |
+| Validität mit Protein | **Flow Matching**, bis +1,3 pp, p = 0,003 |
+| genau UND valide | **Flow Matching**, bis +1,2 pp, p = 0,0003 |
+| Robustheit bei nfe 5 | **Flow Matching**, Faktor 7 |
+| Rotation | von keinem Verfahren gelernt |
+
+**EXP-110 ist auf beiden gemeinsamen Metriken der beste Arm** (+0,59 pp gegen
+Minimal ohne Protein, p = 0,023; +0,33 pp mit Protein, p = 0,052). Der
+Zwei-Kopf-Ansatz, der als Nullergebnis begann, hat damit zwei robuste
+Effekte: bessere Ligandenchemie, und in der Folge die beste kombinierte
+Kenngröße.
+
+### Multiples Testen
+
+Fünfzehn Vergleiche. Die beiden stärksten — Ligandenchemie mit p < 0,0001 —
+überleben jede Korrektur. Die Werte zwischen p = 0,02 und 0,05 tun das
+einzeln nicht, zeigen aber **alle in dieselbe Richtung** und sind über zwei
+unabhängige Konformerquellen hinweg konsistent. Sie gehören als Muster
+berichtet, nicht als Einzelbefunde.
+
+### Die Robustheit gegen grobe Integration
+
+Aus dem Schrittzahl-Sweep, 40 Seeds je Arm, `bound`:
+
+| Arm | nfe 5 | nfe 25 |
+|---|---:|---:|
+| Minimal | 4,13 % | 4,40 % |
+| Separate | 4,61 % | 4,65 % |
+| **SigmaDock** | **0,63 %** | 9,37 % |
+
+SigmaDock bricht bei fünf Schritten vollständig zusammen: Median-RMSD
+23,45 Å, 146 von 209 Komplexen über 20 Å, kein einziger unter 5 Å.
+Konfiguration geprüft, `diffusion.num_steps: 5` war gesetzt, die Trajektorie
+hat fünf Einträge.
+
+Gepaart innerhalb der Arme, 5 gegen 25 Schritte:
+
+| Arm | Trefferquote | Median-RMSD |
+|---|---|---|
+| Minimal | −0,28 pp, p = 0,18 | **−0,230 Å, p < 0,001** |
+| Separate | −0,05 pp, p = 0,86 | −0,055 Å, p = 0,32 |
+| SigmaDock | **−8,73 pp, p < 0,0001** | **+18,42 Å, p < 0,0001** |
+
+Bei fünf Schritten direkt verglichen: SigmaDock **−3,49 pp** gegen Minimal und
+**−3,97 pp** gegen Separate, beide p < 0,0001.
+
+Der Mechanismus ist strukturell. Der Flow-Matching-Pfad ist die Geodäte
+zwischen Quelle und Ziel, also nahezu gerade — Euler trifft sie mit wenigen
+Schritten. SigmaDocks Rückwärtsprozess integriert über einen EDM-Rauschplan
+von σ = 1,5 bis t_min = 0,005 mit ρ = 3; bei fünf Schritten sind die Sprünge
+in σ zu groß, und ein Euler-Schritt bei hohem Rauschpegel multipliziert den
+Score mit einem großen Faktor.
+
+**Praktisch: SigmaFlow liefert mit einem Fünftel der Netzwerkauswertungen
+dieselbe Qualität, SigmaDock nicht.** Das ist der einzige Methodenvorteil in
+dieser Arbeit, der weder vom Prior noch von der Auswertungskonfiguration
+abhängt.
+
+### Nebenbefund: die kumulierte Drehung hängt nicht an der Schrittzahl
+
+| | nfe 5 | nfe 25 |
+|---|---:|---:|
+| Drehung je Fragment, kumuliert | 51,9° | 59,4° |
+| Rotationsfehler am Ende | 126,92° | 126,87° |
+
+Fünfmal so viele Schritte erzeugen 14 % mehr Gesamtdrehung — die Weglänge ist
+also nahezu erhalten, wie es für die Integration derselben ODE sein muss. Der
+Rotationsfehler bleibt in beiden Fällen unverändert. **Die Rotation wird nicht
+gelernt, und das hängt nicht an der Integrationsauflösung.**
