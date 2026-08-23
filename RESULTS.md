@@ -2064,3 +2064,170 @@ Der Ausblick auf ein Confidence-Modell hat jetzt eine Untergrenze: **ein
 klassischer Score ohne jedes Lernen holt rund 40 % der Lücke** und hebt die
 harte Kenngröße von 1,4 % auf 13,9 %. Was ein gelerntes Modell darüber hinaus
 schafft, ist offen — aber der Boden steht.
+
+## Der Rotationsprior erklärt den gesamten Methodenunterschied (2026-08-23)
+
+**Dies ist der wichtigste Befund des Projekts und er widerruft die
+Kernaussage des bisherigen Verfahrensvergleichs.**
+
+Alle Zahlen aus `SigmaFlow_Variants/posebusters_full_comparison/confsampled_compare.py`,
+40 Seeds, 8360 Posen je Arm und Modus. Referenz durchgehend der wahre Ligand
+aus `true_ligands/<cid>_ligands.sdf`, nächstgelegene kristallographische Kopie
+über `best_copy`.
+
+### Die Beobachtung, die alles ausgelöst hat
+
+Die Trajektorien aus `predictions.pt` zeigen den Rotationsfehler bei
+**Schritt 0**, also vor jeder gelernten Bewegung:
+
+| Arm | Rotation bei Schritt 0 |
+|---|---:|
+| SigmaFlow-Minimal | 126,2° |
+| SigmaFlow-Separate | 126,4° |
+| **SigmaDock** | **115,5°** |
+
+126,48° ist der Erwartungswert unter dem Haar-Maß. **SigmaDock startet elf
+Grad näher an der Wahrheit als der Zufall** — vor dem ersten Schritt.
+
+### Die Ursache, aus dem Code belegt
+
+`SigmaDock/src_sigmadock/src_sigmadock_diff/so3_diffuser - UMBAUEN.py`:
+
+```python
+def sample_ref(self, n, device):
+    # NOTE: replace with sample uniform?
+    return self.sample(torch.ones([n], device=device))   # IGSO(3) bei t = 1
+```
+
+SigmaDock zieht die Startrotation aus **IGSO(3) beim maximalen Rauschpegel**,
+und `max_sigma = 2.25**0.5 = 1.5`. IGSO(3) ist der Wärmeleitungskern auf SO(3)
+und konvergiert erst für σ → ∞ gegen das Haar-Maß. Mit SigmaDocks eigener
+Dichteformel nachgerechnet:
+
+| σ | mittlerer Winkel |
+|---:|---:|
+| 1,00 | 87,16° |
+| **1,50** | **114,97°** |
+| 2,00 | 124,47° |
+| 3,00 | 126,46° |
+| Haar | **126,48°** |
+
+Gemessen 115,5°, theoretisch 114,97° — Übereinstimmung auf 0,6°.
+
+SigmaFlow zieht dagegen exakt gleichverteilt
+(`so3_flow_matcher.py:13`, `so3_utils.sample_uniform`). Das war eine
+dokumentierte Designentscheidung: Flow Matching kann die exakte
+Gleichverteilung als Quelle nehmen, Diffusion muss sie über hinreichend großes
+Terminalrauschen annähern. Der Audit hatte den Unterschied bereits als
+„Confounder 1" mit Totalvariationsabstand 0,130 festgehalten — neu ist, dass
+er das Hauptergebnis erklärt.
+
+### Warum die Identität die Antwort ist
+
+Mit `graph.sample_conformer=false` stammt die Fragmentgeometrie aus der
+**gebundenen Pose**. Die Identitätsrotation ist dann die **wahre**
+Orientierung, und IGSO(3) hat um sie herum mehr Masse als das Haar-Maß. Der
+Prior ist damit informativ.
+
+`alignment_tries: 0` schließt aus, dass nachträglich ausgerichtet wird.
+
+### Standardisierung: der Vorsprung verschwindet
+
+Posen nach Startrotation gebinnt, Trefferquote unter 2 Å je Bin:
+
+| Startrotation | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| 60–90° | 35,1 % | 31,9 % | 35,8 % |
+| 90–110° | 9,9 % | 9,0 % | 9,4 % |
+| 110–130° | 2,6 % | 2,7 % | 3,7 % |
+| 130–150° | 2,2 % | 1,1 % | 1,5 % |
+
+**Innerhalb jedes Bins identisch.** Was sich unterscheidet, ist die
+Besetzung: SigmaDock hat 285 Posen unter 90° Startfehler, Minimal 117.
+
+Standardisiert auf Minimals Startverteilung fällt SigmaDock von 9,24 % auf
+**5,21 %** [4,41 – 6,09] gegen Minimals 5,17 %. Umgekehrt steigt Minimal auf
+SigmaDocks Startverteilung auf **8,95 %** gegen SigmaDocks 9,24 %.
+
+### Der direkte Test: `sample_conformer=true`
+
+Mit generiertem Konformer ist die Identität nicht mehr die Antwort. Der
+Prior-Vorteil sollte verschwinden. 40 Seeds, alle drei Arme:
+
+| Arm | Modus | Rotation Start | Rotation Ende | RMSD Ende | < 2 Å |
+|---|---|---:|---:|---:|---:|
+| Minimal | bound | 127,16° | 126,87° | 5,179 | 4,40 % |
+| Minimal | sampled | 126,74° | 126,89° | 5,167 | 4,50 % |
+| Separate | bound | 126,67° | 126,78° | 5,149 | 4,65 % |
+| Separate | sampled | 126,65° | 126,34° | 5,130 | 4,72 % |
+| **SigmaDock** | **bound** | **115,20°** | 113,79° | 4,790 | **9,37 %** |
+| **SigmaDock** | **sampled** | **126,47°** | 126,64° | 5,245 | **4,77 %** |
+
+**SigmaDocks Startrotation springt auf 126,47°. Der Haar-Erwartungswert ist
+126,48°.** Übereinstimmung auf eine Hundertstel Grad.
+
+**Die Trefferquote halbiert sich: 9,37 % → 4,77 %.**
+
+Die beiden SigmaFlow-Arme bewegen sich nicht (4,40 → 4,50 % und 4,65 →
+4,72 %). Nur der Arm ändert sich, dessen Prior nicht uniform ist — das
+schließt aus, dass der Effekt von der geänderten Aufgabenschwierigkeit kommt.
+
+### Bei gleicher Startbedingung kein Unterschied
+
+Gepaart über 209 Komplexe, Modus `sampled`:
+
+| Vergleich | Differenz | 95 %-KI | p |
+|---|---:|---|---:|
+| Separate − Minimal | +0,23 pp | [−0,37, +0,83] | 0,45 |
+| SigmaDock − Minimal | +0,28 pp | [−0,38, +0,93] | 0,42 |
+| SigmaDock − Separate | +0,05 pp | [−0,54, +0,65] | 0,88 |
+
+**Kein Paar signifikant. 4,50 / 4,72 / 4,77 Prozent.**
+
+### Was das für die berichteten Zahlen heißt
+
+**ÜBERHOLT:** „SigmaDock trifft rund doppelt so oft unter 2 Å (11,3 % gegen
+5,3 / 6,2 %, p = 8,7e-14)" und alle davon abgeleiteten Aussagen zum
+Genauigkeitsvorsprung. Die Messung ist korrekt, die Deutung als
+Methodenunterschied ist es nicht.
+
+**ÜBERHOLT:** „SigmaDock − Minimal: −12,76° Rotation, p < 0,001". Der
+Absolutwert misst den Startpunkt. Vergleichbar ist nur die **Änderung** über
+die Trajektorie, und die ist bei allen drei Armen ununterscheidbar von null
+(−0,03° / +0,35° / −0,82° bei rund 59° tatsächlicher Drehung).
+
+**STEHT:** bei gleicher Startbedingung sind Flow Matching und Diffusion bei
+diesem Trainingsbudget nicht unterscheidbar.
+
+### Einordnung, die dazugehört
+
+SigmaDocks Prior ist kein Implementierungsfehler. Sein Score-Modell ist auf
+diesen Rauschplan trainiert; ein uniformer Prior zur Samplingzeit wäre
+inkonsistent mit dem Training. Die Designentscheidung ist `max_sigma = 1.5`,
+und sie stammt aus dem Paper.
+
+Entscheidend ist: in der Konfiguration, die das Paper selbst vorsieht
+(`sample_conformer: true`), tritt der Effekt **gar nicht auf**. Er entsteht
+erst durch unsere Entscheidung, die gebundene Pose als Konformerquelle zu
+nehmen. Diese Entscheidung war gut begründet — sie isoliert die Platzierung
+und macht die exakte Fehlerzerlegung gültig — aber sie hat den Vergleich
+verzerrt.
+
+Die faire Formulierung: *In der Auswertungskonfiguration mit gebundenen
+Konformeren startet SigmaDock systematisch näher an der Lösung, weil sein
+Rotationsprior das Haar-Maß nicht erreicht. Unter der Konfiguration des
+Papers verschwindet der Unterschied vollständig.*
+
+### Ein Fehler in der Auswertung, gefunden und behoben
+
+Die erste Messung im `sampled`-Modus ergab RMSD 49,7 Å und 0 % Treffer.
+Ursache: `x0` aus `predictions.pt` wurde als Wahrheit benutzt. Das stimmt nur
+bei `sample_conformer=false`; mit `true` trägt `x0` den generierten Konformer
+in seinem eigenen Bezugssystem, im Mittel **50,4 Å** von der wahren Pose
+entfernt.
+
+Die Gegenprobe lokalisierte den Bruch eindeutig: `x0_hat` stimmt in **beiden**
+Modi auf 0,0000 Å mit der geschriebenen SDF überein, und
+`trajectory[-1] × 2,7 + com` ebenfalls. Nur die Referenz war falsch.
+`trajectory_geometry.py` und `confsampled_compare.py` benutzen jetzt den
+Referenzliganden aus der SDF-Datei.

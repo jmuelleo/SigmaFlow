@@ -48,7 +48,15 @@ SUFFIX="${SUFFIX:-__cpu}"
 
 SAMPLING_ROOT="${ARC_RUNS}/sampling/${MODEL}__${COMPARISON}__${RANKING}__nfe${NUM_STEPS}${SUFFIX}"
 BENCH="${ARC_TRUE_DIR}"                       # posebusters_benchmark_set/<cid>/
-OUT_DIR="${ARC_RUNS}/posebusters_redock/${MODEL}"
+
+# Der Ausgabepfad MUSS jede Unterscheidung des Eingabepfads tragen. Ohne
+# das schreibt ein Lauf mit SUFFIX=__cpu__confsampled seine Tabellen ueber
+# die des Laufs mit SUFFIX=__cpu -- stiller Datenverlust, der erst bei der
+# Auswertung auffiele und dann als Methodenunterschied dastuende.
+# Bei SUFFIX=__cpu bleibt OUT_TAG leer, der Pfad also byte-identisch zu
+# allen bisherigen Laeufen.
+OUT_TAG="${SUFFIX#__cpu}"
+OUT_DIR="${ARC_RUNS}/posebusters_redock/${MODEL}${OUT_TAG}"
 OUT="${OUT_DIR}/rd_${MODEL}_seed${SEED}.csv"
 
 module load Mamba
