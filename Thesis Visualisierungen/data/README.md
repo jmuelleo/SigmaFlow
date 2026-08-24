@@ -25,3 +25,29 @@ Zwei Punkte für die Beschriftung von Abbildungen aus
   Vinardo und die neun PoseBusters-Protein-Checks bewerten beide
   Protein-Ligand-Abstände. Die Zielgröße `valid_ohne_protein` ist der saubere
   Test, und dort hebt der Scorer fast nichts.
+
+### Vierte und fünfte Konfiguration (2026-08-24)
+
+```bash
+cd SigmaFlow_Variants/posebusters_full_comparison
+python build_thesis_datasets.py sampled   # Paper-Setup, 40 Seeds, JETZT mit gnina
+python build_thesis_datasets.py nfe5      # bound, 5 Schritte, 40 Seeds, ohne gnina
+```
+
+Neu bzw. geändert:
+
+| Datei | Hinweis |
+|---|---|
+| `ranker_comparison_papersetup40.csv` | **neu** — fünf Ranker gegen RMSD < 2 Å |
+| `heuristic_grid_papersetup40.csv` | **neu** — SigmaDocks Heuristik über ein Parametergitter |
+| `selection_curves_papersetup40.csv` | hat jetzt die Spalte `top1_affinity_pct` |
+| `per_draw_nfe5_40seeds.csv` | **neu** — 5 Integrationsschritte |
+| `selection_curves_nfe5_40seeds.csv` | **neu** — ohne `top1_affinity_pct`, nie gescort |
+| `ranker_comparison_80seeds.csv` | `random`-Zeile korrigiert, siehe unten |
+
+**Korrektur an der Zufallsgrundlinie.** Die `random`-Zeile im Rankervergleich
+schwankte mit k, obwohl sie das nicht darf: die Zufallsmatrix wurde einmal vor
+der Wiederholungsschleife gezogen, sodass bei k = NS in allen Wiederholungen
+dieselbe Pose gewählt wurde. Betroffen waren nur diese Zeile und daraus
+berechnete Trefferquoten, nicht die Top-1-Werte. Beide
+`ranker_comparison_*.csv` sind neu erzeugt.

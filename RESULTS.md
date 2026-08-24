@@ -2649,3 +2649,116 @@ Steigung = (8591 - 398)/195 = 42,0 s je Schritt und Grundlast = 188 s.
 Damit 25 Schritte = 1238 s, 5 Schritte = 398 s -- eine Ersparnis von **68 %**,
 nicht 80 %. Die Grundlast (Datenaufbau, Modell laden, Nachbearbeitung)
 skaliert nicht mit der Schrittzahl.
+
+## Voller Metriksatz und Auswahl: Paper-Setup gegen fuenf Schritte (2026-08-24)
+
+Zwei Auswertungskonfigurationen, je 209 Komplexe x 40 Seeds = 8360 Posen je
+Arm. `build_thesis_datasets.py sampled` und `build_thesis_datasets.py nfe5`.
+
+`sampled` = `graph.sample_conformer=true`, 25 Schritte -- die Vorgabe des
+Papers. `nfe5` = `bound`, 5 Schritte. Die Kreuzung (sampled x 5 Schritte)
+existiert nicht.
+
+### Anteil je Ziehung, mit 95%-Wilson-Intervall
+
+| Kenngroesse | Min sampled | Sep sampled | SD sampled | Min nfe5 | Sep nfe5 | SD nfe5 |
+|---|---:|---:|---:|---:|---:|---:|
+| PB-valid ohne Protein | 33,85 | **34,96** | 28,19 | 16,45 | **16,78** | 5,44 |
+| PB-valid mit Protein | 6,61 | **6,94** | 5,60 | 4,51 | **4,57** | 0,62 |
+| RMSD < 1 A | 0,32 | 0,35 | 0,36 | 0,29 | **0,33** | 0,07 |
+| RMSD < 2 A | 5,33 | **5,85** | 5,80 | 4,84 | **5,49** | 0,73 |
+| RMSD < 2,5 A | 11,20 | **11,96** | 11,85 | 10,92 | **11,60** | 1,63 |
+| RMSD < 3 A | 19,74 | **20,38** | 19,83 | 18,80 | **20,85** | 3,09 |
+| < 2 A UND valid ohne Prot. | 3,84 | **4,43** | 3,22 | 2,21 | **2,34** | 0,36 |
+| < 2 A UND valid mit Prot. | 1,15 | **1,48** | 0,94 | 0,84 | **0,85** | 0,12 |
+
+**Separate fuehrt im Paper-Setup auf sieben von acht Kenngroessen.** Die
+Ausnahme ist RMSD < 1 A, wo SigmaDock mit 0,36 gegen 0,35 % vorn liegt --
+innerhalb der Intervalle, also kein Unterschied.
+
+**Bei fuenf Schritten fuehrt Separate auf allen acht.** SigmaDock ist dort
+nicht knapp schlechter, sondern um Faktoren: Faktor 7,5 auf RMSD < 2 A,
+Faktor 3 auf die Ligandenchemie, Faktor 7 auf die gemeinsame Kenngroesse.
+
+### Oracle@k, Paper-Setup
+
+| Kenngroesse | k | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|---:|
+| PB-valid ohne Protein | 5 | 60,33 | 60,58 | 47,97 |
+| | 40 | 82,30 | **85,17** | 70,33 |
+| PB-valid mit Protein | 5 | 20,07 | 20,46 | 16,19 |
+| | 40 | **44,98** | 44,50 | 35,89 |
+| RMSD < 2 A | 5 | 20,76 | 21,37 | 21,55 |
+| | 40 | **59,81** | 59,33 | 57,42 |
+| < 2 A UND valid mit Prot. | 5 | 4,88 | **6,30** | 4,06 |
+| | 40 | 20,57 | **22,49** | 16,75 |
+
+Auf dem RMSD allein laufen die drei Kurven praktisch aufeinander -- der
+Unterschied der Verfahren liegt in der Chemie, nicht in der Platzierung. Auf
+der gemeinsamen Kenngroesse fuehrt Separate ueber den ganzen k-Bereich.
+
+### Oracle@k bei fuenf Schritten (ohne gnina, diese Posen wurden nie gescort)
+
+| Kenngroesse | k | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|---:|
+| PB-valid ohne Protein | 40 | **58,85** | 56,94 | 27,27 |
+| PB-valid mit Protein | 40 | 32,54 | **34,93** | 11,00 |
+| RMSD < 2 A | 40 | **57,89** | 57,42 | 16,27 |
+| < 2 A UND valid mit Prot. | 40 | 14,83 | **17,70** | 2,87 |
+
+Auf `RMSD < 2 A` erreichen die Flow-Arme mit 40 Versuchen 57-58 %, praktisch
+denselben Wert wie bei 25 Schritten (59,3-59,8 %). **SigmaDock kommt auf
+16,27 % statt 57,4 %.** Der Zusammenbruch bei grober Integration ist also
+nicht durch mehr Versuche zu heilen.
+
+### Auswahl nach gnina/Vinardo, Paper-Setup, Zielgroesse RMSD < 2 A
+
+| Ranker | Min k=40 | Sep k=40 | SD k=40 |
+|---|---:|---:|---:|
+| Zufall | 5,34 | 5,86 | 5,75 |
+| **Affinitaet (Vinardo)** | 20,10 | **25,36** | 18,66 |
+| PB alle Checks | 13,22 | 13,23 | 11,44 |
+| PB nur intrinsisch | 7,77 | 8,48 | 7,36 |
+| PB nur Protein | 10,83 | 11,20 | 11,19 |
+| Oracle | 59,81 | 59,33 | 57,42 |
+
+Trefferquote (Top1 - Random)/(Oracle - Random) bei k = 40, Affinitaet:
+**27,1 % / 36,5 % / 25,0 %**.
+
+**Das ist die Umkehrung gegenueber `bound`.** Dort hatte Separate die beste
+Oracle-Kurve, fiel unter gnina-Ranking aber hinter Minimal zurueck -- die
+guten Posen waren da, der Scorer fand sie nicht. Im Paper-Setup ist es
+umgekehrt: bei praktisch identischer Oracle-Kurve (59,33 gegen 59,81 %) holt
+der Scorer aus Separate **25,36 %** heraus und aus Minimal nur 20,10 %.
+
+Separates Posen sind also nicht nur haeufiger richtig, sie sind auch
+**besser rankbar**. Das ist die praktisch entscheidende Eigenschaft, weil ein
+Anwender keine Orakelauswahl hat.
+
+Die PB-basierten Ranker liegen durchgehend hinter der Affinitaet. Bemerkenswert
+ist `pb_intrinsic` mit 4,5-4,9 % Trefferquote: die Ligandenchemie sagt fast
+nichts darueber aus, ob die Pose am richtigen Ort sitzt. Das ist die saubere
+Bestaetigung, dass Validitaet und Genauigkeit zwei verschiedene Dinge messen.
+
+### Ein Fehler in der Zufallsgrundlinie, behoben
+
+Die `random`-Zeile im Rankervergleich schwankte zwischen 4,31 und 6,52 %,
+obwohl das Zufallsniveau nicht von k abhaengen darf. Ursache: die
+Zufallsmatrix wurde **einmal** vor der Wiederholungsschleife gezogen. Bei
+k = NS waehlt `argmax` darauf in allen 400 Wiederholungen dieselbe Pose --
+es wird nichts gemittelt, man sieht eine einzelne Ziehung.
+
+Behoben durch `np.zeros_like(A[arm])` als Score: `top1()` addiert ohnehin je
+Wiederholung frisches Rauschen zur Gleichstandsaufloesung, und genau das ist
+die gesuchte Zufallsauswahl. Die Grundlinie ist jetzt flach (5,33-5,40 fuer
+Minimal ueber alle k) und trifft den Ziehungsanteil.
+
+Betroffen waren ausschliesslich die `random`-Zeile und die daraus berechneten
+Trefferquoten, nicht die Top-1-Werte selbst.
+
+### Was fuer die fuenf Schritte fehlt
+
+Kein Ranking: diese Posen wurden nie mit gnina gescort. Und die Kreuzung
+`sampled` x 5 Schritte wurde nie gesampelt -- offen bleibt damit, ob
+SigmaDocks Zusammenbruch bei grober Integration teilweise am Prior haengt.
+Beides ist nachholbar, beides ist CPU-Arbeit.

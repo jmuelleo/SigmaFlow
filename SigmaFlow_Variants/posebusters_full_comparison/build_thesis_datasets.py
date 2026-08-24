@@ -50,18 +50,33 @@ if MODUS == "bound":
             ("SigmaDock", "sigmadock80", "sigmadock")]
     RD = {"Minimal": "minimal80", "Separate": "exp110_80", "SigmaDock": "sigmadock80"}
     KS = (1, 2, 3, 5, 10, 20, 40, 80)
+    GN = "GNINA-SCORE-*{gkey}_*"
     TAG = "80seeds"
     MIT_GNINA = True
 elif MODUS == "sampled":
-    ARMS = [("Minimal", "minimalcs", None),
-            ("Separate", "exp110cs", None),
-            ("SigmaDock", "sigmadockcs", None)]
+    # gnina-Scores liegen unter gncs/ (Jobs 8636670-72) und decken 0..79 ab;
+    # der RMSD existiert bisher nur fuer 0..39, die Schnittmenge regelt das.
+    ARMS = [("Minimal", "minimalcs", "sigmaflow_minimal"),
+            ("Separate", "exp110cs", "exp110"),
+            ("SigmaDock", "sigmadockcs", "sigmadock")]
     RD = {"Minimal": "minimalcs2", "Separate": "exp110cs2", "SigmaDock": "sigmadockcs2"}
+    GN = "gncs/GNINA-SCORE-*{gkey}_86366*"
     KS = (1, 2, 3, 5, 10, 20, 40)
     TAG = "papersetup40"
+    MIT_GNINA = True
+elif MODUS == "nfe5":
+    # bound, fuenf Integrationsschritte. Diese Posen wurden nie mit gnina
+    # gescort, daher kein Ranking.
+    ARMS = [("Minimal", "minimal5", None),
+            ("Separate", "exp1105", None),
+            ("SigmaDock", "sigmadock5", None)]
+    RD = {"Minimal": "minimal5", "Separate": "exp1105", "SigmaDock": "sigmadock5"}
+    GN = None
+    KS = (1, 2, 3, 5, 10, 20, 40)
+    TAG = "nfe5_40seeds"
     MIT_GNINA = False
 else:
-    raise SystemExit(f"MODUS unbekannt: {MODUS} (bound|sampled)")
+    raise SystemExit(f"MODUS unbekannt: {MODUS} (bound|sampled|nfe5)")
 
 OUT = os.path.join("..", "..", "Thesis Visualisierungen", "data")
 REP = 400
@@ -108,7 +123,7 @@ def einlesen():
         RM[arm] = {(r["complex"], int(r["seed"])): float(r["rmsd"])
                    for r in csv.DictReader(open(f"pose_{key}.csv", encoding="utf-8"))}
         if MIT_GNINA:
-            g = glob.glob(f"GNINA-SCORE-*{gkey}_*/gnina_scores_{gkey}.csv")
+            g = glob.glob(GN.format(gkey=gkey) + f"/gnina_scores_{gkey}.csv")
             if len(g) != 1:
                 raise SystemExit(f"ABBRUCH: gnina-Datei nicht eindeutig fuer {gkey}: {g}")
             SC[arm] = {(r["complex"], int(r["seed"])): float(r["affinity"])
@@ -230,7 +245,12 @@ def main() -> int:
         w.writerow(["arm", "ranker", "k", "hit_rmsd_lt_2A_pct"])
         for arm, _, _ in ARMS:
             HIT = R[arm] < 2.0
-            ranker = [("random", RNG.random(A[arm].shape), True),
+            # Nullmatrix, nicht RNG.random(...): top1() addiert selbst Rauschen
+            # zur Gleichstandsaufloesung, und das wird je Wiederholung neu
+            # gezogen. Eine feste Zufallsmatrix waehlt dagegen bei k = NS in
+            # allen Wiederholungen dieselbe Pose -- es wird nichts gemittelt,
+            # und die Grundlinie schwankt um mehrere Punkte.
+            ranker = [("random", np.zeros_like(A[arm]), True),
                       ("affinity_vinardo", A[arm], False),
                       ("pb_all", PB[(arm, "alle")], True),
                       ("pb_intrinsic", PB[(arm, "intra")], True),
@@ -260,7 +280,11 @@ def main() -> int:
             for bias in (0.0, 0.25, 0.5, 1.0, 2.0, 4.0):
                 for expo in (0.5, 1.0, 2.0, 4.0):
                     sc = base * (bias + PB[(arm, "alle")] ** expo)
-                    w.writerow([arm, bias, expo, 80, f"{100 * top1(sc, HIT, 80):.4f}"])
+                    # KS[-1], nicht 80: bei 40 Seeds waere die Beschriftung
+                    # sonst falsch, obwohl der Wert stimmt (permutation(40)[:80]
+                    # liefert 40 Elemente).
+                    w.writerow([arm, bias, expo, KS[-1],
+                                f"{100 * top1(sc, HIT, KS[-1]):.4f}"])
     print("geschrieben:", pfad)
     return 0
 
