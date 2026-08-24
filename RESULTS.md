@@ -2938,3 +2938,90 @@ Schritten. SigmaDocks Rueckwaertsprozess integriert ueber einen EDM-Rauschplan
 von sigma = 1,5 bis t_min = 0,005 mit rho = 3; bei fuenf Schritten sind die
 Spruenge in sigma zu gross, und ein Euler-Schritt bei hohem Rauschpegel
 multipliziert den Score mit einem grossen Faktor.
+
+## Der volle Metriksatz der vierten Zelle (2026-08-24)
+
+`sampled` x 5 Schritte ist jetzt vollstaendig, RMSD eingeschlossen. Damit ist
+der Versuchsplan geschlossen. 209 Komplexe x 40 Seeds = 8360 Posen je Arm und
+Zelle, RMSD symmetriekorrigiert (spyrmsd, `best_copy`).
+
+Datensaetze: `per_draw_sampled5_40seeds.csv`,
+`selection_curves_sampled5_40seeds.csv`.
+
+### Anteil je Ziehung, Paper-Setup, 25 gegen 5 Schritte
+
+| Kenngroesse | Arm | 25 Schritte | 5 Schritte | Differenz | Faktor | p |
+|---|---|---:|---:|---:|---:|---|
+| **RMSD < 2 A** | Minimal | 5,33 % | **5,42 %** | +0,08 pp | 0,98x | 0,73 |
+| | Separate | 5,85 % | **5,51 %** | -0,33 pp | 1,06x | 0,20 |
+| | SigmaDock | 5,80 % | **0,54 %** | -5,26 pp | **10,78x** | < 0,00025 |
+| **PB-valid ohne Prot.** | Minimal | 33,85 % | 16,28 % | -17,57 pp | 2,08x | < 0,00025 |
+| | Separate | 34,96 % | 17,00 % | -17,97 pp | 2,06x | < 0,00025 |
+| | SigmaDock | 28,19 % | 5,16 % | -23,04 pp | **5,47x** | < 0,00025 |
+| **PB-valid mit Prot.** | Minimal | 6,61 % | 4,02 % | -2,60 pp | 1,65x | < 0,00025 |
+| | Separate | 6,94 % | 4,96 % | -1,97 pp | 1,40x | < 0,00025 |
+| | SigmaDock | 5,60 % | 0,61 % | -4,99 pp | **9,18x** | < 0,00025 |
+| **< 2 A UND valid o.P.** | Minimal | 3,84 % | 2,57 % | -1,27 pp | 1,49x | < 0,00025 |
+| | Separate | 4,43 % | 2,63 % | -1,79 pp | 1,68x | < 0,00025 |
+| | SigmaDock | 3,22 % | 0,30 % | -2,92 pp | **10,76x** | < 0,00025 |
+| **< 2 A UND valid m.P.** | Minimal | 1,15 % | 0,80 % | -0,35 pp | 1,43x | 0,0075 |
+| | Separate | 1,48 % | 1,00 % | -0,48 pp | 1,48x | 0,0005 |
+| | SigmaDock | 0,94 % | 0,06 % | -0,89 pp | **15,80x** | < 0,00025 |
+
+### Der schaerfste Einzelbefund der Arbeit
+
+**Auf der Platzierungsgenauigkeit verlieren die Flow-Arme bei fuenf Schritten
+NICHTS.** Minimal 5,33 -> 5,42 % (p = 0,73), Separate 5,85 -> 5,51 %
+(p = 0,20). Beide Aenderungen sind ununterscheidbar von null.
+
+**SigmaDock verliert den Faktor 10,8.** 5,80 -> 0,54 %, p < 0,00025.
+
+Das ist die klarste Trennung der beiden Verfahren in dieser Arbeit, und sie
+steht im Paper-Setup, also ohne den Prior-Vorbehalt. Bei `bound` war derselbe
+Befund vom Prior mitverdeckt: dort fiel SigmaDock von 10,33 auf 0,73 %, aber
+die 10,33 waren selbst ein Artefakt. Hier fallen 5,80 auf 0,54 -- Ausgangs-
+und Endwert sind beide unverfaelscht.
+
+Der Mechanismus ist strukturell. Der Flow-Matching-Pfad ist die Geodaete
+zwischen Quelle und Ziel, also nahezu gerade -- Euler trifft sie mit fuenf
+Schritten so gut wie mit fuenfundzwanzig. SigmaDocks Rueckwaertsprozess
+integriert ueber einen EDM-Rauschplan von sigma = 1,5 bis t_min = 0,005 mit
+rho = 3; bei fuenf Schritten sind die Spruenge in sigma zu gross, und ein
+Euler-Schritt bei hohem Rauschpegel multipliziert den Score mit einem grossen
+Faktor.
+
+**Die Ligandenchemie faellt dagegen bei allen dreien.** Sie haengt nicht an
+der Genauigkeit der Platzierung, sondern an der Zahl der Korrekturschritte,
+die das Netz auf die innere Geometrie anwenden kann. Fuenf Schritte genuegen
+fuer den Ort, nicht fuer die Chemie.
+
+### Zwischen den Armen bei fuenf Schritten
+
+| Kenngroesse | Sep - Min | Min - SD | Sep - SD |
+|---|---|---|---|
+| RMSD < 2 A | +0,10 pp, p = 0,76 | **+4,88 pp**, p < 0,00025 | **+4,98 pp**, p < 0,00025 |
+| PB-valid ohne Prot. | +0,72 pp, p = 0,17 | **+11,12 pp**, p < 0,00025 | **+11,84 pp**, p < 0,00025 |
+| PB-valid mit Prot. | **+0,94 pp, p = 0,0015** | **+3,41 pp**, p < 0,00025 | **+4,35 pp**, p < 0,00025 |
+| < 2 A UND valid o.P. | +0,06 pp, p = 0,84 | **+2,27 pp**, p < 0,00025 | **+2,33 pp**, p < 0,00025 |
+| < 2 A UND valid m.P. | +0,20 pp, p = 0,23 | **+0,74 pp**, p < 0,00025 | **+0,94 pp**, p < 0,00025 |
+
+**Separate schlaegt Minimal bei fuenf Schritten auf der Proteinvaliditaet**
+(+0,94 pp, p = 0,0015). Bei 25 Schritten war derselbe Vergleich nicht
+signifikant. Der Zwei-Kopf-Ansatz vertraegt grobe Integration also besser --
+das ist der dritte eigenstaendige Effekt von EXP-110, nach der Ligandenchemie
+und der besseren Rankbarkeit.
+
+Auf allen uebrigen Kenngroessen bleiben die beiden Flow-Arme auch bei fuenf
+Schritten ununterscheidbar.
+
+**Gegen SigmaDock ist bei fuenf Schritten jede einzelne Kenngroesse
+signifikant, alle p < 0,00025.** Bei 25 Schritten war das nur fuer die
+Ligandenchemie so.
+
+### Praktische Lesart
+
+Wer die Rechenzeit drittelt (fuenf statt fuenfundzwanzig Schritte, 32 %
+Wall-Clock-Ersparnis, exakt ein Fuenftel der Netzwerkauswertungen), bekommt
+mit Flow Matching dieselbe Trefferquote und rund die Haelfte der
+Ligandenchemie. Mit Diffusion bekommt er nichts Brauchbares mehr:
+0,54 % Trefferquote und 0,06 % auf der gemeinsamen Kenngroesse.

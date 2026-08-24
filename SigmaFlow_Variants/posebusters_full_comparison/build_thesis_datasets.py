@@ -64,6 +64,18 @@ elif MODUS == "sampled":
     KS = (1, 2, 3, 5, 10, 20, 40)
     TAG = "papersetup40"
     MIT_GNINA = True
+elif MODUS == "sampled5":
+    # Die vierte Zelle des Versuchsplans: Paper-Konformer UND fuenf Schritte.
+    # Nie mit gnina gescort, deshalb kein Ranking.
+    ARMS = [("Minimal", "minimal5cs", None),
+            ("Separate", "exp1105cs", None),
+            ("SigmaDock", "sigmadock5cs", None)]
+    RD = {"Minimal": "minimaln5cs", "Separate": "exp110n5cs",
+          "SigmaDock": "sigmadockn5cs"}
+    GN = None
+    KS = (1, 2, 3, 5, 10, 20, 40)
+    TAG = "sampled5_40seeds"
+    MIT_GNINA = False
 elif MODUS == "nfe5":
     # bound, fuenf Integrationsschritte. Diese Posen wurden nie mit gnina
     # gescort, daher kein Ranking.
@@ -76,7 +88,7 @@ elif MODUS == "nfe5":
     TAG = "nfe5_40seeds"
     MIT_GNINA = False
 else:
-    raise SystemExit(f"MODUS unbekannt: {MODUS} (bound|sampled|nfe5)")
+    raise SystemExit(f"MODUS unbekannt: {MODUS} (bound|sampled|sampled5|nfe5)")
 
 OUT = os.path.join("..", "..", "Thesis Visualisierungen", "data")
 REP = 400
