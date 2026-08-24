@@ -23,7 +23,7 @@
 
 set -uo pipefail
 
-MODEL="${1:?Usage: final_72h_preflight.sh <sigmadock|sigmaflow_minimal|sigmaflow_source|sigmaflow_conf>}"
+MODEL="${1:?Usage: final_72h_preflight.sh <sigmadock|sigmaflow_minimal|sigmaflow_twohead|sigmaflow_source|sigmaflow_conf>}"
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "${HERE}/.." && pwd)"
 
@@ -227,6 +227,7 @@ head2 "A9  Datensatzdefinitionen (conf/experiments)"
 case "$MODEL" in
     sigmadock)          CONF_DIR="${ARC_SIGMADOCK:-}/conf/experiments" ;;
     sigmaflow_minimal)  CONF_DIR="${REPO}/SigmaFlow_Minimal/conf/experiments" ;;
+    sigmaflow_twohead)  CONF_DIR="${REPO}/SigmaFlow_FM_Specific/EXP-110_two_head_vector_field/conf/experiments" ;;
     sigmaflow_source)   CONF_DIR="${REPO}/SigmaFlow_FM_Specific/EXP-102_heuristic_conditional_source/conf/experiments" ;;
     sigmaflow_conf)     CONF_DIR="${REPO}/SigmaFlow_FM_Specific/EXP-105_confidence_ranking/conf/experiments" ;;
     *)                  CONF_DIR="" ;;

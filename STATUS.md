@@ -74,6 +74,68 @@ Seed-Verzeichnis zu ueberschreiben. Seed 0 lag aus dem ersten
 | nfe 5 | 40 Seeds | vollstaendig, inkl. Validitaet |
 | nfe 200 | Minimal fast fertig, Sep/SD angelaufen | offen |
 
+## DRINGEND: das Sanity-Gate haette Job 8634116 getoetet
+
+Beim Bau des dritten 72h-Arms gefunden. `train_final_72h.slurm` prueft die
+Herkunft des geladenen Codes mit einer **Teilzeichenketten**-Blacklist:
+
+```python
+forbidden = {..., "SigmaFlow_Development", ...} - {expect}
+for f in forbidden:
+    assert f not in path
+```
+
+Die Repowurzel auf ARC heisst `SigmaFlow_Development_JulianMueller` und
+enthaelt damit `SigmaFlow_Development`. Fuer `MODEL=sigmaflow_minimal` waere
+das Gatter durchgefallen und der Job mit `exit 1` gestorben -- **nach Tagen in
+der Warteschlange, in der ersten Minute**. SigmaDock war nicht betroffen, sein
+Pfad enthaelt keinen der verbotenen Namen.
+
+Behoben: die Pruefung liegt jetzt in `arc/final_sanity_gate.py` und vergleicht
+**ganze Pfadsegmente** statt Teilzeichenketten. `SigmaFlow_Development` ist
+kein Segment des ARC-Pfads, ein echter falscher Baum traegt seinen Namen
+dagegen als Segment und wird weiterhin gefangen.
+`arc/test_final_sanity_gate.py` deckt neun Faelle ab, alle bestanden.
+
+**Der Fallstrick war dokumentiert.** Im 12h-Skript von EXP-110 steht seit dem
+21.08. woertlich: "Eine Blacklist waere hier falsch: die Repowurzel auf ARC
+heisst SigmaFlow_Development_JulianMueller und wuerde jedes Verbot auf
+SigmaFlow_Development ausloesen." Die Erkenntnis wurde nie in
+`train_final_72h.slurm` uebertragen.
+
+**Zu tun:** `git pull` auf ARC, bevor `8634116` startet. Laeuft er mit dem
+alten Stand an, stirbt er sofort. Die Skripte werden beim JOBSTART gelesen,
+nicht beim Absenden -- ein Pull vor dem Start genuegt also, ein erneutes
+Absenden ist nicht noetig.
+
+## Dritter 72h-Arm: EXP-110 gebaut
+
+`MODEL=sigmaflow_twohead` ist in `train_final_72h.slurm`, `submit_final.sh`,
+`final_72h_preflight.sh`, `throughput_sweep.slurm` und
+`resolve_horizon_for_model` eingetragen. Das Gatter prueft fuer diesen Arm
+`GATE_KIND=flow_twohead`: `trans_block` und `rot_block` vorhanden,
+`force_block` weg, `pool_fragment_fields` vorhanden, Konjugation ueber
+`omega_world` statt ueber `updates["omega"]`.
+
+**Offen ist nur der Horizont.** Er MUSS aus einer eigenen Stufe-2-Messung
+kommen, `resolve_horizon_for_model` erzwingt das. Der Ablauf:
+
+```bash
+MODEL=sigmaflow_twohead STAGE=2 BATCH=32 EXTRA="--cuda_precision high"   sbatch arc/throughput_sweep.slurm
+# danach, MIT ALLEN DREI ARMEN -- write_env ueberschreibt die Datei:
+python arc/calculate_final_epochs.py   --arm sigmaflow_minimal --samples-per-s 21.1   --arm sigmaflow_twohead --samples-per-s <gemessen>   --arm sigmadock         --samples-per-s 19.8   --n-train 19037 --physical-batch 32 --accum 1 --budget-hours 64   --throughput-source "<jobid>" --write-env arc/final_horizon.env
+```
+
+Die 21,1 und 19,8 sind verifiziert: sie reproduzieren die gespeicherten
+255/239 und die dokumentierten 6,6 % exakt. **Nur mit einem Arm aufgerufen
+wuerde `--write-env` die beiden anderen Horizonte loeschen** und die
+wartenden Jobs unbrauchbar machen.
+
+Erwartung aus den 12h-Laeufen: Minimal 11:06, EXP-110 11:10:59 fuer je
+6 Epochen, also rund 0,7 % langsamer trotz +12,8 % Parametern -- das deutet
+auf etwa 252 statt 255 Epochen. Bestaetigt die Messung das nicht, ist die
+Messung zu pruefen, nicht der Horizont anzupassen.
+
 ## Nachtrag 24.08., nachmittags
 
 **Die praktische Kenngroesse steht.** Top-1 nach Vinardo bei k = 40 im

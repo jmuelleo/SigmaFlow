@@ -36,6 +36,7 @@
 #
 # Usage:
 #   MODEL=sigmaflow_minimal sbatch arc/throughput_sweep.slurm
+#   MODEL=sigmaflow_twohead sbatch arc/throughput_sweep.slurm
 #   MODEL=sigmadock         sbatch arc/throughput_sweep.slurm
 #   MODEL=sigmaflow_minimal STAGE=2 BATCH=32 EXTRA="--cuda_precision high" \
 #       sbatch arc/throughput_sweep.slurm
@@ -57,7 +58,7 @@ REPO_ROOT="/data/stat-cadd/shug8458/SigmaFlow_Development_JulianMueller/SigmaFlo
 source "${REPO_ROOT}/arc/_common.sh"
 setup_wandb_hardening
 
-MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | sigmadock}"
+MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | sigmaflow_twohead | sigmadock}"
 STAGE="${STAGE:-1}"
 STEPS="${STEPS:-120}"          # gemessen werden die letzten STEPS-WARMUP Schritte
 WARMUP_STEPS="${WARMUP_STEPS:-20}"
@@ -65,6 +66,19 @@ WARMUP_STEPS="${WARMUP_STEPS:-20}"
 case "$MODEL" in
   sigmaflow_minimal)
       CODE_DIR="${ARC_REPO}/SigmaFlow_Minimal"
+      module load Mamba
+      source "$(conda info --base)/etc/profile.d/conda.sh"
+      conda activate "$ARC_SF_ENV"
+      PYTHON="${ARC_SF_ENV}/bin/python"
+      export PYTHONPATH="${CODE_DIR}/src:${PYTHONPATH:-}"
+      METHOD_FLAGS=()
+      ;;
+  sigmaflow_twohead)
+      # EXP-110. Trainingsseitig identisch zu sigmaflow_minimal -- der einzige
+      # Unterschied ist der Auslesekopf (+12,8 % Parameter). Genau deshalb muss
+      # der Durchsatz eigenstaendig gemessen werden und darf nicht von Minimal
+      # uebernommen werden.
+      CODE_DIR="${ARC_REPO}/SigmaFlow_FM_Specific/EXP-110_two_head_vector_field"
       module load Mamba
       source "$(conda info --base)/etc/profile.d/conda.sh"
       conda activate "$ARC_SF_ENV"

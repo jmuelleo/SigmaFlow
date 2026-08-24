@@ -12,6 +12,7 @@
 # Usage (nach dem Throughput-Sweep, Werte in arc/final_config.sh gesetzt):
 #   MODEL=sigmadock          sbatch arc/train_final_72h.slurm
 #   MODEL=sigmaflow_minimal  sbatch arc/train_final_72h.slurm
+#   MODEL=sigmaflow_twohead  sbatch arc/train_final_72h.slurm   # EXP-110
 #   MODEL=sigmaflow_source   sbatch arc/train_final_72h.slurm   # nur nach Gate 4
 #   MODEL=sigmaflow_conf     sbatch arc/train_final_72h.slurm   # Extension
 #
@@ -47,7 +48,7 @@ source "${REPO_ROOT}/arc/_common.sh"
 source "${REPO_ROOT}/arc/final_config.sh"
 setup_wandb_hardening
 
-MODEL="${MODEL:?MODEL setzen: sigmadock | sigmaflow_minimal | sigmaflow_source | sigmaflow_conf}"
+MODEL="${MODEL:?MODEL setzen: sigmadock | sigmaflow_minimal | sigmaflow_twohead | sigmaflow_source | sigmaflow_conf}"
 RESUME="${RESUME:-}"
 
 # Horizont aufloesen, falls submit_final.sh ihn nicht schon exportiert hat
@@ -90,7 +91,8 @@ case "$MODEL" in
       # Methodenspezifisch: SigmaDocks Score-Parametrisierung auf SO(3).
       # Ein Flow-Matching-Modell hat dafuer kein Gegenstueck.
       METHOD_FLAGS=(--rot_score_method space --rot_score_scaling rms)
-      EXPECT_IN_PATH="SigmaDock_Reproduction"
+      EXPECT_IN_PATH="SigmaDock_Reproduction_JulianMueller"
+      GATE_KIND="diffusion"
       ;;
   sigmaflow_minimal)
       RUN_ID="SF_MIN_72H"
@@ -102,6 +104,23 @@ case "$MODEL" in
       export PYTHONPATH="${CODE_DIR}/src:${PYTHONPATH:-}"
       METHOD_FLAGS=()
       EXPECT_IN_PATH="SigmaFlow_Minimal"
+      GATE_KIND="flow"
+      ;;
+  sigmaflow_twohead)
+      # EXP-110 Zwei-Kopf. Trainingsseitig identisch zu sigmaflow_minimal;
+      # der einzige Unterschied ist der Auslesekopf (+12,8 % Parameter, je ein
+      # trans_block und rot_block auf geteiltem Rumpf). Deshalb eigener
+      # Durchsatz und eigener Horizont -- FINAL_MAX_EPOCHS_SIGMAFLOW_TWOHEAD.
+      RUN_ID="SF_2H_72H"
+      CODE_DIR="${ARC_REPO}/SigmaFlow_FM_Specific/EXP-110_two_head_vector_field"
+      module load Mamba
+      source "$(conda info --base)/etc/profile.d/conda.sh"
+      conda activate "$ARC_SF_ENV"
+      PYTHON="${ARC_SF_ENV}/bin/python"
+      export PYTHONPATH="${CODE_DIR}/src:${PYTHONPATH:-}"
+      METHOD_FLAGS=()
+      EXPECT_IN_PATH="EXP-110_two_head_vector_field"
+      GATE_KIND="flow_twohead"
       ;;
   sigmaflow_source)
       RUN_ID="SF_SRC_72H"
@@ -114,7 +133,8 @@ case "$MODEL" in
       # Die EINE Aenderung des Experiments. Alles andere kommt aus
       # final_config.sh und ist mit den uebrigen Varianten identisch.
       METHOD_FLAGS=(--source_mode "${SOURCE_MODE}" --source_median_deg "${SOURCE_MEDIAN_DEG}")
-      EXPECT_IN_PATH="EXP-102"
+      EXPECT_IN_PATH="EXP-102_heuristic_conditional_source"
+      GATE_KIND="flow"
       echo "[cfg] EXP-102 Quelle: mode=${SOURCE_MODE} median=${SOURCE_MEDIAN_DEG} Grad"
       if [ "${SOURCE_MEDIAN_DEG%%.*}" = "132" ] && [ "${SOURCE_MODE}" != "haar" ]; then
           echo "[cfg] WARNUNG: Medianwinkel steht noch auf dem Haar-Default 132.3."
@@ -130,7 +150,8 @@ case "$MODEL" in
       PYTHON="${ARC_SF_ENV}/bin/python"
       export PYTHONPATH="${CODE_DIR}/src:${PYTHONPATH:-}"
       METHOD_FLAGS=()
-      EXPECT_IN_PATH="EXP-105"
+      EXPECT_IN_PATH="EXP-105_confidence_ranking"
+      GATE_KIND="flow"
       ;;
   *) echo "MODEL unbekannt: $MODEL"; exit 1 ;;
 esac
@@ -205,27 +226,12 @@ echo "[cfg] Validierung alle ${VAL_INTERVAL} Microbatches"
 
 # ---------------------------------------------------------------- Sanity-Gate
 # Faellt hier etwas durch, sind 72 GPU-Stunden gerettet.
-"$PYTHON" - "$EXPECT_IN_PATH" <<'PYCHECK'
-import os, sys
-import sigmadock
-expect = sys.argv[1]
-path = os.path.abspath(sigmadock.__file__)
-print("sigmadock geladen aus:", path)
-assert expect in path, f"FALSCHE Quelle: erwartet '{expect}' in {path}"
-forbidden = {"SigmaDock_Reproduction", "SigmaFlow_Minimal", "SigmaFlow_Development",
-             "SigmaFlow_Variants", "archive", "EXP-100", "EXP-102", "EXP-105"} - {expect}
-for f in forbidden:
-    assert f not in path, f"FALSCHE Quelle ({f}): {path}"
-if expect == "SigmaDock_Reproduction":
-    import sigmadock.diff.denoiser  # noqa: F401
-    print("Original-SigmaDock (Diffusions-Denoiser) verifiziert")
-else:
-    import inspect
-    from sigmadock.diff.sigma_flow_generator import SigmaFlowGenerator
-    src = inspect.getsource(SigmaFlowGenerator._compute_vector_field)
-    assert 'R_t.transpose(-1, -2) @ updates["omega"] @ R_t' in src, "FRAME FIX FEHLT"
-    print("frame fix verified")
-PYCHECK
+# Die Pruefung steht in arc/final_sanity_gate.py, nicht hier: sie ist damit
+# lokal testbar (arc/test_final_sanity_gate.py, 9 Faelle). Die vorherige
+# Inline-Fassung pruefte auf Teilzeichenketten und haette jeden
+# SigmaFlow-Lauf getoetet, weil die Repowurzel auf ARC
+# SigmaFlow_Development_JulianMueller heisst.
+"$PYTHON" "${ARC_REPO}/arc/final_sanity_gate.py" "$EXPECT_IN_PATH" "$GATE_KIND"
 [ $? -ne 0 ] && { echo "SANITY GATE FEHLGESCHLAGEN — Abbruch."; exit 1; }
 
 write_run_metadata "$RUN_ID" "$CODE_DIR" "$PYTHON"

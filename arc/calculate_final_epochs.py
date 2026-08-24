@@ -199,21 +199,26 @@ def compare_arms(plans: list[EpochPlan], tolerance_pct: float) -> tuple[str, str
 
     Rueckgabe: (empfohlene_politik, begruendungstext)
     """
-    if len(plans) != 2:
-        return "n/a", "Vergleich braucht genau zwei Arme."
+    if len(plans) < 2:
+        return "n/a", "Vergleich braucht mindestens zwei Arme."
 
-    a, b = plans
-    slower, faster = (a, b) if a.samples_per_s <= b.samples_per_s else (b, a)
-    delta_pct = 100.0 * (faster.samples_per_s - slower.samples_per_s) / slower.samples_per_s
+    # Bei mehr als zwei Armen entscheidet die groesste Spanne. Wuerde man nur
+    # zwei benachbarte vergleichen, koennte die Politik "gleiche Epochen"
+    # lauten, obwohl der schnellste und der langsamste Arm weit auseinander
+    # liegen -- und genau die beiden bilden den Confounder.
+    slower = min(plans, key=lambda pl: pl.samples_per_s)
+    faster = max(plans, key=lambda pl: pl.samples_per_s)
+    a, b = slower, faster
+    delta_pct = (100.0 * (faster.samples_per_s - slower.samples_per_s)
+                 / slower.samples_per_s)
 
-    head = (
-        f"  {a.arm}: {a.samples_per_s:.3f} Beispiele/s -> {a.max_epochs} Epochen\n"
-        f"  {b.arm}: {b.samples_per_s:.3f} Beispiele/s -> {b.max_epochs} Epochen\n"
-        f"  Durchsatzunterschied: {delta_pct:.1f} %\n"
-    )
+    head = "".join(
+        f"  {pl.arm}: {pl.samples_per_s:.3f} Beispiele/s -> {pl.max_epochs} Epochen\n"
+        for pl in plans
+    ) + f"  Durchsatzspanne (schnellster ggb. langsamstem): {delta_pct:.1f} %\n"
 
     if abs(delta_pct) <= tolerance_pct:
-        common = min(a.max_epochs, b.max_epochs)
+        common = min(pl.max_epochs for pl in plans)
         return (
             "same_epochs",
             head
@@ -232,7 +237,7 @@ def compare_arms(plans: list[EpochPlan], tolerance_pct: float) -> tuple[str, str
         "matched_walltime",
         head
         + f"\n  EMPFEHLUNG: UNTERSCHIEDLICHE Epochenzahlen, gleiches Zeitbudget.\n"
-        f"  {a.arm} = {a.max_epochs}, {b.arm} = {b.max_epochs}\n\n"
+        + "  " + ", ".join(f"{pl.arm} = {pl.max_epochs}" for pl in plans) + "\n\n"
         f"  Begruendung: bei > {tolerance_pct:.0f} % Unterschied wuerde eine erzwungen\n"
         f"  gleiche Epochenzahl den schnelleren Arm kuenstlich bremsen. Das\n"
         f"  Studiendesign ist ein COMPUTE-gematchter Vergleich (gleiche GPU-Stunden),\n"
@@ -287,7 +292,7 @@ def main() -> int:
         print(render(plan))
 
     policy = "single_arm"
-    if len(plans) == 2:
+    if len(plans) >= 2:
         print("-" * 64)
         print("ARM-VERGLEICH")
         print("-" * 64)

@@ -22,7 +22,7 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=/dev/null
 source "${HERE}/final_config.sh"
 
-MODEL="${1:?Usage: submit_final.sh <sigmadock|sigmaflow_minimal|sigmaflow_source|sigmaflow_conf> [seed]}"
+MODEL="${1:?Usage: submit_final.sh <sigmadock|sigmaflow_minimal|sigmaflow_twohead|sigmaflow_source|sigmaflow_conf> [seed]}"
 SEED="${2:-${FINAL_SEED}}"
 
 # MODE=screen -> 6h-Screening auf der KURZEN Partition, aber mit dem

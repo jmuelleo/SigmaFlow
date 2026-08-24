@@ -175,6 +175,7 @@ resolve_horizon_for_model() {
     case "$model" in
         sigmadock)          key="SIGMADOCK" ;;
         sigmaflow_minimal)  key="SIGMAFLOW_MINIMAL" ;;
+        sigmaflow_twohead)  key="SIGMAFLOW_TWOHEAD" ;;
         sigmaflow_source)   key="SIGMAFLOW_SOURCE" ;;
         sigmaflow_conf)     key="SIGMAFLOW_CONF" ;;
         *) echo "[horizon] unbekanntes Modell: $model" >&2; return 1 ;;
