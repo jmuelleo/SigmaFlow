@@ -67,16 +67,18 @@ elif MODUS == "sampled":
     MIT_GNINA = True
 elif MODUS == "sampled5":
     # Die vierte Zelle des Versuchsplans: Paper-Konformer UND fuenf Schritte.
-    # Nie mit gnina gescort, deshalb kein Ranking.
-    ARMS = [("Minimal", "minimal5cs", None),
-            ("Separate", "exp1105cs", None),
-            ("SigmaDock", "sigmadock5cs", None)]
+    # gnina-Scores aus den Jobs 8638560-62; die Job-IDs stehen im Glob, weil
+    # die Dateien noch die alten Namen tragen (der Lauf war vor 81085c7) und
+    # sich sonst nicht von den 25-Schritte-Laeufen unterscheiden liessen.
+    ARMS = [("Minimal", "minimal5cs", "sigmaflow_minimal"),
+            ("Separate", "exp1105cs", "exp110"),
+            ("SigmaDock", "sigmadock5cs", "sigmadock")]
     RD = {"Minimal": "minimaln5cs", "Separate": "exp110n5cs",
           "SigmaDock": "sigmadockn5cs"}
-    GN = None
+    GN = "gn5cs/GNINA-SCORE-{gkey}_86385*"
     KS = (1, 2, 3, 5, 10, 20, 40)
     TAG = "sampled5_40seeds"
-    MIT_GNINA = False
+    MIT_GNINA = True
 elif MODUS == "nfe5":
     # bound, fuenf Integrationsschritte. Diese Posen wurden nie mit gnina
     # gescort, daher kein Ranking.

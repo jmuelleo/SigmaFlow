@@ -23,7 +23,7 @@ ZELLEN = [
     ("bound5", 5, "bound", "per_draw_nfe5_40seeds.csv",
      "selection_curves_nfe5_40seeds.csv", 40, False),
     ("samp5", 5, "sampled", "per_draw_sampled5_40seeds.csv",
-     "selection_curves_sampled5_40seeds.csv", 40, False),
+     "selection_curves_sampled5_40seeds.csv", 40, True),
 ]
 ARME = ("Minimal", "Separate", "SigmaDock")
 METRIKEN = [
@@ -321,9 +321,10 @@ def main() -> int:
 
 <section>
   <div class="sec-head"><h2>Der Versuchsplan</h2>
-  <p>Vier Zellen, alle ausgewertet. Offen bleibt allein die
-  Affinit&auml;tsbewertung der beiden unteren Zellen &mdash; diese Posen
-  wurden noch nicht mit gnina gescort.</p></div>
+  <p>Vier Zellen, alle ausgewertet. Vollst&auml;ndig sind drei; bei
+  <code>bound</code> mit f&uuml;nf Schritten fehlt allein die
+  Affinit&auml;tsbewertung &mdash; die Zelle tr&auml;gt ohnehin den
+  Prior-Vorbehalt und ist die am wenigsten aussagekr&auml;ftige.</p></div>
   <div class="plan">
     <div class="corner"></div>
     <div class="colhead">Konformer: bound</div>
@@ -339,8 +340,8 @@ def main() -> int:
       <span class="d">8&thinsp;360 Posen je Arm &middot; RMSD und Validit&auml;t,
       kein gnina</span></div>
     <div class="cell have"><span class="n">40 Seeds</span>
-      <span class="d">8&thinsp;360 Posen je Arm &middot; RMSD und Validit&auml;t;
-      gnina steht noch aus</span></div>
+      <span class="d">8&thinsp;360 Posen je Arm &middot; RMSD, Validit&auml;t
+      und gnina</span></div>
   </div>
   <p class="note"><strong>Was die vierte Zelle entschieden hat.</strong> Sie
   beantwortet, ob SigmaDocks Zusammenbruch bei grober Integration am

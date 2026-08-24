@@ -3102,3 +3102,102 @@ Die RMSD-Werte fuer das Paper-Setup bei 25 Schritten liegen jetzt fuer alle
 80 Seeds vor (je 16720 Posen). Die ueberlappenden 8360 Posen stimmen mit den
 frueheren Tabellen exakt ueberein -- **null Abweichungen**, die Erweiterung
 ist additiv.
+
+## Rankbarkeit bei fuenf Schritten (2026-08-24, spaet)
+
+Die gnina-Scores fuer `sampled` x 5 liegen vor (Jobs 8638560-62, je 8360
+Posen, `sampling_root` gegen das Slurm-Log geprueft). Damit ist die letzte
+offene Spalte des Versuchsplans gefuellt.
+
+### Der Rankervergleich, Zielgroesse RMSD < 2 A, k = 40
+
+| Ranker | Min 25 | Sep 25 | SD 25 | Min 5 | Sep 5 | SD 5 |
+|---|---:|---:|---:|---:|---:|---:|
+| Zufall | 5,40 | 5,82 | 6,19 | 5,46 | 5,54 | 0,54 |
+| **Affinitaet (Vinardo)** | 20,79 | **23,45** | 20,65 | 20,10 | **22,97** | 2,87 |
+| PB alle Checks | 12,93 | 14,40 | 13,73 | 13,06 | 14,72 | 1,51 |
+| PB nur intrinsisch | 7,79 | 8,86 | 8,42 | 9,15 | 9,68 | 1,87 |
+| PB nur Protein | 10,39 | 11,87 | 12,15 | 9,65 | 9,55 | 0,80 |
+| Oracle | 57,36 | 61,05 | 59,07 | 54,07 | 57,42 | 12,44 |
+
+Trefferquote `(Top1 - Random)/(Oracle - Random)` bei Affinitaet:
+
+| | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| 25 Schritte | 29,6 % | **31,9 %** | 27,4 % |
+| 5 Schritte | 30,1 % | **33,6 %** | 19,6 % |
+
+**Die Rankbarkeit ueberlebt die grobe Integration.** Separate liefert mit
+fuenf Schritten unter gnina-Auswahl **22,97 %** gegen 23,45 % mit
+fuenfundzwanzig -- praktisch unveraendert. Die Trefferquote steigt sogar
+leicht (33,6 gegen 31,9 %), weil die Oracle-Obergrenze faellt, der Scorer
+aber gleich viel davon hebt.
+
+**Bei SigmaDock bricht sie ein**, von 27,4 auf 19,6 %. Der Scorer findet in
+den grob integrierten Posen weniger.
+
+### Der Vergleich, auf den es hinauslaeuft
+
+Beide Zellen auf 40 Seeds beschnitten, damit `k = 40` in beiden dasselbe
+bedeutet -- naemlich alle Seeds. Im 80-Seed-Datensatz waere `k = 40` ein
+Mittel ueber zufaellige Haelften und damit eine andere Groesse.
+
+**Zielgroesse RMSD < 2 A, Top-1 nach Vinardo**
+
+| Konfiguration | Top-1@40 |
+|---|---:|
+| Separate, 25 Schritte | 25,36 % |
+| Minimal, 25 Schritte | 20,10 % |
+| **Separate, 5 Schritte** | **22,97 %** |
+| SigmaDock, 25 Schritte | 18,66 % |
+| SigmaDock, 5 Schritte | 2,87 % |
+
+Gepaart ueber die 209 Komplexe:
+
+| Vergleich | Differenz | 95-%-Intervall | p |
+|---|---|---|---|
+| Separate 5 - SigmaDock 25 | +4,31 pp | [-2,87; +11,48] | 0,24 |
+| Minimal 5 - SigmaDock 25 | +1,44 pp | [-5,26; +8,13] | 0,73 |
+| **Separate 5 - SigmaDock 5** | **+20,10 pp** | [+14,35; +25,84] | < 0,00025 |
+| Separate 25 - SigmaDock 25 | +6,70 pp | [0,00; +13,40] | 0,066 |
+
+**Zielgroesse `< 2 A UND valid mit Protein`**
+
+| Konfiguration | Top-1@40 |
+|---|---:|
+| Separate, 25 Schritte | 10,53 % |
+| Minimal, 25 Schritte | 9,09 % |
+| **Separate, 5 Schritte** | **7,18 %** |
+| SigmaDock, 25 Schritte | 5,26 % |
+| SigmaDock, 5 Schritte | 0,96 % |
+
+| Vergleich | Differenz | p |
+|---|---|---|
+| Separate 5 - SigmaDock 25 | +1,91 pp | 0,44 |
+| **Separate 5 - SigmaDock 5** | **+6,22 pp** | < 0,00025 |
+| **Separate 25 - SigmaDock 25** | **+5,26 pp** | 0,018 |
+
+### Was daraus formulierbar ist
+
+**Unter realistischer Auswahl liegt Separate mit fuenf Schritten nicht hinter
+SigmaDock mit fuenfundzwanzig.** Nominell vorn (22,97 gegen 18,66 % bzw. 7,18
+gegen 5,26 %), statistisch ununterscheidbar (p = 0,24 und 0,44). Das
+Intervall ist breit, die Aussage lautet also "gleichauf", nicht "besser".
+
+**Bei gleicher Schrittzahl ist der Abstand riesig:** +20,10 pp auf der
+Trefferquote und +6,22 pp auf der gemeinsamen Kenngroesse, beide
+p < 0,00025.
+
+Die praktische Lesart: wer den Rechenaufwand auf ein Fuenftel der
+Netzwerkauswertungen senkt, bekommt mit Flow Matching **dasselbe Ergebnis wie
+mit dem vollen Fahrplan der Diffusionsvariante** -- und die Auswahl per
+Affinitaet funktioniert dabei unvermindert. Mit Diffusion bei fuenf Schritten
+bekommt er 2,87 statt 18,66 %.
+
+### Einschraenkung
+
+`Separate 25 - SigmaDock 25` auf `RMSD < 2 A` ist mit p = 0,066 nicht
+signifikant, das Intervall beruehrt die Null. Auf der gemeinsamen Kenngroesse
+mit Protein ist derselbe Vergleich signifikant (p = 0,018). Der
+Rankingvorteil von EXP-110 steht also auf der kombinierten Groesse, nicht auf
+der Genauigkeit allein.
