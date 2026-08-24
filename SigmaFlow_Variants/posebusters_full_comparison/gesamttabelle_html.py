@@ -18,11 +18,12 @@ DATA = os.path.join("..", "..", "Thesis Visualisierungen", "data")
 ZELLEN = [
     ("bound25", 25, "bound", "per_draw_80seeds.csv",
      "selection_curves_80seeds.csv", 80, True),
-    ("samp25", 25, "sampled", "per_draw_papersetup40.csv",
-     "selection_curves_papersetup40.csv", 40, True),
+    ("samp25", 25, "sampled", "per_draw_papersetup80.csv",
+     "selection_curves_papersetup80.csv", 80, True),
     ("bound5", 5, "bound", "per_draw_nfe5_40seeds.csv",
      "selection_curves_nfe5_40seeds.csv", 40, False),
-    ("samp5", 5, "sampled", None, None, 40, None),
+    ("samp5", 5, "sampled", "per_draw_sampled5_40seeds.csv",
+     "selection_curves_sampled5_40seeds.csv", 40, False),
 ]
 ARME = ("Minimal", "Separate", "SigmaDock")
 METRIKEN = [
@@ -43,32 +44,13 @@ def lade_per_draw(f):
     return d
 
 
-# Die reinen Validitaetsgroessen im Paper-Setup sind auf 80 Seeds gerechnet
-# (papersetup80.py), die RMSD-abhaengigen nur auf 40 -- die SDF-Dateien der
-# Seeds 40-79 liegen noch auf ARC. Diese Ueberlagerung zieht die besseren
-# Zahlen dort ein, wo sie existieren, und macht den Unterschied in der
-# Zeilenbeschriftung sichtbar. Ohne die Beschriftung staenden 40- und
-# 80-Seed-Werte unmarkiert nebeneinander.
-UEBERLAGERUNG = {
-    "pb_valid_no_protein": "valid_ohne_protein",
-    "pb_valid_with_protein": "valid_mit_protein",
-}
-
-
-def lade_80():
-    """-> (per_draw, kurven) aus den 80-Seed-Dateien des Paper-Setups."""
-    pd80 = {}
-    for r in csv.DictReader(open(os.path.join(DATA, "validity_papersetup80.csv"),
-                                 encoding="utf-8")):
-        pd80[(r["arm"], r["metric"])] = (float(r["pct"]), float(r["ci_lo"]),
-                                         float(r["ci_hi"]))
-    sc80 = {}
-    for r in csv.DictReader(open(os.path.join(
-            DATA, "selection_validity_papersetup80.csv"), encoding="utf-8")):
-        sc80[(r["arm"], r["metric"], int(r["k"]))] = (
-            float(r["random_pct"]), float(r["oracle_pct"]),
-            float(r["top1_affinity_pct"]))
-    return pd80, sc80
+# Frueher wurden hier die 80-Seed-Validitaetszahlen aus papersetup80.py
+# ueberlagert, weil der RMSD im Paper-Setup nur fuer 40 Seeds vorlag. Seit
+# dem 24.08. steht die ganze Zelle auf 80 Seeds und stammt aus EINER
+# Rechnung -- die Ueberlagerung ist entfallen. Kreuzprobe gegen
+# papersetup80.py: alle sechs Validitaetswerte stimmen auf vier
+# Nachkommastellen ueberein.
+UEBERLAGERUNG = {}
 
 
 def lade_kurven(f):
@@ -206,14 +188,6 @@ def main() -> int:
         if f1:
             PD[key], SC[key] = lade_per_draw(f1), lade_kurven(f2)
 
-    PD80, SC80 = lade_80()
-    for mkey, m80 in UEBERLAGERUNG.items():
-        for arm in ARME:
-            PD["samp25"][(arm, mkey)] = PD80[(arm, m80)]
-            for k in KS:
-                if (arm, m80, k) in SC80:
-                    SC["samp25"][(arm, mkey, k)] = SC80[(arm, m80, k)]
-
     O = []
     A = O.append
 
@@ -307,7 +281,7 @@ def main() -> int:
                                  f"rechnet auf ARC</td>"]
                     elif idx == 2 and not gn:
                         cells = [f'<td class="na" colspan="{len(KS)}">'
-                                 f"nie mit gnina gescort</td>"]
+                                 f"noch nicht mit gnina gescort</td>"]
                     else:
                         cells = []
                         for k in KS:
@@ -332,7 +306,7 @@ def main() -> int:
 <style>{CSS}</style>
 <div class="wrap">
 <header>
-  <div class="eyebrow">PoseBusters &middot; 209 Komplexe &middot; Stand 24. August 2026</div>
+  <div class="eyebrow">PoseBusters &middot; 209 Komplexe &middot; 150&thinsp;480 Posen &middot; Stand 24. August 2026</div>
   <h1>Jede Zelle des Versuchsplans, jede Kenngr&ouml;&szlig;e</h1>
   <p class="lede">Drei Arme, zwei Schrittzahlen, zwei Konformerquellen. RMSD durchgehend
   symmetriekorrigiert &uuml;ber spyrmsd, Referenz per <code>best_copy</code>.
@@ -340,15 +314,16 @@ def main() -> int:
   9 mit Protein.</p>
   <div class="key">
     <span><i class="sw" style="background:var(--accent)"></i>bester Arm der Zeile</span>
-    <span><i class="sw" style="background:var(--pending)"></i>Daten liegen auf ARC, noch nicht ausgewertet</span>
+    <span><i class="sw" style="background:var(--pending)"></i>rechnet noch auf ARC</span>
     <span><i class="sw" style="background:var(--rule)"></i>nicht anwendbar</span>
   </div>
 </header>
 
 <section>
   <div class="sec-head"><h2>Der Versuchsplan</h2>
-  <p>Vier Zellen, drei davon ausgewertet. Die fehlende ist nicht ungeplant &mdash;
-  sie ist auf ARC gesampelt und wartet auf die PoseBusters-Pr&uuml;fung.</p></div>
+  <p>Vier Zellen, alle ausgewertet. Offen bleibt allein die
+  Affinit&auml;tsbewertung der beiden unteren Zellen &mdash; diese Posen
+  wurden noch nicht mit gnina gescort.</p></div>
   <div class="plan">
     <div class="corner"></div>
     <div class="colhead">Konformer: bound</div>
@@ -356,22 +331,25 @@ def main() -> int:
     <div class="rowhead">25 Schritte</div>
     <div class="cell have"><span class="n">80 Seeds</span>
       <span class="d">16&thinsp;720 Posen je Arm &middot; RMSD, Validit&auml;t, gnina</span></div>
-    <div class="cell have"><span class="n">80&thinsp;/&thinsp;40 Seeds</span>
-      <span class="d">Validit&auml;t und gnina auf 80, RMSD auf 40 &mdash; die SDF-Dateien
-      der Seeds 40&ndash;79 liegen noch auf ARC</span></div>
+    <div class="cell have"><span class="n">80 Seeds</span>
+      <span class="d">16&thinsp;720 Posen je Arm &middot; RMSD, Validit&auml;t, gnina
+      &mdash; die ma&szlig;gebliche Zelle</span></div>
     <div class="rowhead">5 Schritte</div>
     <div class="cell have"><span class="n">40 Seeds</span>
       <span class="d">8&thinsp;360 Posen je Arm &middot; RMSD und Validit&auml;t,
       kein gnina</span></div>
-    <div class="cell miss"><span class="n">gesampelt</span>
-      <span class="d">40 Seeds mit Trajektorien auf ARC, weder geladen noch
-      gepr&uuml;ft</span></div>
+    <div class="cell have"><span class="n">40 Seeds</span>
+      <span class="d">8&thinsp;360 Posen je Arm &middot; RMSD und Validit&auml;t;
+      gnina steht noch aus</span></div>
   </div>
-  <p class="note"><strong>Warum die leere Zelle interessant ist.</strong> Sie
-  entscheidet, ob SigmaDocks Zusammenbruch bei grober Integration ein reiner
-  Integrationseffekt ist oder teilweise am Rotationsprior h&auml;ngt. Bei
-  <code>bound</code> f&auml;llt SigmaDock von 10,34&nbsp;% auf 0,73&nbsp;%
-  Trefferquote &mdash; und genau dort ist sein Prior informativ.</p>
+  <p class="note"><strong>Was die vierte Zelle entschieden hat.</strong> Sie
+  beantwortet, ob SigmaDocks Zusammenbruch bei grober Integration am
+  Rotationsprior h&auml;ngt. Er tut es nicht: der Abfall von 25 auf 5 Schritte
+  unterscheidet sich zwischen den beiden Konformerquellen um h&ouml;chstens
+  0,47&nbsp;Prozentpunkte. Auf der Platzierungsgenauigkeit verlieren die
+  Flow-Arme dabei <em>nichts</em> (5,33&nbsp;&rarr;&nbsp;5,42&nbsp;% und
+  5,85&nbsp;&rarr;&nbsp;5,51&nbsp;%, beide p&nbsp;&gt;&nbsp;0,2), w&auml;hrend
+  SigmaDock den Faktor&nbsp;10,8 einb&uuml;&szlig;t.</p>
 </section>
 
 {inhalt}

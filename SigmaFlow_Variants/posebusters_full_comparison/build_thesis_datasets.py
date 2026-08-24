@@ -54,15 +54,16 @@ if MODUS == "bound":
     TAG = "80seeds"
     MIT_GNINA = True
 elif MODUS == "sampled":
-    # gnina-Scores liegen unter gncs/ (Jobs 8636670-72) und decken 0..79 ab;
-    # der RMSD existiert bisher nur fuer 0..39, die Schnittmenge regelt das.
-    ARMS = [("Minimal", "minimalcs", "sigmaflow_minimal"),
-            ("Separate", "exp110cs", "exp110"),
-            ("SigmaDock", "sigmadockcs", "sigmadock")]
+    # Seit 2026-08-24 auf allen 80 Seeds: Validitaet, gnina und RMSD liegen
+    # vollstaendig vor. Die frueheren *_papersetup40.csv bleiben als
+    # Momentaufnahme liegen, sind aber ueberholt.
+    ARMS = [("Minimal", "minimalcs80", "sigmaflow_minimal"),
+            ("Separate", "exp110cs80", "exp110"),
+            ("SigmaDock", "sigmadockcs80", "sigmadock")]
     RD = {"Minimal": "minimalcs2", "Separate": "exp110cs2", "SigmaDock": "sigmadockcs2"}
     GN = "gncs/GNINA-SCORE-*{gkey}_86366*"
-    KS = (1, 2, 3, 5, 10, 20, 40)
-    TAG = "papersetup40"
+    KS = (1, 2, 3, 5, 10, 20, 40, 80)
+    TAG = "papersetup80"
     MIT_GNINA = True
 elif MODUS == "sampled5":
     # Die vierte Zelle des Versuchsplans: Paper-Konformer UND fuenf Schritte.

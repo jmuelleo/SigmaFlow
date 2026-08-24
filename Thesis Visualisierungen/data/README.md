@@ -51,3 +51,39 @@ der Wiederholungsschleife gezogen, sodass bei k = NS in allen Wiederholungen
 dieselbe Pose gewählt wurde. Betroffen waren nur diese Zeile und daraus
 berechnete Trefferquoten, nicht die Top-1-Werte. Beide
 `ranker_comparison_*.csv` sind neu erzeugt.
+
+### Stand 24.08. abends: der Versuchsplan ist geschlossen
+
+```bash
+cd SigmaFlow_Variants/posebusters_full_comparison
+python build_thesis_datasets.py bound      # bound,   25 Schritte, 80 Seeds
+python build_thesis_datasets.py sampled    # sampled, 25 Schritte, 80 Seeds  <- maßgeblich
+python build_thesis_datasets.py nfe5       # bound,    5 Schritte, 40 Seeds
+python build_thesis_datasets.py sampled5   # sampled,  5 Schritte, 40 Seeds
+python gesamttabelle_html.py <ziel.html>   # die Referenzseite
+```
+
+**`*_papersetup80.csv` ersetzt `*_papersetup40.csv`.** Das Paper-Setup bei
+25 Schritten steht jetzt durchgehend auf 80 Seeds — Validität, RMSD und
+gnina. Die überlappenden 8360 Posen stimmen mit den 40-Seed-Tabellen exakt
+überein (null Abweichungen), die Erweiterung ist rein additiv. Die
+`papersetup40`-Dateien bleiben als Momentaufnahme liegen, sollten für neue
+Abbildungen aber nicht mehr verwendet werden.
+
+**`papersetup80.py` ist damit überholt.** Seine beiden Ausgaben
+(`validity_papersetup80.csv`, `selection_validity_papersetup80.csv`) sind in
+`per_draw_papersetup80.csv` und `selection_curves_papersetup80.csv`
+enthalten. Kreuzprobe der beiden unabhängigen Rechnungen: alle sechs
+Validitätswerte stimmen auf vier Nachkommastellen überein.
+
+| Neu | Inhalt |
+|---|---|
+| `per_draw_papersetup80.csv` | Paper-Setup, 25 Schritte, 80 Seeds |
+| `selection_curves_papersetup80.csv` | dito, Random / Top-1 / Oracle bis k = 80 |
+| `ranker_comparison_papersetup80.csv` | dito, fünf Ranker gegen RMSD < 2 Å |
+| `heuristic_grid_papersetup80.csv` | dito, SigmaDocks Heuristik über ein Gitter |
+| `per_draw_sampled5_40seeds.csv` | Paper-Setup, **5 Schritte**, 40 Seeds |
+| `selection_curves_sampled5_40seeds.csv` | dito, ohne `top1_affinity_pct` |
+
+Für `sampled` × 5 Schritte fehlt allein die gnina-Bewertung — diese Posen
+wurden noch nicht gescort.
