@@ -14,6 +14,7 @@
 # Usage:
 #   MODEL=exp110 sbatch arc/score_gnina.slurm
 #   MODEL=sigmaflow_minimal MAX_SEEDS=40 sbatch arc/score_gnina.slurm
+#   MODEL=exp110 NUM_STEPS=5 SUFFIX=__cpu__confsampled sbatch arc/score_gnina.slurm
 #
 #SBATCH --job-name=gnina-score
 #SBATCH --partition=short
@@ -47,7 +48,18 @@ PYTHON="${ARC_SF_ENV}/bin/python"
 module load CUDA/12.6.0
 module load gnina/1.3.2
 
-write_run_metadata "GNINA-SCORE-${MODEL}" "$REPO_ROOT" "$PYTHON"
+# Der Laufname MUSS jede Unterscheidung des Eingabepfads tragen. Ohne das
+# heissen die Ergebnisdateien zweier Laeufe ueber VERSCHIEDENE Posen gleich
+# und liegen in Verzeichnissen, die sich nur in der Job-ID unterscheiden --
+# ein Glob trifft dann lautlos das Falsche. Genau das ist am 2026-08-24
+# passiert und musste ueber einen Wertevergleich aufgeloest werden.
+# Bei den Vorgabewerten (nfe25, __cpu) bleibt der Name unveraendert, damit
+# die vorhandenen Verzeichnisse nicht umziehen.
+RUN_TAG="${SUFFIX#__cpu}"
+if [ "$NUM_STEPS" != "25" ]; then
+    RUN_TAG="__nfe${NUM_STEPS}${RUN_TAG}"
+fi
+write_run_metadata "GNINA-SCORE-${MODEL}${RUN_TAG}" "$REPO_ROOT" "$PYTHON"
 
 echo "=============================================================="
 echo "  node          : $(hostname)"
@@ -67,10 +79,10 @@ echo "  gefundene Posen: ${N}"
 [ "$N" -gt 0 ] || { echo "ABBRUCH: keine Posen"; exit 1; }
 
 ARGS=(--sampling_root "$SAMPLING_ROOT" --pdb_root "$PDB_ROOT"
-      --out "${RUN_DIR}/gnina_scores_${MODEL}.csv")
+      --out "${RUN_DIR}/gnina_scores_${MODEL}${RUN_TAG}.csv")
 [ -n "$MAX_SEEDS" ] && ARGS+=(--max_seeds "$MAX_SEEDS")
 
 time "$PYTHON" "${REPO_ROOT}/arc/score_gnina.py" "${ARGS[@]}"
 
 echo
-echo "Ergebnis: ${RUN_DIR}/gnina_scores_${MODEL}.csv"
+echo "Ergebnis: ${RUN_DIR}/gnina_scores_${MODEL}${RUN_TAG}.csv"
