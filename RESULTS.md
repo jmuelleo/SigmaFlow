@@ -2762,3 +2762,94 @@ Kein Ranking: diese Posen wurden nie mit gnina gescort. Und die Kreuzung
 `sampled` x 5 Schritte wurde nie gesampelt -- offen bleibt damit, ob
 SigmaDocks Zusammenbruch bei grober Integration teilweise am Prior haengt.
 Beides ist nachholbar, beides ist CPU-Arbeit.
+
+## Die praktische Kenngroesse unter realistischer Auswahl (2026-08-24)
+
+Was ein Anwender tatsaechlich bekommt: 40 Posen erzeugen, die mit der besten
+Vinardo-Affinitaet nehmen, und fragen, ob sie unter 2 A liegt **und** alle 24
+PoseBusters-Checks besteht. Paper-Setup, 25 Schritte, 209 Komplexe x 40 Seeds.
+
+| Arm | Top-1 nach Vinardo, k = 40 |
+|---|---:|
+| **Separate (EXP-110)** | **10,53 %** |
+| Minimal | 9,09 % |
+| SigmaDock | 5,26 % |
+
+Gepaart ueber die 209 Komplexe, 2000 Bootstrap-Ziehungen:
+
+| Vergleich | Differenz | 95-%-Intervall | p |
+|---|---|---|---|
+| Separate - SigmaDock | **+5,26 pp** | [+0,96; +9,57] | **0,024** |
+| Minimal - SigmaDock | +3,83 pp | [-0,96; +8,61] | 0,146 |
+| Separate - Minimal | +1,44 pp | [-3,35; +6,70] | 0,598 |
+
+**Belegt ist Flow Matching gegen Diffusion, nicht Separate gegen Minimal.**
+Der Abstand zwischen den beiden Flow-Armen verschwindet auf dieser Kenngroesse
+im Rauschen. Und das Intervall ist knapp: die Untergrenze liegt bei +0,96 pp.
+Mit 80 statt 40 Seeds wuerde der Effekt deutlich fester.
+
+### Zum Trainingsbudget: walltime-gematcht, nicht schrittgematcht
+
+| Arm | Job | Laufzeit | Epochen |
+|---|---|---|---|
+| Minimal | 8541310 | 11:06 | 6 |
+| Separate | 8625634 | 11:10:59 | 6 |
+| SigmaDock | 8541439 | 10:52 | 6 |
+
+Rund 11 h in einem 12-h-Budget. "12h" bezeichnet das Budget, nicht die
+Laufzeit. SigmaFlow endete bei `global_step` 13.750, SigmaDock bei 13.200 --
+rund **4 % weniger Optimierungsschritte fuer SigmaDock**. Das schwaecht den
+Befund nicht, gehoert aber als Fussnote dazu statt als "gleich" verbucht.
+
+### Wie SigmaDock im Original rankt -- nachgelesen, nicht erinnert
+
+`compute_ordering` (`statistics#Evaluationspipeline.py`, ~660-760) kennt vier
+Modi: `None` (zufaellig), `vinardo`/`cnn`, `pb`, `heuristic`. Im Modus
+`vinardo`:
+
+```python
+if score_name in ["Affinity", "Intramolecular energy"]:
+    reverse = False     # aufsteigend -- negativ ist besser
+```
+
+Das ist zeichengenau der hier verwendete Ranker, Sortierrichtung
+eingeschlossen. `conf/sampling/base.yaml:84` setzt `scoring: vinardo`, das
+README nennt "GNINA/Vinardo and PoseBusters" die **Vorgaben**.
+
+**Die Einschraenkung, die in die Arbeit gehoert:** `score_name` ist in keiner
+Konfigurationsdatei des Repositories festgelegt, und `run_permutation_topk` --
+die Funktion, die das Ranking anstoesst -- hat dort **keinen Aufrufer**. Die
+Zahlen des Papers stammen aus Code, der nicht mitgeliefert ist. Dass
+"Affinity" gemeint ist, folgt daraus, dass `CNNscore` zum Modus `cnn` gehoert
+und `Affinity` der einzige Vinardo-Wert in `GNINA_METRICS` ist. Das ist eine
+begruendete Rekonstruktion, kein Beleg.
+
+Formulierbar ist: "nach der Vorgabe des Originals, GNINA/Vinardo-Affinitaet,
+aufsteigend sortiert". Nicht formulierbar ist: "genau wie im Paper".
+
+Dasselbe gilt fuer `score_bias` und `pb_exponent` im Modus `heuristic` -- auch
+sie haben im Repository keine Vorgabewerte. Deshalb das Parametergitter statt
+eines Wertes; ein nachtraeglich ausgewaehltes bestes Feld waere wertlos.
+
+### Zwei Korrekturen an der Gesamttabelle
+
+**k = 80 fehlte bei `sampled` nicht, es war nur nicht eingezogen.** Die
+gnina-Scores decken 0..79 ab; blockiert ist allein der RMSD. Fuer die reinen
+Validitaetsgroessen steht k = 80 aus `papersetup80.py` zur Verfuegung und ist
+jetzt eingebunden, mit Kennzeichnung "80 Seeds" in der Zeilenbeschriftung.
+
+| Kenngroesse | Arm | Zufall | Top-1 | Oracle@80 |
+|---|---|---:|---:|---:|
+| PB-valid ohne Protein | Minimal | 33,71 | 37,32 | **89,47** |
+| | Separate | 34,89 | **37,80** | 87,56 |
+| | SigmaDock | 28,28 | 27,27 | 78,47 |
+| PB-valid mit Protein | Minimal | 6,62 | 28,71 | 52,15 |
+| | Separate | 7,17 | **29,19** | **55,98** |
+| | SigmaDock | 5,84 | 20,57 | 42,58 |
+
+**Die Zelle `sampled` x 5 Schritte existiert doch.** Sie liegt auf ARC:
+40 Seeds, 8360 SDF und 40 `predictions.pt` je Arm. Ich hatte sie faelschlich
+als leer gemeldet, weil meine Pruefung `seed_*` direkt unter dem
+Modellverzeichnis suchte statt unter `results/posebusters/last/`. Dieselbe
+Pruefung meldete auch fuer die bekannt vollen Baeume null Seeds -- das haette
+auffallen muessen.

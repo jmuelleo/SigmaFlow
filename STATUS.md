@@ -74,6 +74,34 @@ Seed-Verzeichnis zu ueberschreiben. Seed 0 lag aus dem ersten
 | nfe 5 | 40 Seeds | vollstaendig, inkl. Validitaet |
 | nfe 200 | Minimal fast fertig, Sep/SD angelaufen | offen |
 
+## Nachtrag 24.08., nachmittags
+
+**Die praktische Kenngroesse steht.** Top-1 nach Vinardo bei k = 40 im
+Paper-Setup, `< 2 A UND PB-valid mit Protein`: Separate **10,53 %**, Minimal
+9,09 %, SigmaDock **5,26 %**. Gepaart ueber die 209 Komplexe ist
+Separate - SigmaDock **+5,26 pp, p = 0,024**, Intervall [+0,96; +9,57].
+Separate - Minimal ist **nicht** signifikant (p = 0,60). Belegt ist damit
+Flow Matching gegen Diffusion, nicht der Zwei-Kopf-Ansatz gegen den einfachen.
+
+**Trainingsbudget praezisiert:** rund 11 h in einem 12-h-Budget, alle drei
+Arme `max_epochs=6`. Walltime-gematcht, nicht schrittgematcht -- SigmaFlow
+13.750 Optimierungsschritte, SigmaDock 13.200, also 4 % weniger fuer
+SigmaDock.
+
+**Ranking gegen das Original geprueft.** `compute_ordering` im Modus
+`vinardo` sortiert `Affinity` aufsteigend -- zeichengenau der hier verwendete
+Ranker. Aber `score_name` ist in keiner Konfigurationsdatei gesetzt und
+`run_permutation_topk` hat im Repository keinen Aufrufer. "Nach der Vorgabe
+des Originals" ist formulierbar, "genau wie im Paper" nicht.
+
+**Die Zelle `sampled` x 5 Schritte existiert doch** und liegt auf ARC
+(40 Seeds, 8360 SDF, 40 predictions.pt je Arm). Meine Pruefung hatte den
+falschen Pfad benutzt. Redock und Packjob sind abgesetzt.
+
+**Referenzseite:** https://claude.ai/code/artifact/830e118d-1106-412f-91e4-e92169ef4066
+-- alle Zellen, alle Kenngroessen, Oracle- und gnina-Kurven, aus den
+CSV-Dateien erzeugt durch `gesamttabelle_html.py`.
+
 ## Naechste Schritte
 
 1. **SDF-Dateien der `sampled`-Seeds 40-79 holen** (Packjob laeuft/steht an).
