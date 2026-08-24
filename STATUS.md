@@ -1,4 +1,4 @@
-# HIER WEITERMACHEN (Stand 2026-08-24, vormittags)
+# UEBERHOLT, siehe Abschnitt darueber (Stand 2026-08-24, vormittags)
 
 ## Der Chemiebefund steht jetzt auf 80 Seeds statt 40
 
@@ -73,6 +73,101 @@ Seed-Verzeichnis zu ueberschreiben. Seed 0 lag aus dem ersten
 | **sampled, nfe 25** | **80 Seeds** | **Validitaet + Ranking vollstaendig; RMSD nur Seeds 0-39** |
 | nfe 5 | 40 Seeds | vollstaendig, inkl. Validitaet |
 | nfe 200 | Minimal fast fertig, Sep/SD angelaufen | offen |
+
+# HIER WEITERMACHEN (Stand 2026-08-24, abends)
+
+## Der Versuchsplan ist geschlossen
+
+Vier Zellen: Schrittzahl {5, 25} x Konformerquelle {bound, sampled}, drei
+Arme, **150.480 Posen**. Alles ausgewertet bis auf die gnina-Bewertung von
+`bound` x 5 -- die Zelle mit dem Prior-Vorbehalt, also die schwaechste.
+
+Referenzseite: https://claude.ai/code/artifact/830e118d-1106-412f-91e4-e92169ef4066
+
+Datensaetze in `Thesis Visualisierungen/data/`, erzeugt von
+`build_thesis_datasets.py` in vier Modi (`bound`, `sampled`, `nfe5`,
+`sampled5`) und `gesamttabelle_html.py` fuer die Seite.
+
+## Die drei Kernaussagen, mit ihren Vorbehalten
+
+**1. Ligandenchemie: Flow Matching, belegt.** Paper-Setup, 80 Seeds:
+Separate 34,89 %, Minimal 33,71 %, SigmaDock 28,28 %. Gepaart
+Separate - SigmaDock **-6,61 pp, p < 0,00025**; Separate - Minimal
+**+1,17 pp, p = 0,0045** (ueberlebt Bonferroni). Fuer jeden fuenften Komplex
+erzeugt SigmaDock in 80 Versuchen keine einzige saubere Pose.
+
+**2. Genauigkeit: kein Unterschied.** Im Paper-Setup sind alle drei Arme auf
+`RMSD < 2 A` ununterscheidbar. Der frueher berichtete Vorsprung von SigmaDock
+war ein Artefakt seines IGSO(3)-Rotationsprior bei `bound`.
+
+**3. Robustheit gegen grobe Integration: Flow Matching, unkonfundiert.**
+Auf der Platzierungsgenauigkeit verlieren die Flow-Arme bei fuenf Schritten
+NICHTS (5,33 -> 5,42 %, p = 0,73; 5,85 -> 5,51 %, p = 0,20), SigmaDock den
+Faktor **10,8**. Die Wechselwirkung mit der Konformerquelle ist null
+(hoechstens 0,47 pp Unterschied im Abfall). **Das ist die einzige Kernaussage
+ohne Vorbehalt zur Auswertungskonfiguration.**
+
+Die Ligandenchemie faellt dagegen bei allen dreien: fuenf Schritte genuegen
+fuer den Ort, nicht fuer die Chemie.
+
+## Der praktisch wichtigste Vergleich
+
+Top-1 nach Vinardo bei k = 40, Zielgroesse `< 2 A UND PB-valid mit Protein`:
+
+| Konfiguration | Top-1@40 |
+|---|---:|
+| Separate, 25 Schritte | **10,53 %** |
+| Minimal, 25 Schritte | 9,09 % |
+| Separate, **5** Schritte | 7,18 % |
+| SigmaDock, 25 Schritte | 5,26 % |
+| SigmaDock, 5 Schritte | 0,96 % |
+
+**Signifikant:** Separate 25 - SigmaDock 25 **+5,26 pp, p = 0,018**;
+Separate 5 - SigmaDock 5 **+6,22 pp, p < 0,00025**.
+
+**NICHT signifikant:** Separate 5 - SigmaDock 25 (+1,91 pp, p = 0,44). Der
+eindrucksvolle Vergleich ist der schwaechere Beleg. Formulierbar ist
+"gleichauf bei einem Fuenftel des Aufwands", nicht "besser".
+
+Die Rankbarkeit ueberlebt die grobe Integration: Separates Trefferquote
+steigt von 31,9 auf 33,6 %, SigmaDocks faellt von 27,4 auf 19,6 %.
+
+## EXP-110 hat drei eigenstaendige Effekte
+
+Was als Nullergebnis begann, traegt jetzt: bessere Ligandenchemie
+(+1,17 pp, p = 0,0045), bessere Rankbarkeit (Trefferquote 31,9 gegen 29,6 %),
+und bei fuenf Schritten der einzige signifikante Vorsprung gegen Minimal
+ueberhaupt (Proteinvaliditaet +0,94 pp, p = 0,0015).
+
+## Offen
+
+1. **ARC-Support wegen `8634116`/`8634117`.** Seit 23.08. auf `PD (Priority)`.
+   Mit dem dritten Arm sind es drei mal 72 h = neun Tage seriell; bei Abgabe
+   am 14.09. ist der 5.09. der spaeteste Start. **Das ist die einzige
+   Aufgabe mit Terminrisiko.**
+2. Horizont fuer den dritten 72h-Arm, sobald `8638132` gerechnet hat. Danach
+   `calculate_final_epochs.py` MIT ALLEN DREI ARMEN aufrufen -- ein Aufruf mit
+   nur einem Arm loescht die Horizonte der wartenden Jobs.
+3. nfe 200 auswerten, sobald `8636358`/`8636359` durch sind. Nebenfrage,
+   nicht auf dem kritischen Pfad.
+4. gnina fuer `bound` x 5 -- die letzte Luecke der Referenzseite, inhaltlich
+   die schwaechste Zelle.
+5. Die ueberholten Stellen in den Textdateien und der Praesentation
+   kennzeichnen. `RESULTS.md` ist auf Stand.
+
+## Was aus dem Tag als Regel bleibt
+
+Ein Ausgabepfad muss **jede** Unterscheidung des Eingabepfads tragen. Heute
+dreimal aufgetreten: `posebusters_redock.slurm`, `score_gnina.slurm`, und
+`traj_agg_Minimal.csv`, das von einem kleineren Lauf ueberschrieben war und
+nur auffiel, weil `n_poses` als Spalte darin steht.
+
+Und: jede Auswahlrechnung braucht eine **Plausibilitaetsprobe mit bekanntem
+Sollwert**. Bei Top-1 ist das k = 1 -- die Auswahl aus einer einzigen Pose
+muss das Zufallsniveau ergeben. Ohne diese Probe waere ein
+vorzeichenverdrehtes Ergebnis als "der Scorer taugt nichts" durchgegangen.
+
+---
 
 ## Die vierte Zelle ist gerechnet -- und der Robustheitsbefund haelt
 
