@@ -2450,3 +2450,183 @@ auch mit vielen Versuchen weniger Komplexe überhaupt.
 `RMSD < 2 Å` allein liegt es gleichauf mit Minimal, auf `PB-valid` knapp vorn
 — aber auf der Kombination führt es über jeden Wert von k. Das ist konsistent
 mit den gepaarten Tests und betrifft die Kenngröße, die praktisch zählt.
+
+## Der Chemievorsprung auf 80 Seeds im Paper-Setup (2026-08-24)
+
+Die Validitaetstabellen fuer `graph.sample_conformer=true` liegen jetzt fuer
+alle 80 Seeds vor: 209 Komplexe x 80 Seeds x 3 Arme = **50160 Posen**. Die
+Tabellen der Seeds 0-39 sind byte-identisch mit den zuvor ausgewerteten, die
+Datenbasis ist also additiv erweitert, nicht neu erzeugt.
+
+Rechnung: `SigmaFlow_Variants/posebusters_full_comparison/papersetup80.py`.
+Datensaetze: `Thesis Visualisierungen/data/validity_papersetup80.csv` und
+`selection_validity_papersetup80.csv`.
+
+### Anteil je Ziehung
+
+| Kenngroesse | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| PB-valid ohne Protein | 33,71 % [33,00; 34,43] | **34,89 %** [34,17; 35,61] | 28,28 % [27,60; 28,97] |
+| PB-valid mit Protein | 6,62 % [6,25; 7,01] | **7,17 %** [6,78; 7,57] | 5,84 % [5,49; 6,20] |
+
+Gegen die 40-Seed-Fassung (33,85 / 34,96 / 28,19 bzw. 6,61 / 6,94 / 5,60)
+bewegt sich nichts ausserhalb der Intervalle. Die Verdopplung bestaetigt, sie
+korrigiert nicht.
+
+### Gepaart, Bootstrap ueber die 209 Komplexe
+
+4000 Ziehungen, Aufloesungsgrenze p = 0,00025.
+
+| Kenngroesse | Separate - Minimal | SigmaDock - Minimal | SigmaDock - Separate |
+|---|---|---|---|
+| PB-valid ohne Protein | **+1,17 pp, p = 0,0045** | **-5,44 pp, p < 0,00025** | **-6,61 pp, p < 0,00025** |
+| PB-valid mit Protein | **+0,54 pp, p = 0,041** | -0,78 pp, p = 0,069 | **-1,33 pp, p = 0,0025** |
+
+**Der Vorsprung von Separate gegenueber Minimal ist mit der doppelten
+Datenbasis von p = 0,030 auf p = 0,0045 gefallen.** Er ueberlebt damit auch
+eine Bonferroni-Korrektur ueber die sechs Vergleiche dieser Tabelle
+(0,0045 x 6 = 0,027). Bei 40 Seeds tat er das nicht. Das ist der Unterschied
+zwischen einem Befund, der nur als Muster berichtet werden darf, und einem,
+der allein stehen kann.
+
+### Oracle@k, PB-valid ohne Protein
+
+| k | Minimal | Separate | SigmaDock | Sep - SD |
+|---:|---:|---:|---:|---:|
+| 1 | 33,75 % | 34,91 % | 28,27 % | +6,64 |
+| 5 | 59,81 % | 60,28 % | 48,04 % | +12,24 |
+| 10 | 69,78 % | 70,28 % | 56,23 % | +14,05 |
+| 20 | 78,20 % | 78,59 % | 64,01 % | +14,58 |
+| 40 | 84,39 % | 84,11 % | 71,26 % | +12,85 |
+| 80 | **89,47 %** | 87,56 % | 78,47 % | +9,09 |
+
+Die Schere zu SigmaDock oeffnet sich bis k = 20 auf 14,6 Punkte und schliesst
+sich danach wieder -- mit genuegend Versuchen holt auch ein schlechteres
+Verfahren auf. Das ist Saettigung, kein Aufholen im Sinne der Qualitaet.
+
+**Bei grossem k ueberholt Minimal die Separate-Variante** (89,47 gegen
+87,56 % bei k = 80), obwohl Separate je Ziehung besser ist. Das ist kein
+Widerspruch, sondern eine Aussage ueber Vielfalt: Separate erzeugt im Mittel
+sauberere Posen, Minimal erzeugt *verschiedenere*. Wer eine Pose zieht, nimmt
+Separate; wer achtzig zieht und die beste behalten darf, nimmt Minimal.
+
+### Oracle@k, PB-valid mit Protein
+
+| k | Minimal | Separate | SigmaDock |
+|---:|---:|---:|---:|
+| 1 | 6,59 % | 7,20 % | 5,86 % |
+| 10 | 28,37 % | 29,83 % | 22,50 % |
+| 40 | 45,13 % | 47,04 % | 36,29 % |
+| 80 | 52,15 % | **55,98 %** | 42,58 % |
+
+Hier bleibt Separate ueber den ganzen Bereich vorn und der Abstand waechst.
+Die Umkehrung bei k = 80 gilt also nur fuer die ligandenintrinsischen Checks.
+
+### Komplexe, fuer die auch 80 Versuche nicht reichen
+
+| Arm | ohne Protein | mit Protein |
+|---|---:|---:|
+| Minimal | 10,53 % | 47,85 % |
+| Separate | 12,44 % | 44,02 % |
+| SigmaDock | **21,53 %** | **57,42 %** |
+
+Fuer jeden fuenften Komplex erzeugt SigmaDock in achtzig Versuchen keine
+einzige chemisch saubere Pose, die Flow-Arme fuer jeden achten bis zehnten.
+
+## Auswahl nach gnina/Vinardo im Paper-Setup, 80 Seeds
+
+Die Affinitaet kennt die PoseBusters-Checks nicht; "nach Affinitaet ranken und
+dann Validitaet messen" ist deshalb nicht zirkulaer. Die Auswertung gegen den
+RMSD folgt, sobald die SDF-Dateien der Seeds 40-79 lokal sind.
+
+**Vorzeichen:** bei Vinardo ist negativ gut. Median hier +8, Maximum +293
+(Clashes), nur rund 19 % der Posen sind negativ.
+
+### Zielgroesse PB-valid ohne Protein: der Scorer hilft kaum
+
+| k | Min Top-1 | Sep Top-1 | SD Top-1 |
+|---:|---:|---:|---:|
+| Zufall | 33,71 | 34,89 | 28,28 |
+| 5 | 34,76 | 36,76 | 28,75 |
+| 20 | 35,50 | 37,72 | 27,66 |
+| 80 | 37,32 | 37,80 | **27,27** |
+
+Trefferquote (Top1 - Random)/(Oracle - Random) bei k = 80: **6,5 %** fuer
+Minimal, **5,5 %** fuer Separate, **-2,0 %** fuer SigmaDock.
+
+**Bei SigmaDock schadet die Auswahl.** Ab k = 20 liegt Top-1 unter dem
+Zufallsniveau: die Pose mit der besten Vinardo-Affinitaet ist dort im Mittel
+chemisch schlechter als eine zufaellig gezogene. Das ist plausibel, weil
+Vinardo enge Kontakte belohnt und ein Teil der Ligandenchemie-Checks
+(`internal_steric_clash`, `bond_lengths`, `internal_energy`) genau bei
+gequetschten Konformationen bricht.
+
+### Zielgroesse PB-valid mit Protein: der Scorer hilft stark
+
+| k | Min Top-1 | Sep Top-1 | SD Top-1 |
+|---:|---:|---:|---:|
+| Zufall | 6,62 | 7,17 | 5,84 |
+| 5 | 15,32 | 16,76 | 12,26 |
+| 20 | 22,41 | 24,13 | 17,03 |
+| 80 | 28,71 | **29,19** | 20,57 |
+
+Trefferquote: **48,5 / 45,1 / 40,1 %**.
+
+**Dieser Befund ist mit Vorsicht zu lesen.** Vinardo ist eine Funktion der
+Protein-Ligand-Abstaende, und die neun Protein-Checks von PoseBusters
+(`minimum_distance_to_protein`, `volume_overlap_with_protein`, ...) sind es
+auch. Die beiden Groessen sind nicht identisch, aber sie schauen auf dasselbe
+Merkmal. Der Sprung von 6,62 auf 28,71 % misst daher zu einem Teil, dass zwei
+Clash-Detektoren uebereinstimmen -- nicht, dass der Scorer die *richtige* Pose
+findet. Die saubere Frage bleibt die Auswertung gegen den RMSD.
+
+### Was daraus fuer die Empfehlung folgt
+
+Separate fuehrt je Ziehung (34,89 %), unter Auswahl (37,80 %) und auf der
+Oracle-Kurve mit Protein. Der Vorsprung ueberlebt also die Auswahl -- anders
+als im `bound`-Fall, wo Separate zwar die beste Oracle-Kurve hatte, unter
+gnina-Ranking aber hinter Minimal zurueckfiel. **Im Paper-Setup ist der
+Vorteil von EXP-110 kein reiner Oracle-Effekt.**
+
+Die einzige Ausnahme ist Oracle@80 ohne Protein, wo Minimal fuehrt. Das ist
+ein Vielfaltseffekt und betrifft ein Szenario, in dem achtzig Posen erzeugt
+und alle geprueft werden.
+
+## Schrittzahl: die Korrektur zum 5-gegen-25-Vergleich (2026-08-24)
+
+**"Fuenf Schritte genuegen" ist so nicht haltbar.** Der Schluss vom 23.08. kam
+aus den RMSD-Zahlen, und diese Zahlen stimmen -- aber der RMSD war die einzige
+Kenngroesse, bei der es zutrifft. Auf jeder anderen verlieren **alle drei
+Arme** signifikant, auch die Flow-Arme.
+
+40 Seeds je Zelle, 8360 Posen, `bound`, RMSD symmetriekorrigiert.
+
+| Kenngroesse | Min 5 | Min 25 | Sep 5 | Sep 25 | SD 5 | SD 25 |
+|---|---:|---:|---:|---:|---:|---:|
+| RMSD < 2 A | 4,84 | 5,32 | 5,49 | 5,79 | **0,73** | 10,33 |
+| PB-valid ohne Protein | 16,45 | 34,14 | 16,78 | 35,22 | **5,44** | 28,64 |
+| < 2 A und valid mit Prot. | 0,84 | 1,27 | 0,85 | 1,30 | **0,12** | 1,72 |
+
+Gepaart, 5 minus 25 Schritte: alles signifikant schlechter, mit einer
+Ausnahme -- der RMSD von Separate (-0,30 pp, p = 0,27).
+
+**Was faellt und was bleibt.** Es faellt: die Behauptung, fuenf Schritte
+kosteten nichts. Die Validitaet halbiert sich bei den Flow-Armen
+(-17,69 und -18,43 pp) und faellt bei SigmaDock um den Faktor fuenf.
+
+Es bleibt: der *relative* Vorteil von Flow Matching. SigmaDock verliert auf
+der Trefferquote 93 % seines Wertes, die Flow-Arme 5 bis 9 %. Die Aussage
+lautet also nicht "fuenf Schritte genuegen", sondern **"wer die Schrittzahl
+senken muss, verliert mit Flow Matching sehr viel weniger"**.
+
+### Rechenaufwand
+
+Netzwerkauswertungen: exakt ein Fuenftel (25 statt 5 Euler-Schritte, je eine
+Auswertung).
+
+Wall-Clock: **nicht** ein Fuenftel. Aus den gemessenen Laufzeiten
+(nfe 5: 398 s, nfe 200: 8591 s je Seed, CPU) ergibt sich
+Steigung = (8591 - 398)/195 = 42,0 s je Schritt und Grundlast = 188 s.
+Damit 25 Schritte = 1238 s, 5 Schritte = 398 s -- eine Ersparnis von **68 %**,
+nicht 80 %. Die Grundlast (Datenaufbau, Modell laden, Nachbearbeitung)
+skaliert nicht mit der Schrittzahl.

@@ -1,0 +1,7 @@
+arm,metric,pct,ci_lo,ci_hi,n_poses,never_hit_pct
+Minimal,valid_ohne_protein,33.7141,33.0014,34.4343,16720,10.5263
+Separate,valid_ohne_protein,34.8864,34.1675,35.6122,16720,12.4402
+SigmaDock,valid_ohne_protein,28.2775,27.5999,28.9651,16720,21.5311
+Minimal,valid_mit_protein,6.6208,6.2538,7.0078,16720,47.8469
+Separate,valid_mit_protein,7.1651,6.7839,7.5659,16720,44.0191
+SigmaDock,valid_mit_protein,5.8373,5.4920,6.2029,16720,57.4163

@@ -1,3 +1,101 @@
+# HIER WEITERMACHEN (Stand 2026-08-24, vormittags)
+
+## Der Chemiebefund steht jetzt auf 80 Seeds statt 40
+
+Die Validitaet im Paper-Setup (`graph.sample_conformer=true`) ist fuer alle
+80 Seeds gerechnet: **50160 Posen**. Die Tabellen der Seeds 0-39 sind
+byte-identisch mit den frueheren, die Basis ist additiv erweitert.
+
+| Kenngroesse | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| PB-valid ohne Protein | 33,71 % | **34,89 %** | 28,28 % |
+| PB-valid mit Protein | 6,62 % | **7,17 %** | 5,84 % |
+
+Gepaart ueber die 209 Komplexe: Separate - Minimal **+1,17 pp, p = 0,0045**
+(bei 40 Seeds noch p = 0,030 -- ueberlebt jetzt Bonferroni ueber die sechs
+Vergleiche). SigmaDock - Separate **-6,61 pp, p < 0,00025**.
+
+**Damit ist der Chemievorsprung von Flow Matching der belastbarste Befund der
+Arbeit**, und EXP-110 ist kein Nullergebnis mehr, sondern der beste Arm.
+
+Fuer jeden **fuenften** Komplex erzeugt SigmaDock in 80 Versuchen keine
+einzige saubere Pose; die Flow-Arme fuer jeden achten bis zehnten.
+
+Vielfaltseffekt bei grossem k: Oracle@80 ohne Protein fuehrt **Minimal**
+(89,47 gegen 87,56 %), obwohl Separate je Ziehung besser ist. Separate erzeugt
+sauberere Posen, Minimal erzeugt verschiedenere. Mit Protein bleibt Separate
+ueber den ganzen k-Bereich vorn (55,98 gegen 52,15 %).
+
+## Ranking im Paper-Setup: der Vorteil ueberlebt die Auswahl
+
+Anders als bei `bound`. Dort hatte Separate die beste Oracle-Kurve, fiel unter
+gnina-Ranking aber hinter Minimal zurueck. Im Paper-Setup fuehrt Separate je
+Ziehung, unter Auswahl (37,80 %) und auf der Oracle-Kurve mit Protein.
+
+Zwei Einschraenkungen, die in den Text gehoeren:
+
+1. Auf die Ligandenchemie hebt der Scorer fast nichts (Trefferquote 6,5 / 5,5 /
+   **-2,0 %**). Bei SigmaDock **schadet** die Auswahl ab k = 20 -- Vinardo
+   belohnt enge Kontakte, und genau daran brechen `internal_steric_clash`,
+   `bond_lengths`, `internal_energy`.
+2. Auf die Proteinvaliditaet hilft er stark (Trefferquote 40-49 %), aber das
+   ist halb selbstbezueglich: Vinardo und die neun PB-Protein-Checks schauen
+   beide auf Protein-Ligand-Abstaende.
+
+## Ein Vorzeichenfehler, gefunden durch eine Plausibilitaetsprobe
+
+Die erste Fassung der Rankingrechnung benutzte `hoeher_besser=True`. Bei
+Vinardo ist **negativ** gut -- ich habe also durchgehend die schlechteste Pose
+gewaehlt. Aufgefallen ist es, weil Top-1 monoton bis auf **exakt 0,00 %** fiel:
+ein schlechter Scorer landet beim Zufallsniveau, nicht darunter.
+
+`build_thesis_datasets.py` macht es richtig (`("affinity_vinardo", A[arm],
+False)`), die `bound`-Zahlen sind nicht betroffen.
+
+Konsequenz im Code: `top1()` in `papersetup80.py` hat fuer die Richtung
+**keinen Vorgabewert** mehr. Eine Richtungsangabe, die man vergessen kann,
+wird vergessen, und der Fehler ist stumm.
+
+Die Probe, die das kuenftig sofort zeigt: **Top-1 bei k = 1 muss das
+Zufallsniveau treffen.** Tut es jetzt (6,67 gegen 6,62 %).
+
+## Der abgestuerzte SLURM-Task war die Schutzvorrichtung
+
+`8635404_0`, FAILED nach 51 s: `sample.py:95` weigert sich, ein vorhandenes
+Seed-Verzeichnis zu ueberschreiben. Seed 0 lag aus dem ersten
+`confsampled`-Lauf vor. Kein Datenverlust -- genau das gewuenschte Verhalten.
+
+## Datenstand
+
+| Datensatz | Umfang | Ausgewertet |
+|---|---|---|
+| bound, nfe 25 | 80 Seeds | vollstaendig, inkl. gnina-Ranking |
+| **sampled, nfe 25** | **80 Seeds** | **Validitaet + Ranking vollstaendig; RMSD nur Seeds 0-39** |
+| nfe 5 | 40 Seeds | vollstaendig, inkl. Validitaet |
+| nfe 200 | Minimal fast fertig, Sep/SD angelaufen | offen |
+
+## Naechste Schritte
+
+1. **SDF-Dateien der `sampled`-Seeds 40-79 holen** (Packjob laeuft/steht an).
+   Erst damit laesst sich die gemeinsame Kenngroesse "< 2 A UND valide" und
+   der Rankervergleich gegen den RMSD auf 80 Seeds rechnen. Das ist die
+   letzte Luecke im massgeblichen Datensatz.
+2. **ARC-Support wegen `8634116`/`8634117`.** Seit 23.08. nachmittags
+   `PD (Priority)`. Abgabe 14.09., zwei mal 72 h seriell brauchen sechs Tage --
+   spaetester sinnvoller Start ist der 29.08.
+3. nfe 200 auswerten, sobald Separate und SigmaDock durch sind.
+4. Die ueberholten Stellen in den Textdateien und der Praesentation
+   kennzeichnen. `RESULTS.md` ist auf Stand.
+
+## Was aus dem Tag als Regel bleibt
+
+Jede Auswahlrechnung braucht eine **Plausibilitaetsprobe mit bekanntem
+Sollwert**. Bei Top-1 ist das k = 1: die Auswahl aus einer einzigen Pose *muss*
+das Zufallsniveau ergeben, unabhaengig vom Scorer. Ohne diese Probe waere ein
+vorzeichenverdrehtes Ergebnis als "der Scorer taugt nichts" durchgegangen.
+
+---
+
 # SigmaFlow — Development Status
 
 Diese Datei ist das "Lesezeichen" für den Projektfortschritt. Am Anfang jeder
@@ -14,7 +112,7 @@ User dort weitermachen will.
 
 ---
 
-# HIER WEITERMACHEN (Stand 2026-08-23, abends)
+# UEBERHOLT, siehe Abschnitt darueber (Stand 2026-08-23, abends)
 
 ## Der Tag hat die Aussage der Arbeit geändert
 
