@@ -53,7 +53,11 @@ NEWTON_EULER = "updates[" + Q + "omega" + Q + "]"
 
 
 def pruefe_pfad(pfad: str, erwartet: str) -> None:
-    segmente = set(pfad.replace(os.sep, "/").split("/"))
+    # BEIDE Trennzeichen, nicht os.sep: os.sep ist auf Linux "/", ein
+    # Windows-Pfad bliebe dort unzerlegt und die Pruefung liefe ins Leere.
+    # Das Gatter selbst laeuft nur auf ARC, aber ein Test, der je nach
+    # Plattform anders ausfaellt, taugt nicht als Absicherung.
+    segmente = set(pfad.replace(chr(92), "/").split("/"))
     if erwartet not in segmente:
         raise SystemExit(
             f"SANITY GATE: FALSCHE Quelle -- Segment {erwartet!r} fehlt in {pfad}")
