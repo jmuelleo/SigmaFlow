@@ -2196,6 +2196,25 @@ Absolutwert misst den Startpunkt. Vergleichbar ist nur die **Änderung** über
 die Trajektorie, und die ist bei allen drei Armen ununterscheidbar von null
 (−0,03° / +0,35° / −0,82° bei rund 59° tatsächlicher Drehung).
 
+> **Nachgerechnet 2026-08-24.** `traj_agg_Minimal.csv` war am 23.08. um 17:21
+> versehentlich von einem kleineren Lauf (2 Seeds, 418 Posen) überschrieben
+> worden, `traj_pose_Minimal.csv` enthielt nur die Kopfzeile. Die oben
+> berichtete Zahl stammte aber aus dem ursprünglichen 10-Seed-Lauf und ist
+> korrekt: die Wiederholung mit `--max_seeds 10 --detail_seeds 2` ergibt
+> **−0,031°** bei 59,6° kumulierter Drehung. Die 2-Seed-Fassung hätte −0,245°
+> ergeben. Alle drei Arme stehen jetzt wieder auf je 2090 Posen:
+>
+> | Arm | Start | Ende | Änderung | kumulierte Drehung |
+> |---|---:|---:|---:|---:|
+> | Minimal | 126,19° | 126,16° | −0,031° | 59,6° |
+> | Separate | 126,41° | 126,76° | +0,349° | 58,8° |
+> | SigmaDock | 115,53° | 114,71° | −0,821° | 58,3° |
+>
+> Die Lehre: eine Ausgabedatei, die bei jedem Lauf denselben Namen trägt, sagt
+> nichts über den Umfang des Laufs, der sie erzeugt hat. `n_poses` steht
+> deshalb in der Aggregatdatei — ohne diese Spalte wäre die Verkürzung nicht
+> aufgefallen.
+
 **STEHT:** bei gleicher Startbedingung sind Flow Matching und Diffusion bei
 diesem Trainingsbudget nicht unterscheidbar.
 
