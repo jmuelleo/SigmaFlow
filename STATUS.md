@@ -63,6 +63,44 @@ Was als Nullergebnis begann, traegt jetzt: bessere Ligandenchemie
 und bei fuenf Schritten der einzige signifikante Vorsprung gegen Minimal
 ueberhaupt (Proteinvaliditaet +0,94 pp, p = 0,0015).
 
+## nfe 200 ist ausgewertet -- der Zusammenbruch ist erklaert
+
+Kumulierte Drehung je Fragment (Weglaenge auf SO(3)), 2090 Posen je Zelle:
+
+| Arm | 5 Schritte | 25 Schritte | 200 Schritte |
+|---|---:|---:|---:|
+| Minimal | 51,6° (85,6 %) | 59,5° (98,7 %) | 60,3° |
+| Separate | 51,4° (86,1 %) | 59,2° (99,1 %) | 59,7° |
+| **SigmaDock** | **91,5° (151,2 %)** | 59,1° (97,6 %) | 60,5° |
+
+**Bei 25 Schritten ist die Integration konvergiert** (96,5-99,1 %), der
+Standardvergleich haengt also nicht an der Aufloesung. **Bei fuenf Schritten
+ueberschiesst SigmaDock um mehr als die Haelfte**, die Flow-Arme
+unterschreiten mild. Der Einbruch von 5,80 auf 0,54 % ist damit
+mechanistisch erklaert, nicht nur gemessen.
+
+**Und: die Rotation wird auch mit 200 Schritten nicht gelernt** (-0,71 /
++0,36 / -1,60 Grad bei 60 Grad Drehung). Der naheliegendste Einwand gegen das
+Nullergebnis -- zu grobe Integration -- ist damit ausgeraeumt.
+
+## DRINGEND: /data/stat-cadd ist voll
+
+`df` meldet **100 %**, 91 GB von 10 TB frei, Tendenz fallend (vor zwei
+Stunden waren es 116 GB). Daran sind **22 der 40 nfe-200-Tasks gescheitert**:
+Exit 1 nach drei Stunden, Logs auf Blockgrenzen abgeschnitten (32768 und
+36864 Byte gegen 40372 bei den erfolgreichen). Kein Speicherproblem
+(MaxRSS 5,5 GB von 32 GB), kein Zeitlimit.
+
+**Die 72h-Laeufe duerfen so nicht starten.** Sie schreiben zwoelf Snapshots
+je Lauf plus alle 50 Schritte ein last.ckpt. Ein fehlgeschlagener
+Schreibvorgang nach 60 Stunden kostet drei Tage Rechenzeit und Tage
+Wartezeit -- mit derselben abgeschnittenen Fehlermeldung, aus der man nichts
+lernt.
+
+Der eigene Anteil ist klein (die drei nfe-200-Baeume zusammen 1,6 GB), das
+Dateisystem ist geteilt. **Der Plattenplatz gehoert in die Support-Mail**,
+gleichrangig mit der Warteschlangenpriorität.
+
 ## Offen
 
 1. **ARC-Support wegen `8634116`/`8634117`.** Seit 23.08. auf `PD (Priority)`.

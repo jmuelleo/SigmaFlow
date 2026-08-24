@@ -154,6 +154,14 @@ def main() -> int:
                     help="Verzeichnis mit <cid>_ligands.sdf")
     ap.add_argument("--detail_seeds", type=int, default=5,
                     help="fuer wie viele Seeds die Datei je Pose geschrieben wird")
+    # ACHTUNG: schneidet nach der Seed-NUMMER ab, nicht nach der Anzahl. Bei
+    # einem Baum mit den Seeds 11,14,19,23,27 laesst --max_seeds 10 also
+    # NICHTS uebrig. Aufgefallen am 2026-08-24 an den nfe200-Teilmengen, wo
+    # gescheiterte Tasks Luecken hinterlassen hatten und n_poses still auf
+    # 209 statt 2090 fiel. Deshalb die Zusatzoption --n_seeds.
+    ap.add_argument("--n_seeds", type=int, default=None,
+                    help="ANZAHL der Seeds (die niedrigsten vorhandenen). "
+                         "Robust gegen Luecken, anders als --max_seeds.")
     ap.add_argument("--max_seeds", type=int, default=None,
                     help="nur Seeds kleiner als dieser Wert auswerten")
     a = ap.parse_args()
@@ -165,6 +173,8 @@ def main() -> int:
         key=lambda x: x[0])
     if a.max_seeds is not None:
         pts = [(s, p) for s, p in pts if s < a.max_seeds]
+    if a.n_seeds is not None:
+        pts = sorted(pts)[:a.n_seeds]
     if not pts:
         raise SystemExit(f"ABBRUCH: keine predictions.pt unter {a.root}")
     print(f"{a.arm}: {len(pts)} Seeds gefunden ({pts[0][0]}..{pts[-1][0]})", flush=True)

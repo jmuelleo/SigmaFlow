@@ -3201,3 +3201,94 @@ signifikant, das Intervall beruehrt die Null. Auf der gemeinsamen Kenngroesse
 mit Protein ist derselbe Vergleich signifikant (p = 0,018). Der
 Rankingvorteil von EXP-110 steht also auf der kombinierten Groesse, nicht auf
 der Genauigkeit allein.
+
+## Warum Diffusion bei fuenf Schritten zusammenbricht (2026-08-24, spaet)
+
+Die Trajektorien mit 200 Integrationsschritten liegen vor (10 Seeds je Arm,
+2090 Posen, `bound`). Zusammen mit den vorhandenen 5- und 25-Schritte-Laeufen
+ergibt das eine Reihe ueber zwei Groessenordnungen der Schrittzahl.
+
+Gemessen wird die **kumulierte Drehung je Fragment** ueber die ganze
+Trajektorie -- die zurueckgelegte Weglaenge auf SO(3). Bei einer korrekt
+integrierten ODE ist sie von der Schrittzahl unabhaengig: derselbe Pfad, nur
+feiner aufgeloest.
+
+| Arm | Schritte | Weglaenge | % der konvergierten | Rotationsfehler-Aenderung |
+|---|---|---:|---:|---:|
+| Minimal | 5 | 51,6° | **85,6 %** | -0,07° |
+| | 25 | 59,5° | 98,7 % | +0,24° |
+| | 200 | 60,3° | 100 % | -0,71° |
+| Separate | 5 | 51,4° | **86,1 %** | +0,10° |
+| | 25 | 59,2° | 99,1 % | +0,22° |
+| | 200 | 59,7° | 100 % | +0,36° |
+| **SigmaDock** | **5** | **91,5°** | **151,2 %** | -0,39° |
+| | 25 | 59,1° | 97,6 % | +0,70° |
+| | 200 | 60,5° | 100 % | -1,60° |
+
+### 1. Bei 25 Schritten ist die Integration konvergiert
+
+Alle drei Arme liegen bei 96,5 bis 99,1 % der Weglaenge, die sich bei 200
+Schritten einstellt. Der Standardvergleich der Arbeit haengt damit **nicht**
+an der Integrationsaufloesung, und SigmaDocks Vorgabewert von 25 Schritten
+ist nachtraeglich gerechtfertigt.
+
+### 2. Bei fuenf Schritten trennen sich die Verfahren strukturell
+
+Die Flow-Arme unterschreiten mild und einheitlich (85,6 und 86,1 %): sie
+schneiden die Geodaete etwas ab, bleiben aber auf ihr.
+
+**SigmaDock ueberschiesst um mehr als die Haelfte: 151,2 %.** Das ist kein
+gröber aufgeloester Pfad, sondern ein anderer. Die Euler-Schritte bei hohem
+Rauschpegel multiplizieren den Score mit einem grossen Faktor, das Fragment
+faehrt ueber das Ziel hinaus, und die verbleibenden Schritte reichen zur
+Korrektur nicht aus.
+
+Damit ist der Einbruch von 5,80 auf 0,54 % Trefferquote (Paper-Setup, Faktor
+10,8) nicht nur gemessen, sondern **mechanistisch erklaert**. Der
+Flow-Matching-Pfad ist die Geodaete zwischen Quelle und Ziel, also nahezu
+gerade -- Euler trifft sie auch grob.
+
+### 3. Die Rotation wird auch mit 200 Schritten nicht gelernt
+
+Das war die eigentliche Frage hinter dem nfe-200-Lauf. Die Antwort ist ein
+klares Nein: der Rotationsfehler aendert sich ueber zweihundert Schritte um
+-0,71°, +0,36° und -1,60°, bei rund 60° tatsaechlicher Drehung. **Achtmal so
+viele Netzwerkauswertungen wie im Standardlauf bringen nichts.**
+
+Das Problem liegt also nicht in der Integration, sondern im Trainingsbudget
+oder in der Parametrisierung des Rotationskopfs. Fuer die Arbeit heisst das:
+die Aussage "die Rotation wird von keinem Verfahren gelernt" ist gegen den
+naheliegendsten Einwand -- zu grobe Integration -- abgesichert.
+
+### Nebenbefund: der Prior, zum vierten Mal
+
+Bei 200 Schritten (`bound`) startet SigmaDock mit **114,53°**, die Flow-Arme
+mit 126,85 und 127,43°. Genau der Unterschied, der bei `bound` als
+Genauigkeitsvorsprung erschien und sich im Paper-Setup aufloest.
+
+### Zwei methodische Punkte
+
+**Konfigurationen gemischt.** Die 200-Schritte-Laeufe sind `bound`, die
+5-Schritte-Zahlen `sampled`. Fuer die Weglaenge ist das unerheblich -- bei 25
+Schritten liegen `bound` und `sampled` mit 58,3 gegen 59,1° praktisch gleich.
+Fuer den Rotationsfehler in Grad ist es wesentlich, deshalb wird der nur
+innerhalb einer Konfiguration verglichen.
+
+**Unterschiedliche Seed-Mengen.** Von den 40 nfe-200-Seeds sind 22 Tasks am
+vollen Dateisystem gescheitert; die verbliebenen Mengen unterscheiden sich
+zwischen den Armen (Minimal 0,1,10-17; SigmaDock 11,14,15,17,19,2,20,23,26,27).
+Fuer einen Mittelwert ueber 2090 Posen ist das unerheblich, fuer einen
+gepaarten Vergleich derselben Ziehung waere es falsch -- ein solcher wird
+hier nicht gefuehrt.
+
+### Werkzeugfehler, der dabei auffiel
+
+`trajectory_geometry.py --max_seeds N` schneidet nach der Seed-NUMMER ab,
+nicht nach der Anzahl. Bei einem Baum mit Luecken (Seeds 11,14,19,23,27)
+blieb dadurch **ein einziger** Seed uebrig, und `n_poses` fiel still von 2090
+auf 209. Aufgefallen ist es nur, weil `n_poses` als Spalte in der
+Aggregatdatei steht -- dieselbe Spalte, die heute frueh schon den
+ueberschriebenen Minimal-Lauf verraten hat.
+
+Behoben durch die zusaetzliche Option `--n_seeds`, die die N niedrigsten
+VORHANDENEN Seeds nimmt.
