@@ -74,6 +74,33 @@ Seed-Verzeichnis zu ueberschreiben. Seed 0 lag aus dem ersten
 | nfe 5 | 40 Seeds | vollstaendig, inkl. Validitaet |
 | nfe 200 | Minimal fast fertig, Sep/SD angelaufen | offen |
 
+## Die vierte Zelle ist gerechnet -- und der Robustheitsbefund haelt
+
+`sampled` x 5 Schritte lag die ganze Zeit auf ARC; der Redock ist durch,
+40 x 209 je Arm. Damit ist der Versuchsplan fuer die Validitaet vollstaendig.
+
+**Der Zusammenbruch bei grober Integration ist ein reiner
+Integrationseffekt.** Die Wechselwirkung mit der Konformerquelle ist null:
+
+| Arm | Abfall bound | Abfall sampled | Unterschied |
+|---|---:|---:|---:|
+| Minimal | -17,69 pp | -17,57 pp | +0,12 pp |
+| Separate | -18,43 pp | -17,97 pp | +0,47 pp |
+| SigmaDock | -23,19 pp | -23,04 pp | +0,16 pp |
+
+SigmaDock verliert in beiden Konformerquellen den Faktor 5,3 bzw. 5,5 seiner
+Ligandenchemie, die Flow-Arme jeweils den Faktor 2,1. Mit Protein sind es
+10,5x bzw. 9,2x gegen 1,4-1,7x.
+
+**Damit ist die Robustheitsaussage die einzige der drei Kernaussagen ohne
+Vorbehalt zur Auswertungskonfiguration.** Sie ist weder durch den
+Rotationsprior noch durch die Konformerquelle erklaerbar.
+
+Rechnung: `vierzellen_validitaet.py`, alle Zellen auf 40 Seeds beschnitten.
+
+Offen bleibt nur die RMSD-Haelfte dieser Zelle -- Packjobs `8638142`
+(nfe5 x confsampled) und `8638143` (confsampled Seeds 40-79) laufen.
+
 ## DRINGEND: das Sanity-Gate haette Job 8634116 getoetet
 
 Beim Bau des dritten 72h-Arms gefunden. `train_final_72h.slurm` prueft die

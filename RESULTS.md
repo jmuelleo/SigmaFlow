@@ -2853,3 +2853,88 @@ als leer gemeldet, weil meine Pruefung `seed_*` direkt unter dem
 Modellverzeichnis suchte statt unter `results/posebusters/last/`. Dieselbe
 Pruefung meldete auch fuer die bekannt vollen Baeume null Seeds -- das haette
 auffallen muessen.
+
+## Die vierte Zelle: Schrittzahl und Prior sind unabhaengig (2026-08-24)
+
+`sampled` x 5 Schritte ist gerechnet. Damit ist der Versuchsplan
+vollstaendig, jedenfalls fuer die Validitaet (die RMSD-Haelfte wartet noch
+auf die SDF-Dateien).
+
+Rechnung: `vierzellen_validitaet.py`. Alle vier Zellen auf 40 Seeds
+beschnitten, damit der Vergleich nicht daran haengt, dass eine Zelle die
+doppelte Datenbasis hat. 209 Komplexe x 40 Seeds x 3 Arme je Zelle.
+
+### PB-valid ohne Protein, alle vier Zellen
+
+| Zelle | Minimal | Separate | SigmaDock |
+|---|---:|---:|---:|
+| 25 Schritte, bound | 34,14 % | **35,22 %** | 28,64 % |
+| 25 Schritte, sampled | 33,85 % | **34,96 %** | 28,19 % |
+| 5 Schritte, bound | 16,45 % | **16,78 %** | 5,44 % |
+| 5 Schritte, sampled | 16,28 % | **17,00 %** | 5,16 % |
+
+### Die entscheidende Frage: ist der Zusammenbruch ein Prior-Effekt?
+
+Bei `bound` ist SigmaDocks Rotationsprior informativ, weil die
+Identitaetsrotation die richtige Antwort ist. Denkbar waere gewesen, dass ein
+Teil seines Absturzes bei fuenf Schritten daher ruehrt, dass dieser Vorteil
+bei grober Integration nicht mehr zur Geltung kommt. Der Test ist eine
+Wechselwirkung: faellt der Abfall in beiden Konformerquellen gleich aus?
+
+| Konformer | Arm | 25 Schritte | 5 Schritte | Abfall | Faktor |
+|---|---|---:|---:|---:|---:|
+| bound | Minimal | 34,14 % | 16,45 % | -17,69 pp | 2,08x |
+| bound | Separate | 35,22 % | 16,78 % | -18,43 pp | 2,10x |
+| bound | **SigmaDock** | 28,64 % | 5,44 % | **-23,19 pp** | **5,26x** |
+| sampled | Minimal | 33,85 % | 16,28 % | -17,57 pp | 2,08x |
+| sampled | Separate | 34,96 % | 17,00 % | -17,97 pp | 2,06x |
+| sampled | **SigmaDock** | 28,19 % | 5,16 % | **-23,04 pp** | **5,47x** |
+
+Alle sechs Abfaelle p < 0,00025, gepaart ueber die 209 Komplexe.
+
+**Die Wechselwirkung ist null.**
+
+| Arm | Abfall bound | Abfall sampled | Unterschied |
+|---|---:|---:|---:|
+| Minimal | -17,69 pp | -17,57 pp | +0,12 pp |
+| Separate | -18,43 pp | -17,97 pp | +0,47 pp |
+| SigmaDock | -23,19 pp | -23,04 pp | +0,16 pp |
+
+Bei allen drei Armen unterscheiden sich die Abfaelle um weniger als einen
+halben Prozentpunkt. **Der Zusammenbruch bei grober Integration ist ein
+reiner Integrationseffekt und hat mit dem Rotationsprior nichts zu tun.**
+
+Damit ist die Robustheitsaussage **unkonfundiert** -- als einzige der drei
+Kernaussagen dieser Arbeit, ohne Vorbehalt zur Auswertungskonfiguration.
+
+### Mit Protein: dasselbe Bild, noch schaerfer
+
+| Konformer | Arm | 25 Schritte | 5 Schritte | Faktor |
+|---|---|---:|---:|---:|
+| bound | Minimal | 6,63 % | 4,51 % | 1,47x |
+| bound | Separate | 6,77 % | 4,57 % | 1,48x |
+| bound | **SigmaDock** | 6,51 % | 0,62 % | **10,46x** |
+| sampled | Minimal | 6,61 % | 4,02 % | 1,65x |
+| sampled | Separate | 6,94 % | 4,96 % | 1,40x |
+| sampled | **SigmaDock** | 5,60 % | 0,61 % | **9,18x** |
+
+Auf der Kenngroesse, die praktisch zaehlt, verliert SigmaDock bei fuenf
+Schritten rund neun Zehntel seines Werts, die Flow-Arme etwa ein Drittel.
+Die Wechselwirkung bleibt klein (hoechstens 0,90 pp bei SigmaDock).
+
+### Was das fuer die Formulierung bedeutet
+
+Die Aussage lautet: **bei einem Fuenftel der Netzwerkauswertungen behaelt Flow
+Matching rund die Haelfte seiner Ligandenchemie, Diffusion ein Fuenftel.**
+Sie gilt unabhaengig von der Konformerquelle, ist also nicht durch den
+Rotationsprior erklaerbar.
+
+Nicht formulierbar bleibt: "fuenf Schritte kosten nichts". Alle drei Arme
+verlieren signifikant, und zwar auf jeder Kenngroesse ausser dem RMSD.
+
+Der Mechanismus ist strukturell: der Flow-Matching-Pfad ist die Geodaete
+zwischen Quelle und Ziel, also nahezu gerade -- Euler trifft sie mit wenigen
+Schritten. SigmaDocks Rueckwaertsprozess integriert ueber einen EDM-Rauschplan
+von sigma = 1,5 bis t_min = 0,005 mit rho = 3; bei fuenf Schritten sind die
+Spruenge in sigma zu gross, und ein Euler-Schritt bei hohem Rauschpegel
+multipliziert den Score mit einem grossen Faktor.
