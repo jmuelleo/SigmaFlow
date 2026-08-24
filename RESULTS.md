@@ -3025,3 +3025,80 @@ Wall-Clock-Ersparnis, exakt ein Fuenftel der Netzwerkauswertungen), bekommt
 mit Flow Matching dieselbe Trefferquote und rund die Haelfte der
 Ligandenchemie. Mit Diffusion bekommt er nichts Brauchbares mehr:
 0,54 % Trefferquote und 0,06 % auf der gemeinsamen Kenngroesse.
+
+## Ein Fuenftel des Aufwands gegen den vollen Fahrplan (2026-08-24)
+
+SigmaFlow mit fuenf Integrationsschritten gegen SigmaDock mit
+fuenfundzwanzig, beides im Paper-Setup. 209 Komplexe x 40 Seeds, gepaart
+ueber die Komplexe.
+
+**Der Vergleich ist bewusst NICHT compute-gematcht.** Er ist unfair zulasten
+von SigmaFlow: ein Fuenftel der Netzwerkauswertungen gegen den vollen
+Fahrplan des Originals. Genau so gehoert er auch berichtet -- sonst liest er
+sich, als sei SigmaFlow schlicht besser.
+
+### Anteil je Ziehung
+
+| Kenngroesse | Minimal 5 | Separate 5 | SigmaDock 25 |
+|---|---:|---:|---:|
+| RMSD < 2 A | 5,42 % | 5,51 % | 5,80 % |
+| PB-valid ohne Protein | 16,28 % | 17,00 % | **28,19 %** |
+| PB-valid mit Protein | 4,02 % | 4,96 % | 5,60 % |
+| < 2 A und valid ohne Prot. | 2,57 % | 2,63 % | **3,22 %** |
+| < 2 A und valid mit Prot. | 0,80 % | **1,00 %** | 0,94 % |
+
+### Gepaart gegen SigmaDock 25
+
+| Kenngroesse | Minimal 5 | Separate 5 |
+|---|---|---|
+| RMSD < 2 A | -0,38 pp, p = 0,30 | -0,29 pp, p = 0,46 |
+| PB-valid ohne Protein | **-11,91 pp**, p < 0,00025 | **-11,20 pp**, p < 0,00025 |
+| PB-valid mit Protein | **-1,58 pp**, p = 0,0010 | -0,63 pp, p = 0,20 |
+| < 2 A und valid ohne Prot. | **-0,65 pp**, p = 0,0055 | **-0,59 pp**, p = 0,039 |
+| < 2 A und valid mit Prot. | -0,14 pp, p = 0,34 | **+0,06 pp, p = 0,79** |
+
+### Gleichstand auf Genauigkeit und auf der gemeinsamen Kenngroesse
+
+Beide Flow-Arme mit fuenf Schritten sind auf `RMSD < 2 A` von SigmaDock mit
+fuenfundzwanzig nicht zu unterscheiden. Bei Oracle@40 treffen sich Separate 5
+und SigmaDock 25 exakt: **57,42 % gegen 57,42 %.**
+
+Auf `< 2 A UND PB-valid mit Protein` ebenfalls Gleichstand, mit Separate
+nominell vorn (1,00 gegen 0,94 %, p = 0,79). Oracle@40: 16,27 gegen 16,75 %.
+
+**EXP-110 erreicht mit einem Fuenftel der Netzwerkauswertungen dieselbe
+Trefferquote und dieselbe kombinierte Kenngroesse wie SigmaDock mit dem
+vollen Fahrplan.**
+
+### Wo SigmaFlow bei fuenf Schritten verliert
+
+Die Ligandenchemie, rund elf Punkte, p < 0,00025. Konsistent mit dem Befund
+der vierten Zelle: fuenf Schritte genuegen fuer den Ort, nicht fuer die
+Chemie. Deshalb liegt SigmaDock auch auf `< 2 A und valid ohne Protein` vorn
+(3,22 gegen 2,63 %, p = 0,039) -- dort schlaegt die Ligandenchemie durch,
+waehrend sie mit Protein von den strengeren Kollisionspruefungen ueberdeckt
+wird.
+
+### Oracle@k, die wichtigsten Zeilen
+
+| Kenngroesse | k | Minimal 5 | Separate 5 | SigmaDock 25 |
+|---|---:|---:|---:|---:|
+| RMSD < 2 A | 10 | 31,59 % | 31,48 % | 33,54 % |
+| | 40 | 54,07 % | **57,42 %** | **57,42 %** |
+| PB-valid mit Protein | 40 | 33,97 % | 35,41 % | 35,89 % |
+| < 2 A und valid mit Prot. | 10 | 6,34 % | **7,15 %** | 6,97 % |
+| | 40 | 14,35 % | 16,27 % | 16,75 % |
+
+### Einordnung
+
+Der Fuenf-Schritte-Vergleich ist nicht der staerkste Befund der Arbeit, aber
+der eindruecklichste. Bei gleicher Schrittzahl fuehrt SigmaFlow auf derselben
+Kenngroesse deutlicher: Separate 1,48 gegen SigmaDock 0,94 % bei je
+fuenfundzwanzig Schritten.
+
+### Datenbasis verdoppelt
+
+Die RMSD-Werte fuer das Paper-Setup bei 25 Schritten liegen jetzt fuer alle
+80 Seeds vor (je 16720 Posen). Die ueberlappenden 8360 Posen stimmen mit den
+frueheren Tabellen exakt ueberein -- **null Abweichungen**, die Erweiterung
+ist additiv.
