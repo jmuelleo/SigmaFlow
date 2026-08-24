@@ -61,6 +61,10 @@ setup_wandb_hardening
 MODEL="${MODEL:?MODEL setzen: sigmaflow_minimal | sigmaflow_twohead | sigmadock}"
 STAGE="${STAGE:-1}"
 STEPS="${STEPS:-120}"          # gemessen werden die letzten STEPS-WARMUP Schritte
+# Zeitlimit je EINZELNER Konfiguration. Muss den Datafront-Aufbau
+# (~2024 s) UND die Messung tragen: Punkt B mit 450 Schritten bei
+# ~0,62 it/s sind weitere ~726 s. 3600 laesst reichlich Luft.
+CFG_TIMEOUT="${CFG_TIMEOUT:-3600}"
 WARMUP_STEPS="${WARMUP_STEPS:-20}"
 
 case "$MODEL" in
@@ -149,7 +153,13 @@ run_one() {
     echo "──────── ${cfg_name}  (batch=${batch}, dataset=${dataset}) ────────"
 
     t0=$(date +%s)
-    timeout 2400 "$PYTHON" scripts/train.py \
+    # CFG_TIMEOUT statt einer festen 2400: der Datafront-Aufbau fuer
+    # 19.037 Komplexe dauert allein rund 2024 s. Mit 2400 blieben sechs
+    # Minuten zum Messen, und ALLE Konfigurationen liefen ins Limit --
+    # zweimal passiert (Jobs 8628663 und 8638132). Der Aufwaermlauf wurde
+    # dabei nie fertig und konnte den Cache nicht schreiben, von dem die
+    # Messlaeufe leben sollen.
+    timeout "$CFG_TIMEOUT" "$PYTHON" scripts/train.py \
         --data_dir "${ARC_DATA}" \
         --train_exps "${dataset}" \
         --val_exps posebusters \
@@ -337,6 +347,7 @@ PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
   run_one "s2_pointA_s${S_A}" pdbbind-general "$BATCH" 500 \
     ${ACCUM_FLAGS[@]+"${ACCUM_FLAGS[@]}"} "${EXTRA_ARR[@]}"
 WALL_A="$(awk -F, -v n="s2_pointA_s${S_A}" '$3==n {print $11}' "$CSV" | tail -1)"
+STAT_A="$(awk -F, -v n="s2_pointA_s${S_A}" '$3==n {print $10}' "$CSV" | tail -1)"
 
 # --- 2) Messpunkt B ---------------------------------------------------------
 STEPS="$S_B"
@@ -344,6 +355,7 @@ PREC="${PREC:-32}" CUDA_PREC="${CUDA_PREC:-high}" DBG=no \
   run_one "s2_pointB_s${S_B}" pdbbind-general "$BATCH" 500 \
     ${ACCUM_FLAGS[@]+"${ACCUM_FLAGS[@]}"} "${EXTRA_ARR[@]}"
 WALL_B="$(awk -F, -v n="s2_pointB_s${S_B}" '$3==n {print $11}' "$CSV" | tail -1)"
+STAT_B="$(awk -F, -v n="s2_pointB_s${S_B}" '$3==n {print $10}' "$CSV" | tail -1)"
 
 # --- 3) Echte Laenge der Trainings-Datafront --------------------------------
 # Reiner Verzeichnis-Scan, kein Torch, keine GPU (datafronts.py:71-108).
@@ -355,7 +367,17 @@ N_TRAIN="$("$PYTHON" "${ARC_REPO}/arc/probe_datafront_size.py" \
 
 # --- 4) Auswertung ----------------------------------------------------------
 RESULT_JSON="${RUN_DIR}/stage2_${MODEL}.json"
-if [ -n "${WALL_A:-}" ] && [ -n "${WALL_B:-}" ] && [ "$WALL_B" -gt "$WALL_A" ]; then
+# Der ZUSTAND der beiden Messpunkte muss geprueft werden, nicht nur ihre
+# Dauer. Bei zwei Zeitlimit-Abbruechen sind beide Wandzeiten fast gleich;
+# WALL_B > WALL_A ist dann rein zufaellig erfuellt, und aus
+# (450-150)/(2402-2401) werden 300 Schritte/s. Genau so meldete Job
+# 8628663 einen Erfolg mit 9600 Samples/s, obwohl nichts gemessen war.
+if [ "${STAT_A:-}" != "OK" ] || [ "${STAT_B:-}" != "OK" ]; then
+    echo "ABBRUCH: Messpunkt A=${STAT_A:-fehlt}, B=${STAT_B:-fehlt}." >&2
+    echo "         Nur zwei erfolgreiche Punkte ergeben eine gueltige Steigung." >&2
+    echo "         Bei TIMEOUT: CFG_TIMEOUT erhoehen (jetzt ${CFG_TIMEOUT} s)." >&2
+    STEPS_PER_S=NA; SAMPLES_PER_S=NA; OVERHEAD_S=NA; STATUS=FAILED
+elif [ -n "${WALL_A:-}" ] && [ -n "${WALL_B:-}" ] && [ "$WALL_B" -gt "$WALL_A" ]; then
     STEPS_PER_S="$(awk -v sa="$S_A" -v sb="$S_B" -v wa="$WALL_A" -v wb="$WALL_B" \
         'BEGIN{printf "%.6f", (sb-sa)/(wb-wa)}')"
     SAMPLES_PER_S="$(awk -v r="$STEPS_PER_S" -v b="$EFF_BATCH" 'BEGIN{printf "%.4f", r*b}')"
