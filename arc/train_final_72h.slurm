@@ -456,13 +456,27 @@ fi
 
 # KEIN --debug. Es aktiviert detect_anomaly, profiler und FullNaNCheckCallback
 # (Forward-Hooks auf jedem Modul) und ist ein Diagnose-, kein Trainingsmodus.
+#
+# KEIN --accum_grad_batches. Das Feld existiert zwar in RunConfig, ist aber in
+# KEINEM der Baeume als argparse-Flag exponiert (geprueft in SigmaDock und in
+# SigmaFlow_Minimal). Der Aufruf scheiterte damit sofort mit rc=2:
+#   train.py: error: unrecognized arguments: --accum_grad_batches 1
+# Das war die Todesursache von Job 8634117. Der Dataclass-Vorgabewert ist 1,
+# das Weglassen ist bei FINAL_ACCUM=1 also verhaltensgleich. Bei jedem anderen
+# Wert waere es das NICHT -- deshalb der Abbruch statt stiller Abweichung.
+if [ "${FINAL_ACCUM}" != "1" ]; then
+    echo "FEHLER: FINAL_ACCUM=${FINAL_ACCUM}, aber scripts/train.py kennt kein" >&2
+    echo "        --accum_grad_batches. Ein Wert != 1 ist so nicht uebergebbar." >&2
+    echo "        Entweder das Flag in config.py exponieren oder die effektive" >&2
+    echo "        Batchgroesse ueber --batch_size allein einstellen." >&2
+    exit 1
+fi
 "$PYTHON" scripts/train.py \
     --data_dir "${ARC_DATA}" \
     --train_exps pdbbind-general \
     --val_exps posebusters \
     --test_exps posebusters \
     --batch_size "${FINAL_BATCH_SIZE}" \
-    --accum_grad_batches "${FINAL_ACCUM}" \
     --num_workers "${FINAL_NUM_WORKERS}" \
     --accelerator gpu \
     --devices 1 \
@@ -546,3 +560,9 @@ echo "  Laufverzeichnis: ${RUN_DIR}"
 echo "  Snapshots:       ${SNAP_DIR}"
 echo "  Manifest:        ${RUN_DIR}/manifest.json"
 echo "=============================================================="
+
+# Der Rueckgabewert des Trainings MUSS nach aussen. Ohne diese Zeile endet das
+# Skript mit dem Status des letzten echo, also 0, und sacct meldet COMPLETED --
+# so geschehen bei Job 8634117: rc=2 nach 46 Sekunden, in der Warteschlange als
+# Erfolg gefuehrt. Dieselbe Klasse Fehler wie das fehlende `set -e`.
+exit "$TRAIN_RC"
