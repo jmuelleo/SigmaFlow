@@ -1,4 +1,152 @@
-# HIER WEITERMACHEN (Stand 2026-08-24, abends)
+# HIER WEITERMACHEN (Stand 2026-08-25, abends)
+
+## Die drei 72-h-Laeufe sind eingereicht
+
+```
+8648492  sigmaflow_minimal   255 Epochen  151.470 Schritte
+8648493  sigmadock           239 Epochen  141.966 Schritte
+8648494  sigmaflow_twohead   255 Epochen  151.470 Schritte
+```
+
+Alle auf `long`, `gres=gpu:l40s:1`, `PD (Priority)`. ARC-Support
+(Yassamine) ist angeschrieben und hat die Prioritaet schon einmal erhoeht.
+
+**Eingereicht wird AUSSCHLIESSLICH ueber `bash arc/submit_final.sh <arm>`.**
+Ein direkter `sbatch arc/train_final_72h.slurm` fordert keine GPU an, weil
+`#SBATCH`-Zeilen `final_config.sh` nicht lesen koennen. Der Skriptkopf sagt
+das jetzt; vorher stand dort der falsche Aufruf.
+
+Kontrollpunkt beim Start: in der ersten Minute muss `SANITY GATE OK` und
+`GPU-WAECHTER OK: NVIDIA L40S` im Log stehen, `NodeList` muss `htc-g0xx`
+sein. Danach der 6-h-Snapshot.
+
+## Vier Fehler an einem Tag, drei davon jetzt automatisch abgefangen
+
+| Fehler | Symptom | Behoben durch |
+|---|---|---|
+| Sanity-Gate-Fehlalarm | 8634116 tot nach 2:51 | `arc/final_sanity_gate.py`, segmentbasiert, 9 Tests |
+| `--accum_grad_batches` | 8634117 rc=2 nach 46 s, gemeldet als COMPLETED | Flag entfernt + `arc/preflight_train_args.py` |
+| Rueckgabewert nicht propagiert | Absturz sah aus wie Erfolg | `exit "$TRAIN_RC"` am Skriptende |
+| Keine GPU angefordert | 8648437/38/58 auf CPU-Knoten | GPU-Waechter + korrigierter Skriptkopf |
+
+`accum_grad_batches` ist ein Feld in `RunConfig`, aber in KEINEM Baum als
+argparse-Flag exponiert. Der Vorgabewert ist 1, `FINAL_ACCUM` ist 1, das
+Weglassen ist also verhaltensgleich; ein Waechter bricht ab, falls je ein
+anderer Wert gesetzt wird.
+
+`preflight_train_args.py` liest die Flags aus dem SLURM-Aufruf, konstruiert
+den echten Parser und bildet die Mengendifferenz. Gegen die Fassung vor der
+Reparatur meldet er genau `--accum_grad_batches` -- der Gegentest ist ueber
+`PREFLIGHT_SLURM` moeglich. Die `METHOD_FLAGS` werden je `case`-Zweig
+zugeordnet, sonst Fehlalarme.
+
+## EXP-110s Horizont ist ABGELEITET, nicht gemessen
+
+Der Durchsatz-Sweep lief zweimal in die Zeitgrenze (8638132, 8640292,
+`timeout 2400` gegen rund 2000 s Datafront-Aufbau). Statt weiter zu warten
+aus den 12-h-Laeufen abgeleitet:
+
+| Arm | Walltime | Schritte | Schritte/s | rel. Minimal |
+|---|---|---|---|---|
+| Minimal | 11:05:40 | 13.750 | 0,34427 | 1,000x |
+| Separate | 11:10:59 | 14.150 | 0,35147 | **1,021x** |
+| SigmaDock | 10:52:16 | 13.200 | 0,33729 | 0,980x |
+
+EXP-110 war also **2,1 % schneller** als Minimal trotz 12,8 % mehr
+Parametern. Uebertragen wurde der Vorsprung NICHT: der Kontrollfall
+SigmaDock zeigt, dass sich die Verhaeltnisse zwischen Batch 8 und Batch 32
+verschieben (2,0 % -> 6,2 % Rueckstand). Konservativ auf Minimals gemessene
+21,1 Beispiele/s gesetzt. Restunsicherheit rund 4 %, Spanne 250-261 Epochen.
+
+**Gehoert in die Limitationen der Arbeit.** Ebenso der Unterschied im
+Versuchsaufbau: die 12-h-Laeufe hatten alle denselben Fahrplan (6 Epochen)
+und wurden von der Walltime abgeschnitten; die 72-h-Laeufe haben je einen
+eigenen Fahrplan, der vollstaendig durchlaeuft.
+
+Falls der Sweep doch noch gefahren wird: `CFG_TIMEOUT=7200`, nicht 3600.
+
+## Speicherplatz
+
+43 GB freigeraeumt: 117 -> 74 GB eigener Verbrauch, 257 -> 72 Pruefpunkte.
+Freier Platz auf `/data/stat-cadd` dadurch 57 -> 97 GB. Geloescht wurden
+`checkpoints/`-Unterverzeichnisse von 49 Laeufen mit unter 3000 Schritten
+(Durchsatzmessungen, Rauchtests); Logs und Konfigurationen blieben stehen.
+
+**Die drei Thesis-Modelle sind unantastbar** und wurden per Gegenprobe aus
+der Loeschliste ausgeschlossen:
+
+```
+EXP-110/0-08-21_21-24-48                 step=14150  -> Separate
+Variants_d_frame_fix/0-08-11_18-00-41    step=13750  -> Minimal
+SigmaDock_Repro/0-08-11_17-57-05         step=13200  -> SigmaDock
+```
+
+Minimal liegt in `Variants_d_frame_fix/`, NICHT in `SigmaFlow_Minimal/`.
+Wer nach Verzeichnisnamen aufraeumt, loescht das falsche.
+
+15 Laeufe mit >= 3000 Schritten (13,5 GB) sind unangetastet und noch nicht
+eingeordnet -- darunter zwei mit 31.700 und 31.000 Schritten vom 07.08.
+
+Das volle Volume ist NICHT durch uns verursacht: 74 GB von 10 TB, und es
+gibt keine Nutzerquote auf `/data/stat-cadd`. Inodes zu 1 % belegt, es sind
+also Bytes. Die Home-Quote ist ueberschritten: 15.695 M bei 15.360 M Soll.
+
+## Auswertung nach dem Paper-Protokoll
+
+`paper_protokoll.py` (neu) wertet die drei Arme exakt nach Prat et al. aus:
+gemischter Score, generierter Konformer, Top-1 gegen die drei Zielgroessen
+des Papers. Bei N_seeds = 40:
+
+| Arm | RMSD<2 | PB-Valid | kombiniert |
+|---|---|---|---|
+| Minimal | 19,56 % | 39,48 % | 11,60 % |
+| **Separate** | **22,48 %** | **42,69 %** | **13,60 %** |
+| SigmaDock | 20,22 % | 31,68 % | 8,74 % |
+
+Auf der Schlagzeilenkennzahl des Papers liegt Separate also 56 % relativ
+vor SigmaDock. Bei reiner Platzierung und wenigen Seeds fuehrt SigmaDock
+(k=10: 14,17 %), erst ab etwa 20 Seeds ziehen die Flow-Arme vorbei.
+
+Gegenprobe ohne Zirkularitaet (nur gegen RMSD<2): der gemischte Score ist
+bei acht von neun Kombinationen SCHLECHTER als die reine Vinardo-Energie.
+Das Paper stellt diesen Vergleich nicht an und braucht ihn auch nicht -- es
+berichtet ein System, keinen Rankervergleich.
+
+## Thesis: Stand und offene Punkte
+
+`Thesis_Draft_Proposal/24.08.2026/draft2/main.tex`, lokal **11.973 Woerter**
+im Reinbau, harte Grenze 12.000. **Die lokale Datei ist VERALTET** -- der
+Nutzer arbeitet in Overleaf und hat dort mehrere Vorschlaege eingearbeitet
+(Varianten-Satz, Wegweiser-Absatz, beta-Erlaeuterung, sigma-Umbenennung,
+SigmaDock-Verlustformel, "symmetry-related copies", Datenraum-Gewichte).
+Vor der naechsten Arbeit am Text die Overleaf-Fassung herunterladen.
+
+**Vier Symbolkollisionen** gefunden, alle als reine Umbenennung behebbar:
+
+| Symbol | Kollision | Vorschlag |
+|---|---|---|
+| beta | VP-Rate vs. Ranking-Exponent 4 | Exponent im Kontext eindeutig, bleibt |
+| sigma_t | VP-Standardabweichung vs. IGSO(3)-Konzentration | `f_{\sigma^{SO(3)}_t}` |
+| beta_t / sigma_t in sec:score-vs-velocity | Streuung vs. Diffusionskoeffizient | sigma_t bzw. g_t |
+| Omega | geodaetischer Winkel vs. Winkelgeschwindigkeit | Winkel wird theta |
+
+**Zwei Belege, die vorhandene Behauptungen stuetzen:** SigmaDocks Parser
+kennt 84 Optionen, die Flow-Baeume 81 -- der Unterschied "configuration
+flags that have no flow-matching counterpart" ist damit abzaehlbar. Und die
+Datenraum-Verlustterme (`trans_data_weight`, `rot_data_weight`) haben in
+JEDEM Lauf Gewicht null; sie werden berechnet und geloggt, tragen aber
+nichts zum Gradienten bei. Der Satz "The weights are inherited unchanged by
+every arm" ist so nicht haltbar -- SigmaDock hat vier Gewichte, SigmaFlow
+zwei, weil die Datenraum-Terme dort entfernt wurden.
+
+**Nicht nachgerechnet:** `tab:nfe` und `tab:pathlength`. `tab:headline`,
+`tab:conformer` und `tab:selection` sind zellweise verifiziert.
+
+**Offen:** 12 Abbildungsplatzhalter, 6 leere Anhaenge, der reservierte
+72-h-Block kann jetzt konkret werden.
+
+
+# UEBERHOLT, siehe Abschnitt darueber (Stand 2026-08-24, abends)
 
 ## Der Versuchsplan ist geschlossen
 
