@@ -9,15 +9,27 @@
 #   genau einmal; die methodenspezifischen Abweichungen stehen in EINEM
 #   `case`-Block und sind damit vollstaendig aufzaehlbar.
 #
+# NIEMALS DIREKT MIT sbatch AUFRUFEN.
+#   Die #SBATCH-Zeilen unten werden von SLURM gelesen, BEVOR Shellcode laeuft;
+#   sie koennen final_config.sh nicht sehen und fordern daher WEDER Partition
+#   NOCH --gres an. Ein direkter `sbatch arc/train_final_72h.slurm` bekommt
+#   deshalb einen CPU-Knoten, baut minutenlang den Datafront auf und stirbt
+#   dann in Lightning an "No supported gpu backend found!".
+#   Genau so verloren: 8648437, 8648438, 8648458 am 2026-08-25.
+#   Der GPU-Waechter weiter unten faengt das jetzt in Sekunden ab.
+#
 # Usage (nach dem Throughput-Sweep, Werte in arc/final_config.sh gesetzt):
-#   MODEL=sigmadock          sbatch arc/train_final_72h.slurm
-#   MODEL=sigmaflow_minimal  sbatch arc/train_final_72h.slurm
-#   MODEL=sigmaflow_twohead  sbatch arc/train_final_72h.slurm   # EXP-110
-#   MODEL=sigmaflow_source   sbatch arc/train_final_72h.slurm   # nur nach Gate 4
-#   MODEL=sigmaflow_conf     sbatch arc/train_final_72h.slurm   # Extension
+#   bash arc/submit_final.sh sigmadock
+#   bash arc/submit_final.sh sigmaflow_minimal
+#   bash arc/submit_final.sh sigmaflow_twohead          # EXP-110
+#   bash arc/submit_final.sh sigmaflow_source           # nur nach Gate 4
+#   bash arc/submit_final.sh sigmaflow_conf             # Extension
 #
 # Zweiter Seed:
-#   MODEL=sigmaflow_minimal FINAL_SEED=1 sbatch arc/train_final_72h.slurm
+#   bash arc/submit_final.sh sigmaflow_minimal 1
+#
+# Vorher ansehen, ohne einzureichen:
+#   DRY_RUN=1 bash arc/submit_final.sh sigmadock
 #
 # Fortsetzen nach Knotenausfall (Checkpointordner wird vorher gesichert):
 #   MODEL=sigmaflow_minimal RESUME=/pfad/zu/last.ckpt sbatch arc/train_final_72h.slurm
@@ -233,6 +245,33 @@ echo "[cfg] Validierung alle ${VAL_INTERVAL} Microbatches"
 # SigmaFlow_Development_JulianMueller heisst.
 "$PYTHON" "${ARC_REPO}/arc/final_sanity_gate.py" "$EXPECT_IN_PATH" "$GATE_KIND"
 [ $? -ne 0 ] && { echo "SANITY GATE FEHLGESCHLAGEN — Abbruch."; exit 1; }
+
+# ------------------------------------------------------------- GPU-Waechter
+# Ohne diese Pruefung laeuft ein Job ohne GPU-Zuteilung noch minutenlang
+# weiter -- Datenfront aufbauen, Modell instanziieren, wandb starten -- und
+# stirbt erst tief in Lightning an
+#     MisconfigurationException: No supported gpu backend found!
+# Am 2026-08-25 hat das drei Jobs gekostet (8648437, 8648438, 8648458), weil
+# sie direkt per sbatch statt ueber submit_final.sh eingereicht wurden und
+# damit ohne --gres liefen. Der Fehler gehoert in die zweite Sekunde, und die
+# Meldung muss sagen, was zu tun ist -- nicht nur, dass etwas fehlt.
+GPU_NAME="$("$PYTHON" -c "
+import sys, torch
+if not torch.cuda.is_available():
+    sys.exit(1)
+print(torch.cuda.get_device_name(0))
+" 2>/dev/null)" || {
+    echo "GPU-WAECHTER FEHLGESCHLAGEN — Abbruch." >&2
+    echo "  torch.cuda.is_available() ist False: dieser Job hat keine GPU." >&2
+    echo "  Knoten          : $(hostname)" >&2
+    echo "  SLURM_JOB_GPUS  : ${SLURM_JOB_GPUS:-<keine gres/gpu-Zuteilung>}" >&2
+    echo "" >&2
+    echo "  Dieses Skript nicht direkt mit sbatch aufrufen. Die #SBATCH-Zeilen" >&2
+    echo "  koennen final_config.sh nicht lesen und fordern keine GPU an." >&2
+    echo "  Richtig:  bash arc/submit_final.sh ${MODEL}" >&2
+    exit 1
+}
+echo "GPU-WAECHTER OK: ${GPU_NAME}"
 
 write_run_metadata "$RUN_ID" "$CODE_DIR" "$PYTHON"
 SNAP_DIR="${RUN_DIR}/snapshots"; mkdir -p "$SNAP_DIR"
