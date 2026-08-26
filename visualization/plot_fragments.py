@@ -82,6 +82,8 @@ L = {
   "bestrmsd":"Median bester RMSD  [$\\AA$]",
   "title_c2":"Bester RMSD gegen Fragmentzahl",
   "openc":"Offene Kreise: weniger als {n} Liganden im Bin — Einzelfaelle, keine Rate.",
+  "rigid":"{n} Liganden sind ein einziger starrer Koerper ($D = 6$)",
+  "cumlab":"kumuliert  [%]",
  },
  "en": {
   "ligands":"Ligands", "frags":"Fragments per ligand", "median":"Median",
@@ -96,6 +98,8 @@ L = {
   "bestrmsd":"Median best RMSD  [$\\AA$]",
   "title_c2":"Best RMSD vs. fragment count",
   "openc":"Open circles: fewer than {n} ligands in bin — individual cases, not a rate.",
+  "rigid":"{n} ligands are a single rigid body ($D = 6$)",
+  "cumlab":"cumulative  [%]",
  },
 }
 T = L["de"]          # wird in main() gesetzt
@@ -155,13 +159,22 @@ def read_joined(path: Path):
     return rows, {k: v for k, v in perf.items() if v}
 
 
-def fig_a_distribution(rows: list[dict], out: Path, n_missing: int) -> None:
+def fig_a_distribution(rows: list[dict], out: Path, n_missing: int,
+                       set_label: str = "", cum_style: str = "panel") -> None:
     frags = [r["fragments"] for r in rows]
     lo, hi = min(frags), max(frags)
     bins = np.arange(lo - 0.5, hi + 1.5, 1)
 
-    fig, (ax, ax2) = plt.subplots(2, 1, figsize=(6.2, 4.6), sharex=True,
-                                  gridspec_kw={"height_ratios": [3, 1], "hspace": 0.12})
+    # Zwei Bauweisen fuer die kumulative Kurve. "panel" trennt sie sauber ab und
+    # ist bei zwoelf Saeulen lesbarer; "twin" legt sie auf eine zweite y-Achse
+    # ueber die Saeulen, wie in der Abbildungsbeschreibung vorgesehen.
+    if cum_style == "twin":
+        fig, ax = plt.subplots(figsize=(6.2, 3.6))
+        ax2 = None
+    else:
+        fig, (ax, ax2) = plt.subplots(2, 1, figsize=(6.2, 4.6), sharex=True,
+                                      gridspec_kw={"height_ratios": [3, 1],
+                                                   "hspace": 0.12})
 
     counts, _, patches = ax.hist(frags, bins=bins, color=C_BAR,
                                  edgecolor=C_BAR_EDGE, linewidth=0.8)
@@ -182,10 +195,24 @@ def fig_a_distribution(rows: list[dict], out: Path, n_missing: int) -> None:
     ax.set_ylim(0, max(counts) * 1.18)
 
     ax.set_ylabel(T["ligands"])
-    title = f'{T["title_a"]}  (n = {len(rows)})'
+    title = f'{T["title_a"]}'
+    if set_label:
+        title += f' — {set_label}'
+    title += f'  (n = {len(rows)})'
     if n_missing:
         title += f'   [{n_missing} {T["nomeas"]}]'
     ax.set_title(title, loc="left", fontsize=10)
+
+    # Einzelfragment-Liganden: der interessanteste Rand der Verteilung, weil
+    # dort D = 6 ist und die Zerlegung gar nichts zu tun hat. Ohne Hinweis
+    # verschwindet die Saeule neben den grossen.
+    if lo == 1:
+        n1 = int(counts[0])
+        ax.annotate(T["rigid"].format(n=n1),
+                    xy=(1, n1), xytext=(1.9, max(counts) * 0.72),
+                    fontsize=7.5, color="#444444", ha="left", va="center",
+                    arrowprops=dict(arrowstyle="-", color="#888888", lw=0.8,
+                                    shrinkA=0, shrinkB=3))
 
     # Die Zustandsdimension gehoert nach OBEN. Unten kollidiert sie mit der
     # Achsenbeschriftung des kumulativen Panels.
@@ -194,15 +221,29 @@ def fig_a_distribution(rows: list[dict], out: Path, n_missing: int) -> None:
     top.set_xlabel(T["statedim"], fontsize=8, labelpad=4)
     top.tick_params(labelsize=7)
 
-    # Kumulativ als schmales Panel darunter -- beantwortet "wie selten ist >= k".
     order = np.sort(frags)
     cum = np.arange(1, len(order) + 1) / len(order)
-    ax2.step(order, 100 * (1 - cum), where="post", color=C_BAR_EDGE, lw=1.3)
-    ax2.set_ylabel(T["atleast"], fontsize=8)
-    ax2.set_xlabel(T["frags"])
-    ax2.set_xticks(range(lo, hi + 1))
-    ax2.set_ylim(0, 100)
-    ax2.set_yticks([0, 50, 100])
+    if cum_style == "twin":
+        # Zweite y-Achse rechts: kumulativer Anteil <= k, an den Saeulenmitten.
+        axr = ax.twinx()
+        ks = np.arange(lo, hi + 1)
+        pct = [100 * np.mean(np.asarray(frags) <= k) for k in ks]
+        axr.plot(ks, pct, color="#333333", lw=1.3, marker="o", ms=3, zorder=4)
+        axr.set_ylabel(T["cumlab"], fontsize=8)
+        axr.set_ylim(0, 105)
+        axr.set_yticks([0, 25, 50, 75, 100])
+        axr.grid(False)
+        axr.spines["right"].set_visible(True)
+        ax.set_xlabel(T["frags"])
+        ax.set_xticks(range(lo, hi + 1))
+    else:
+        # Kumulativ als schmales Panel darunter -- "wie selten ist >= k".
+        ax2.step(order, 100 * (1 - cum), where="post", color=C_BAR_EDGE, lw=1.3)
+        ax2.set_ylabel(T["atleast"], fontsize=8)
+        ax2.set_xlabel(T["frags"])
+        ax2.set_xticks(range(lo, hi + 1))
+        ax2.set_ylim(0, 100)
+        ax2.set_yticks([0, 50, 100])
 
     fig.savefig(out / "A_fragment_distribution.png")
     fig.savefig(out / "A_fragment_distribution.pdf")
@@ -345,6 +386,10 @@ def main() -> int:
     ap.add_argument("--perf", action="append", default=[], metavar="ARM=CSV",
                     help="per_complex_csv aus evaluate_run, mehrfach angebbar")
     ap.add_argument("--out-dir", type=Path, default=Path("figures"))
+    ap.add_argument("--set-label", default="",
+                    help="Name des Datensatzes fuer den Titel, z.B. 'PoseBusters v2'")
+    ap.add_argument("--cum-style", choices=["panel", "twin"], default="panel",
+                    help="kumulative Kurve als eigenes Panel oder auf zweiter y-Achse")
     ap.add_argument("--min-n", type=int, default=3,
                     help="ab wieviel Liganden je Bin eine Rate als Linie gilt")
     args = ap.parse_args()
@@ -378,7 +423,8 @@ def main() -> int:
         print(f"  {arm}: {len(perf[arm])} Komplexe mit Metriken")
 
     print()
-    fig_a_distribution(rows, args.out_dir, n_missing)
+    fig_a_distribution(rows, args.out_dir, n_missing,
+                       set_label=args.set_label, cum_style=args.cum_style)
     fig_b_size(rows, args.out_dir)
     fig_c_performance(rows, perf, args.out_dir, args.min_n)
     if perf:
