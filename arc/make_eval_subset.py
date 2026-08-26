@@ -43,11 +43,78 @@ from pathlib import Path
 
 OUT_DEFAULT = Path(__file__).resolve().parent / "eval_subset.txt"
 
+# Kandidaten in der Reihenfolge, in der gesucht wird. Der erste ist der
+# kanonische Satz -- derselbe, auf den ARC_TRUE_DIR in arc/_common.sh zeigt.
+PB_KANDIDATEN = (
+    "posebusters_paper/posebusters_benchmark_set",
+    "posebusters_full/posebusters_benchmark_set",
+    "posebusters",
+    "",
+)
+
+
+def komplex_ids(d: Path) -> list:
+    """Unterverzeichnisse, die wie ein Komplex aussehen: mit PDB UND SDF."""
+    if not d.is_dir():
+        return []
+    out = []
+    try:
+        kinder = sorted(k for k in d.iterdir() if k.is_dir())
+    except OSError:
+        return []
+    for k in kinder:
+        if any(k.glob("*.pdb")) and any(k.glob("*.sdf")):
+            out.append(k.name)
+    return out
+
+
+def find_pb_dir(data_dir: Path, explizit: Path | None):
+    """Sucht das Verzeichnis mit den Komplexordnern, statt es zu konstruieren.
+
+    WARUM DAS NOETIG IST
+        Vorher stand hier `data_dir / "posebusters"`. Dieses Verzeichnis
+        existiert zwar, enthaelt aber nur leere raw/- und processed/-Ordner --
+        keinen einzigen Komplex. Der kanonische Satz liegt verschachtelt unter
+        posebusters_paper/posebusters_benchmark_set/. Genau dieselbe
+        Verwechslung ist in eval_snapshots.slurm, compare_rankers.slurm und
+        evaluate_snapshot.py schon einmal aufgetreten und wurde dort mit
+        ARC_TRUE_DIR behoben (arc/_common.sh:17-30); dieses Skript war die
+        letzte Stelle, die den Pfad noch selbst zusammensetzt.
+
+    Es wird jeder Kandidat geprueft und berichtet, was gefunden wurde. Ein
+    leeres Verzeichnis gilt als NICHT gefunden -- sonst entstuende ein leerer
+    Subset, und die Kurven waeren still leer geblieben.
+    """
+    if explizit is not None:
+        ids = komplex_ids(explizit)
+        if not ids:
+            raise SystemExit(f"--dataset_dir enthaelt keine Komplexe: {explizit}")
+        return explizit, ids
+
+    versucht = []
+    for rel in PB_KANDIDATEN:
+        kand = data_dir / rel if rel else data_dir
+        ids = komplex_ids(kand)
+        versucht.append((kand, len(ids)))
+        if ids:
+            return kand, ids
+
+    zeilen = "\n".join(f"    {p}  ->  {n} Komplexe" for p, n in versucht)
+    raise SystemExit(
+        "Kein Verzeichnis mit Komplexordnern gefunden. Geprueft wurde:\n"
+        f"{zeilen}\n"
+        "  -> mit --dataset_dir direkt darauf zeigen."
+    )
+
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data_dir", required=True,
-                    help="Wurzel mit posebusters/ darunter.")
+                    help="Datenwurzel. Der PoseBusters-Satz wird darunter GESUCHT, "
+                         "nicht angenommen -- siehe find_pb_dir().")
+    ap.add_argument("--dataset_dir", type=Path, default=None,
+                    help="Direkt das Verzeichnis mit den Komplexordnern, "
+                         "falls die Suche danebenliegt.")
     ap.add_argument("--n", type=int, default=50)
     ap.add_argument("--out", type=Path, default=OUT_DEFAULT)
     ap.add_argument("--force", action="store_true",
@@ -63,16 +130,8 @@ def main() -> int:
         print("  Zum Ersetzen: --force (macht alle bisherigen Kurven unvergleichbar).")
         return 0
 
-    pb = Path(args.data_dir) / "posebusters"
-    if not pb.is_dir():
-        raise SystemExit(f"Nicht gefunden: {pb}")
-
-    # Ein Komplex ist ein Unterverzeichnis mit einer *_protein.pdb darin.
-    ids = sorted(d.name for d in pb.iterdir()
-                 if d.is_dir() and any(d.glob("*_protein.pdb")))
-    if not ids:
-        raise SystemExit(f"Keine Komplexe unter {pb} gefunden.")
-    print(f"PoseBusters: {len(ids)} Komplexe gefunden")
+    pb, ids = find_pb_dir(Path(args.data_dir), args.dataset_dir)
+    print(f"PoseBusters: {len(ids)} Komplexe unter {pb}")
 
     n = min(args.n, len(ids))
     # Systematische Stichprobe ueber die sortierte Liste: Index
