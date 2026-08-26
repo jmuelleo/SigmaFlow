@@ -47,7 +47,7 @@
 #SBATCH --partition=short
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-#SBATCH --time=02:00:00
+#SBATCH --time=06:00:00
 #SBATCH --output=/data/stat-cadd/shug8458/arc_runs/slurm_logs/%A_%a.out
 #SBATCH --error=/data/stat-cadd/shug8458/arc_runs/slurm_logs/%A_%a.err
 
@@ -106,13 +106,31 @@ fi
 
 MODEL="${MODEL:?MODEL setzen: sigmadock | sigmaflow_minimal | sigmaflow_twohead | sigmaflow_source | sigmaflow_conf}"
 EVAL_SEED_BASE="${EVAL_SEED_BASE:-0}"
+
+# WELCHER SATZ AUSGEWERTET WIRD
+#   posebusters     -> die 209 entpackten Komplexe, mit Whitelist auf einen
+#                      festen Teilsatz eingeschraenkt (billige Diagnosekurve)
+#   posebusters308  -> die offiziellen 308 der Zeitschriftenfassung, also die
+#                      Menge, auf der SigmaDock berichtet. Die Auswahl steckt
+#                      dort im Verzeichnis (arc/make_v2_308_dir.sh); eine
+#                      Whitelist waere wirkungslos, weil sample.py:458 sie nur
+#                      bei woertlich "posebusters" anwendet -- und zwar STILL.
+EXPERIMENT="${EXPERIMENT:-posebusters}"
+TRUE_DIR="${TRUE_DIR:-${ARC_TRUE_DIR}}"
 SUBSET_FILE="${SUBSET_FILE:-${REPO_ROOT}/arc/eval_subset.txt}"
 
-if [ ! -f "$SUBSET_FILE" ]; then
-    echo "FEHLER: Subsetdatei fehlt: ${SUBSET_FILE}" >&2
-    echo "  -> einmalig erzeugen mit:" >&2
-    echo "     python arc/make_eval_subset.py --data_dir ${ARC_DATA}" >&2
-    exit 1
+USE_WHITELIST=0
+if [ "$EXPERIMENT" = "posebusters" ]; then
+    USE_WHITELIST=1
+    if [ ! -f "$SUBSET_FILE" ]; then
+        echo "FEHLER: Subsetdatei fehlt: ${SUBSET_FILE}" >&2
+        echo "  -> einmalig erzeugen mit:" >&2
+        echo "     python arc/make_eval_subset.py --data_dir ${ARC_DATA}" >&2
+        exit 1
+    fi
+else
+    echo "[curve] Experiment '${EXPERIMENT}': Auswahl kommt aus dem Verzeichnis,"
+    echo "        keine Whitelist. SUBSET_FILE wird ignoriert."
 fi
 
 # sigmaflow_twohead fehlte in der GPU-Fassung; EXP-110 waere dort mit
@@ -160,7 +178,7 @@ if [ "${MERGE:-0}" = "1" ]; then
         echo "[merge] ${BASE}: ${NPOSE} SDF"
         "$PYTHON" -m SigmaFlow_Evaluation.evaluate_run \
             --sampling_root "$D" \
-            --true_dir "${ARC_TRUE_DIR}" \
+            --true_dir "${TRUE_DIR}" \
             --label "${MODEL}_${BASE}" \
             --out_json "${D}/evaluation.json" \
           > "${D}/evaluate.log" 2>&1 || echo "[merge] ${BASE}: Auswertung fehlgeschlagen"
@@ -221,13 +239,19 @@ SEED=$(( EVAL_SEED_BASE + TASK_SEED ))
 OUT_ROOT="${OUT_DIR}/${TAG}__nfe${TASK_NFE}"
 mkdir -p "$OUT_ROOT"
 
-N_SUBSET="$(grep -cve '^[[:space:]]*$' "$SUBSET_FILE")"
 echo "[curve] Aufgabe   : ${IDX} von ${N_TASKS}"
 echo "[curve] Snapshot  : ${TAG}  (Index ${TASK_SNAP})"
 echo "[curve] Schritte  : ${TASK_NFE}"
 echo "[curve] Seed      : ${SEED}"
 echo "[curve] Modell    : ${MODEL}  (${KIND})"
-echo "[curve] Subset    : ${N_SUBSET} Komplexe aus $(basename "$SUBSET_FILE")"
+echo "[curve] Experiment: ${EXPERIMENT}"
+if [ "$USE_WHITELIST" = "1" ]; then
+    echo "[curve] Subset    : $(grep -cve '^[[:space:]]*$' "$SUBSET_FILE") Komplexe aus $(basename "$SUBSET_FILE")"
+    WHITE_ARG=(data.blacklist="${SUBSET_FILE}")
+else
+    echo "[curve] Subset    : ganzes Verzeichnis des Experiments"
+    WHITE_ARG=()
+fi
 echo "[curve] Ausgabe   : ${OUT_ROOT}"
 
 cd "$CODE_DIR" || exit 1
@@ -249,14 +273,14 @@ fi
 "$PYTHON" scripts/sample.py \
     ckpt="${CKPT}" \
     data_dir="${ARC_DATA}" \
-    experiment=posebusters \
+    experiment=${EXPERIMENT} \
     output_dir="${OUT_ROOT}" \
     run_tag="${MODEL}_${TAG}_nfe${TASK_NFE}_s${SEED}" \
     seed="${SEED}" \
     num_seeds=1 \
     "${STEP_ARG[@]}" \
+    "${WHITE_ARG[@]}" \
     graph.sample_conformer=false \
-    data.blacklist="${SUBSET_FILE}" \
     postprocessing.scoring=null \
     postprocessing.bust_config=null \
     hardware.accelerator=cpu \
