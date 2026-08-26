@@ -213,6 +213,15 @@ if [ "${MERGE:-0}" = "1" ]; then
         # ueber die Seeds stehen NUR dort (evaluate_run.py:373-394). Die JSON
         # kennt bloss `basics.single_sample`, also Seed 0. Ohne diese Tabelle
         # haetten wir zehn Seeds gesampelt und einen berichtet.
+        # PYTHONPATH ausdruecklich um die Repo-Wurzel erweitern.
+        #   `python -m` legt normalerweise das Arbeitsverzeichnis auf sys.path,
+        #   aber darauf ist kein Verlass: auf ARC scheiterte der Aufruf mit
+        #   "No module named 'SigmaFlow_Evaluation'", obwohl das Verzeichnis
+        #   stimmte. Ursache ist vermutlich PYTHONSAFEPATH in der Umgebung;
+        #   mit explizitem Suchpfad ist es egal.
+        #   Dieselbe Schwachstelle steckt in eval_snapshots.slurm und
+        #   compare_rankers.slurm.
+        PYTHONPATH="${ARC_REPO}:${PYTHONPATH:-}" \
         "$PYTHON" -m SigmaFlow_Evaluation.evaluate_run \
             --sampling_root "$D" \
             --true_dir "${TRUE_DIR}" \
