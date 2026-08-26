@@ -121,6 +121,44 @@ def best_copy(pos_pred: np.ndarray, copies: list[Chem.Mol]) -> tuple[Chem.Mol | 
     return best_m, best_r
 
 
+def _resolve_experiment_dir(sampling_root: Path) -> Path:
+    """Findet das Experimentverzeichnis unter <sampling_root>/results/.
+
+    WARUM NICHT EINFACH "posebusters"
+        sample.py legt die Posen unter results/<experiment>/ ab, wobei
+        <experiment> der Name aus conf/experiments/ ist. Bei der Auswertung
+        auf den offiziellen 308 heisst er "posebusters308", und der fest
+        verdrahtete Pfad lief ins Leere -- mit der Meldung "Keine
+        seed_*-Verzeichnisse", die wie fehlende Daten aussieht, obwohl 308
+        Posen daneben lagen.
+
+    VERHALTEN
+        "posebusters" hat weiterhin Vorrang, damit alle bestehenden Aufrufe
+        unveraendert weiterlaufen. Gibt es das nicht, wird das einzige
+        vorhandene Verzeichnis genommen. Sind es mehrere, wird abgebrochen
+        und sie werden benannt -- eine stille Auswahl waere die schlechteste
+        Variante, weil die Zahlen dann von einem anderen Satz kaemen als
+        gedacht.
+    """
+    results = sampling_root / "results"
+    vorrang = results / "posebusters"
+    if vorrang.is_dir():
+        return vorrang
+    if not results.is_dir():
+        raise SystemExit(f"Kein results/-Verzeichnis unter {sampling_root}")
+    kandidaten = sorted(d for d in results.iterdir() if d.is_dir())
+    if not kandidaten:
+        raise SystemExit(f"{results} ist leer")
+    if len(kandidaten) > 1:
+        raise SystemExit(
+            f"Mehrere Experimentverzeichnisse unter {results}: "
+            + ", ".join(d.name for d in kandidaten)
+            + " -- eindeutig machen, es wird keines geraten."
+        )
+    print(f"[eval] Experimentverzeichnis: {kandidaten[0].name}")
+    return kandidaten[0]
+
+
 def collect(sampling_root: Path, true_dir: Path, model: str | None,
             fail: Failures) -> tuple[list[PoseRecord], dict[tuple[str, str], float]]:
     """Liest alle Posen aller Seeds und baut PoseRecords.
@@ -128,7 +166,7 @@ def collect(sampling_root: Path, true_dir: Path, model: str | None,
     Rueckgabe: (records, tfd_by_pose). PoseRecord ist frozen=True -- der
     TFD-Wert wird deshalb NICHT an das Objekt geheftet, sondern in einer
     Seitentabelle gehalten, die ueber (complex_id, pose_id) verknuepft."""
-    base = sampling_root / "results" / "posebusters"
+    base = _resolve_experiment_dir(sampling_root)
     if model:
         seed_dirs = sorted((base / model).glob("seed_*"))
     else:
