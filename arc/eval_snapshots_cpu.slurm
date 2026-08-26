@@ -117,6 +117,27 @@ EVAL_SEED_BASE="${EVAL_SEED_BASE:-0}"
 #                      bei woertlich "posebusters" anwendet -- und zwar STILL.
 EXPERIMENT="${EXPERIMENT:-posebusters}"
 TRUE_DIR="${TRUE_DIR:-${ARC_TRUE_DIR}}"
+
+# KONFORMER: sampled ODER bound. Das ist keine Kleinigkeit.
+#   sampled -> graph.sample_conformer=true, der Vorgabewert der Konfiguration.
+#              Der Eingangskonformer wird erzeugt; das Modell kennt die
+#              Kristallkonformation nicht.
+#   bound   -> graph.sample_conformer=false, Fragmente aus der Kristallpose.
+#              Verschafft SigmaDock einen Rotationsprior-Vorteil und verzerrt
+#              damit den Vergleich zwischen den Armen.
+#
+#   eval_snapshots.slurm (GPU) uebergibt fest `false`, also bound. Fuer eine
+#   Kurve, die Arme gegeneinander stellt, ist das die falsche Wahl; Vorgabe
+#   hier ist deshalb sampled.
+#
+#   Die Einstellung steht im Verzeichnisnamen, damit bound- und sampled-Posen
+#   nicht im selben Ordner landen und von MERGE zu einer Zahl vermengt werden.
+CONFORMER="${CONFORMER:-sampled}"
+case "$CONFORMER" in
+  sampled) CONF_FLAG=true ;;
+  bound)   CONF_FLAG=false ;;
+  *) echo "CONFORMER unbekannt: ${CONFORMER} (sampled|bound)" >&2; exit 1 ;;
+esac
 SUBSET_FILE="${SUBSET_FILE:-${REPO_ROOT}/arc/eval_subset.txt}"
 
 USE_WHITELIST=0
@@ -169,24 +190,32 @@ if [ "${MERGE:-0}" = "1" ]; then
         [ -d "$D" ] || continue
         BASE="$(basename "$D")"
         TAG="${BASE%%__nfe*}"
-        NFE="${BASE##*__nfe}"
+        REST="${BASE#*__nfe}"        # z.B. "25__sampled"
+        NFE="${REST%%__*}"
+        CONF="${REST#*__}"
         NPOSE="$(find "$D" -name '*.sdf' 2>/dev/null | wc -l)"
         if [ "$NPOSE" -eq 0 ]; then
             echo "[merge] ${BASE}: keine Posen -- uebersprungen"
             continue
         fi
         echo "[merge] ${BASE}: ${NPOSE} SDF"
+        # --per_complex_csv ist NICHT optional-schmueckend: die Oracle-Groessen
+        # ueber die Seeds stehen NUR dort (evaluate_run.py:373-394). Die JSON
+        # kennt bloss `basics.single_sample`, also Seed 0. Ohne diese Tabelle
+        # haetten wir zehn Seeds gesampelt und einen berichtet.
         "$PYTHON" -m SigmaFlow_Evaluation.evaluate_run \
             --sampling_root "$D" \
             --true_dir "${TRUE_DIR}" \
             --label "${MODEL}_${BASE}" \
             --out_json "${D}/evaluation.json" \
+            --per_complex_csv "${D}/per_complex.csv" \
           > "${D}/evaluate.log" 2>&1 || echo "[merge] ${BASE}: Auswertung fehlgeschlagen"
 
-        "$PYTHON" - "${ROW_DIR}/row_${BASE}.csv" "$TAG" "$NFE" "$N_SEEDS" \
-                    "${SNAP_DIR}/snap_${TAG}.meta.txt" "${D}/evaluation.json" <<'PYEOF'
-import json, sys, pathlib
-row_path, tag, nfe, nseeds, meta_path, ev_path = sys.argv[1:7]
+        "$PYTHON" - "${ROW_DIR}/row_${BASE}.csv" "$TAG" "$NFE" "$CONF" "$N_SEEDS" \
+                    "${SNAP_DIR}/snap_${TAG}.meta.txt" "${D}/evaluation.json" \
+                    "${D}/per_complex.csv" <<'PYEOF'
+import csv, json, statistics, sys, pathlib
+row_path, tag, nfe, conf, nseeds, meta_path, ev_path, pc_path = sys.argv[1:9]
 
 def meta(key, default=""):
     try:
@@ -198,26 +227,41 @@ def meta(key, default=""):
         pass
     return default
 
-base = [tag, nfe, nseeds, meta("walltime_h"), meta("epoch"),
+base = [tag, nfe, conf, nseeds, meta("walltime_h"), meta("epoch"),
         meta("global_step"), meta("examples_seen"), meta("lr")]
+
+# Aus der JSON: was ueber ALLE Posen geht.
+n_poses = rmsd_all = ""
 try:
-    ev = json.loads(pathlib.Path(ev_path).read_text(encoding="utf-8"))
-    b = ev["basics"]
-    row = base + [b.get("n_poses", ""), b.get("rmsd_median_all", ""),
-                  b.get("single_sample", {}).get("success_below_2.0A", ""),
-                  b.get("single_sample", {}).get("success_below_5.0A", "")]
+    b = json.loads(pathlib.Path(ev_path).read_text(encoding="utf-8"))["basics"]
+    n_poses, rmsd_all = b.get("n_poses", ""), b.get("rmsd_median_all", "")
+except Exception as exc:                      # noqa: BLE001
+    print(f"[merge] {tag} nfe={nfe}: keine JSON-Metriken ({type(exc).__name__})")
+
+# Aus der Per-Komplex-Tabelle: Seed 0 UND Oracle ueber die Seeds. Nur hier
+# stehen die Oracle-Groessen; die JSON kennt sie nicht.
+n_cx = rmsd_best = s2_seed0 = s2_oracle = s5_oracle = ""
+try:
+    rows = list(csv.DictReader(pathlib.Path(pc_path).open(encoding="utf-8")))
+    if rows:
+        n_cx = len(rows)
+        rmsd_best = round(statistics.median(float(r["rmsd_best"]) for r in rows), 4)
+        s2_seed0 = round(100 * statistics.fmean(int(r["success_2A_seed0"]) for r in rows), 2)
+        s2_oracle = round(100 * statistics.fmean(int(r["success_2A_oracle"]) for r in rows), 2)
+        s5_oracle = round(100 * statistics.fmean(int(r["success_5A_oracle"]) for r in rows), 2)
 except Exception as exc:                      # noqa: BLE001
     # Fehlende Zahlen bleiben leer. Eine geschaetzte Zeile in einer Lernkurve
     # waere schaedlicher als eine fehlende.
-    row = base + ["", "", "", ""]
-    print(f"[merge] {tag} nfe={nfe}: keine Metriken ({type(exc).__name__})")
+    print(f"[merge] {tag} nfe={nfe}: keine Per-Komplex-Tabelle ({type(exc).__name__})")
+
+row = base + [n_cx, n_poses, rmsd_all, rmsd_best, s2_seed0, s2_oracle, s5_oracle]
 pathlib.Path(row_path).write_text(
     ",".join("" if v is None else str(v) for v in row) + "\n", encoding="utf-8")
 PYEOF
     done
 
     OUT="${OUT_DIR}/curve_${MODEL}.csv"
-    echo "snapshot,nfe,n_seeds,walltime_h,epoch,global_step,examples_seen,lr,n_poses,rmsd_median,success_2A,success_5A" > "$OUT"
+    echo "snapshot,nfe,conformer,n_seeds,walltime_h,epoch,global_step,examples_seen,lr,n_complexes,n_poses,rmsd_median_all,rmsd_best_median,success_2A_seed0,success_2A_oracle,success_5A_oracle" > "$OUT"
     cat "${ROW_DIR}"/row_*.csv 2>/dev/null | sort >> "$OUT"
     echo
     echo "geschrieben: ${OUT}"
@@ -236,7 +280,7 @@ CKPT="${CKPTS[$TASK_SNAP]}"
 TAG="$(basename "$CKPT" .ckpt)"; TAG="${TAG#snap_}"
 SEED=$(( EVAL_SEED_BASE + TASK_SEED ))
 
-OUT_ROOT="${OUT_DIR}/${TAG}__nfe${TASK_NFE}"
+OUT_ROOT="${OUT_DIR}/${TAG}__nfe${TASK_NFE}__${CONFORMER}"
 mkdir -p "$OUT_ROOT"
 
 echo "[curve] Aufgabe   : ${IDX} von ${N_TASKS}"
@@ -245,6 +289,7 @@ echo "[curve] Schritte  : ${TASK_NFE}"
 echo "[curve] Seed      : ${SEED}"
 echo "[curve] Modell    : ${MODEL}  (${KIND})"
 echo "[curve] Experiment: ${EXPERIMENT}"
+echo "[curve] Konformer : ${CONFORMER}  (sample_conformer=${CONF_FLAG})"
 if [ "$USE_WHITELIST" = "1" ]; then
     echo "[curve] Subset    : $(grep -cve '^[[:space:]]*$' "$SUBSET_FILE") Komplexe aus $(basename "$SUBSET_FILE")"
     WHITE_ARG=(data.blacklist="${SUBSET_FILE}")
@@ -280,7 +325,7 @@ fi
     num_seeds=1 \
     "${STEP_ARG[@]}" \
     "${WHITE_ARG[@]}" \
-    graph.sample_conformer=false \
+    graph.sample_conformer=${CONF_FLAG} \
     postprocessing.scoring=null \
     postprocessing.bust_config=null \
     hardware.accelerator=cpu \
