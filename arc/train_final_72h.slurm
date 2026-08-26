@@ -235,6 +235,23 @@ echo "[cfg] max_epochs           = ${FINAL_MAX_EPOCHS}"
 echo "[cfg] max_steps (Horizont) = ${MAX_STEPS}"
 echo "[cfg] Validierung alle ${VAL_INTERVAL} Microbatches"
 
+# ------------------------------------------------------------ CUDA-Allokator
+# EXP-110 ist am 2026-08-26 nach 11 h und 18.445 Schritten an
+#     CUDA out of memory. Tried to allocate 686.00 MiB.
+#     44.39 GiB Kapazitaet, 451 MiB frei, 873 MiB reserved but unallocated
+# gestorben. Der Durchsatz-Sweep hatte fuer diesen Arm 44.143 MiB Spitze
+# gemessen, also 97 Prozent der Karte -- kein Spielraum. Die Liganden sind
+# unterschiedlich gross (18 bis ueber 56 Atome), irgendwann trifft eine
+# Charge aus lauter grossen Komplexen und die letzten Hundert MiB fehlen.
+#
+# expandable_segments loest die 873 MiB Fragmentierung auf und deckt damit
+# die fehlenden 686 MiB. Es aendert NUR die Speicherverwaltung, nicht die
+# Arithmetik -- die Vergleichbarkeit der Arme bleibt unberuehrt. Gesetzt wird
+# es fuer ALLE Arme, damit sie sich auch hierin nicht unterscheiden, und VOR
+# dem GPU-Waechter, weil der bereits torch importiert und CUDA anfasst.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+echo "[cfg] PYTORCH_CUDA_ALLOC_CONF = ${PYTORCH_CUDA_ALLOC_CONF}"
+
 
 # ---------------------------------------------------------------- Sanity-Gate
 # Faellt hier etwas durch, sind 72 GPU-Stunden gerettet.
