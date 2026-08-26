@@ -184,7 +184,17 @@ esac
 # ------------------------------------------------ Auswerten und zusammenfuegen
 if [ "${MERGE:-0}" = "1" ]; then
     mkdir -p "$ROW_DIR"
-    cd "$CODE_DIR" || exit 1
+    # NICHT ins Arm-Verzeichnis wechseln. `SigmaFlow_Evaluation` liegt in der
+    # Repo-Wurzel; von SigmaFlow_Minimal aus scheitert `python -m` mit
+    # "No module named 'SigmaFlow_Evaluation'". Das Modul importiert nur
+    # stdlib, numpy, rdkit und sich selbst -- der Arm-Baum wird nicht
+    # gebraucht, die Umgebung ist ohnehin schon aktiviert.
+    cd "$ARC_REPO" || exit 1
+
+    # Zwei Felder fehlen in den .meta.txt der Snapshots. Sie werden aus der
+    # Epoche abgeleitet und als solche gekennzeichnet -- geraten wird nichts.
+    STEPS_PER_EPOCH="${STEPS_PER_EPOCH:-594}"
+    N_TRAIN="${N_TRAIN:-19037}"
     shopt -s nullglob
     for D in "${OUT_DIR}"/*__nfe*; do
         [ -d "$D" ] || continue
@@ -213,9 +223,10 @@ if [ "${MERGE:-0}" = "1" ]; then
 
         "$PYTHON" - "${ROW_DIR}/row_${BASE}.csv" "$TAG" "$NFE" "$CONF" "$N_SEEDS" \
                     "${SNAP_DIR}/snap_${TAG}.meta.txt" "${D}/evaluation.json" \
-                    "${D}/per_complex.csv" <<'PYEOF'
+                    "${D}/per_complex.csv" "$STEPS_PER_EPOCH" "$N_TRAIN" <<'PYEOF'
 import csv, json, statistics, sys, pathlib
-row_path, tag, nfe, conf, nseeds, meta_path, ev_path, pc_path = sys.argv[1:9]
+(row_path, tag, nfe, conf, nseeds, meta_path, ev_path, pc_path,
+ steps_per_epoch, n_train) = sys.argv[1:11]
 
 def meta(key, default=""):
     try:
@@ -227,8 +238,25 @@ def meta(key, default=""):
         pass
     return default
 
-base = [tag, nfe, conf, nseeds, meta("walltime_h"), meta("epoch"),
-        meta("global_step"), meta("examples_seen"), meta("lr")]
+# global_step und examples_seen fehlen in den Metadateien ("unknown").
+# Sie folgen aus der Epoche; die Herkunft wird in einer eigenen Spalte
+# festgehalten, damit abgeleitete nicht als gemessene Werte durchgehen.
+epoch_s = meta("epoch")
+step_s, seen_s = meta("global_step"), meta("examples_seen")
+quelle = "meta"
+if step_s in ("", "unknown") or seen_s in ("", "unknown"):
+    try:
+        e = int(float(epoch_s))
+        if step_s in ("", "unknown"):
+            step_s = str(e * int(steps_per_epoch))
+        if seen_s in ("", "unknown"):
+            seen_s = str(e * int(n_train))
+        quelle = f"epoch x {steps_per_epoch}"
+    except ValueError:
+        quelle = "missing"
+
+base = [tag, nfe, conf, nseeds, meta("walltime_h"), epoch_s,
+        step_s, seen_s, quelle, meta("lr")]
 
 # Aus der JSON: was ueber ALLE Posen geht.
 n_poses = rmsd_all = ""
@@ -261,7 +289,7 @@ PYEOF
     done
 
     OUT="${OUT_DIR}/curve_${MODEL}.csv"
-    echo "snapshot,nfe,conformer,n_seeds,walltime_h,epoch,global_step,examples_seen,lr,n_complexes,n_poses,rmsd_median_all,rmsd_best_median,success_2A_seed0,success_2A_oracle,success_5A_oracle" > "$OUT"
+    echo "snapshot,nfe,conformer,n_seeds,walltime_h,epoch,global_step,examples_seen,step_source,lr,n_complexes,n_poses,rmsd_median_all,rmsd_best_median,success_2A_seed0,success_2A_oracle,success_5A_oracle" > "$OUT"
     cat "${ROW_DIR}"/row_*.csv 2>/dev/null | sort >> "$OUT"
     echo
     echo "geschrieben: ${OUT}"
