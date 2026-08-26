@@ -53,6 +53,22 @@ PB_KANDIDATEN = (
 )
 
 
+def lies_id_liste(pfad: Path) -> set:
+    """CSV mit pdb_id,ccd_id -- oder eine Zeile je ID. Liefert Grossbuchstaben."""
+    text = pfad.read_text(encoding="utf-8").strip()
+    if not text:
+        raise SystemExit(f"{pfad} ist leer.")
+    zeilen = text.splitlines()
+    if "," in zeilen[0]:
+        import csv as _csv
+        rows = list(_csv.DictReader(zeilen))
+        fehlt = {"pdb_id", "ccd_id"} - set(rows[0])
+        if fehlt:
+            raise SystemExit(f"{pfad}: Spalten fehlen: {sorted(fehlt)}")
+        return {f"{r['pdb_id'].upper()}_{r['ccd_id'].upper()}" for r in rows}
+    return {z.strip().upper() for z in zeilen if z.strip()}
+
+
 def komplex_ids(d: Path) -> list:
     """Unterverzeichnisse, die wie ein Komplex aussehen: mit PDB UND SDF."""
     if not d.is_dir():
@@ -115,6 +131,10 @@ def main() -> int:
     ap.add_argument("--dataset_dir", type=Path, default=None,
                     help="Direkt das Verzeichnis mit den Komplexordnern, "
                          "falls die Suche danebenliegt.")
+    ap.add_argument("--ids", type=Path, default=None,
+                    help="CSV mit pdb_id,ccd_id oder Zeilenliste. Gezogen wird dann "
+                         "nur aus der Schnittmenge mit dem Datensatz -- so liegt "
+                         "jeder Komplex der Kurve im offiziellen v2-Satz.")
     ap.add_argument("--n", type=int, default=50)
     ap.add_argument("--out", type=Path, default=OUT_DEFAULT)
     ap.add_argument("--force", action="store_true",
@@ -132,6 +152,18 @@ def main() -> int:
 
     pb, ids = find_pb_dir(Path(args.data_dir), args.dataset_dir)
     print(f"PoseBusters: {len(ids)} Komplexe unter {pb}")
+
+    if args.ids is not None:
+        erlaubt = lies_id_liste(args.ids)
+        vorher = len(ids)
+        ids = [i for i in ids if i.upper() in erlaubt]
+        print(f"Filter {args.ids.name}: {len(erlaubt)} IDs -> "
+              f"Schnittmenge {len(ids)} von {vorher}")
+        if not ids:
+            raise SystemExit(
+                "Schnittmenge ist leer. Passen die ID-Formate zusammen? "
+                "Erwartet wird <PDB>_<CCD>, z.B. 5SAK_ZRY."
+            )
 
     n = min(args.n, len(ids))
     # Systematische Stichprobe ueber die sortierte Liste: Index
