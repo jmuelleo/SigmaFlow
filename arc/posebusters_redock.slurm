@@ -46,8 +46,14 @@ RANKING="${RANKING:-raw}"
 NUM_STEPS="${NUM_STEPS:-25}"
 SUFFIX="${SUFFIX:-__cpu}"
 
-SAMPLING_ROOT="${ARC_RUNS}/sampling/${MODEL}__${COMPARISON}__${RANKING}__nfe${NUM_STEPS}${SUFFIX}"
-BENCH="${ARC_TRUE_DIR}"                       # posebusters_benchmark_set/<cid>/
+# SAMPLING_ROOT und BENCH sind ueberschreibbar, weil nicht jeder Posenbaum aus
+# dem 12-h-Vergleich stammt. Die Lernkurven-Zellen liegen unter
+#   <lauf>/learning_curve_cpu/<snapshot>__nfe<N>__<konformer>/
+# und die zugehoerige Referenz ist der 308er-Satz, nicht ARC_TRUE_DIR. Ohne
+# diese beiden Vorgaben muesste man das Muster oben umschreiben -- und damit
+# stillschweigend auch die Pfade aller bestehenden Auswertungen aendern.
+SAMPLING_ROOT="${SAMPLING_ROOT:-${ARC_RUNS}/sampling/${MODEL}__${COMPARISON}__${RANKING}__nfe${NUM_STEPS}${SUFFIX}}"
+BENCH="${BENCH:-${ARC_TRUE_DIR}}"             # posebusters_benchmark_set/<cid>/
 
 # Der Ausgabepfad MUSS jede Unterscheidung des Eingabepfads tragen. Ohne
 # das schreibt ein Lauf mit SUFFIX=__cpu__confsampled seine Tabellen ueber
@@ -62,7 +68,7 @@ OUT_TAG="${SUFFIX#__cpu}"
 if [ "$NUM_STEPS" != "25" ]; then
     OUT_TAG="__nfe${NUM_STEPS}${OUT_TAG}"
 fi
-OUT_DIR="${ARC_RUNS}/posebusters_redock/${MODEL}${OUT_TAG}"
+OUT_DIR="${OUT_DIR:-${ARC_RUNS}/posebusters_redock/${MODEL}${OUT_TAG}}"
 OUT="${OUT_DIR}/rd_${MODEL}_seed${SEED}.csv"
 
 module load Mamba
