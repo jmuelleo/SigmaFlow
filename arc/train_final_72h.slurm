@@ -304,8 +304,29 @@ MARKER="${TMPDIR}/start_marker"; touch "$MARKER"
 #   Statt train.py anzufassen -- was fuer SigmaDock ohnehin ausgeschlossen ist,
 #   das Verzeichnis ist read-only -- kopiert ein Hintergrundprozess `last.ckpt`
 #   zu definierten Stundenmarken weg. Methodenagnostisch und symmetrisch.
+# BEIM RESUME LIEGT last.ckpt NICHT UNTER ${CODE_DIR}/experiments.
+#   train.py:85 leitet EXP_DIR aus dem uebergebenen Checkpoint-Pfad ab
+#   (get_exp_dir_from_ckpt), ein fortgesetzter Lauf schreibt also weiter in das
+#   Verzeichnis, aus dem er gestartet wurde -- genau das, was der Kommentar bei
+#   RESUME_FLAGS unten schon feststellt. Diese Funktion suchte aber nur unter
+#   ${CODE_DIR}/experiments und fand deshalb nichts.
+#
+#   Folge am 2026-08-27 bei Job 8650976 (SigmaFlow-Separate): fuenf
+#   Snapshot-Marken meldeten "noch kein last.ckpt vorhanden", das Training lief
+#   33 h weiter, und die Epochen ~51 bis ~124 sind unwiederbringlich, weil
+#   save_top_k=3 die Zwischenstaende ueberschreibt. Der `_final`-Snapshot am
+#   Jobende haette ebenso ins Leere gegriffen. Kein Fehlercode, kein Absturz.
+#
+#   Deshalb wird beim Resume zusaetzlich dort gesucht, wo der Checkpoint
+#   herkam. Das Backup-Verzeichnis (`..._backup_<ts>`, Geschwister von
+#   checkpoints/) liegt ausserhalb und wird nicht mitgefunden.
 find_last_ckpt() {
-    find "${CODE_DIR}/experiments" -name last.ckpt -newer "$MARKER" 2>/dev/null | sort | tail -1
+    {
+        find "${CODE_DIR}/experiments" -name last.ckpt -newer "$MARKER" 2>/dev/null
+        if [ -n "${RESUME:-}" ]; then
+            find "$(dirname "$RESUME")" -name last.ckpt -newer "$MARKER" 2>/dev/null
+        fi
+    } | sort | tail -1
 }
 
 JOB_START_S=$(date +%s)
