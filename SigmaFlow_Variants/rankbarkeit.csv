@@ -1,0 +1,25 @@
+arm,nfe,K,ziel,regel,je_zug,orakel,nach_ranking,bedingt,zufall_bedingt,hebel,auc,n_auc,rang_erste_richtige
+SigmaDock,25,40,acc,Mixed Score,50.53,93.16,69.71,74.83,54.24,1.38,0.7502,263,0.025
+SigmaDock,25,40,acc,nur gnina,50.53,93.16,74.59,80.07,54.24,1.476,0.7807,263,
+SigmaDock,25,40,beides,Mixed Score,24.1,79.15,64.5,81.48,30.44,2.676,0.9328,242,
+SigmaDock,25,40,beides,nur gnina,24.1,79.15,49.51,62.55,30.44,2.055,0.825,242,
+SigmaDock,5,40,acc,Mixed Score,7.05,60.59,25.08,41.4,11.63,3.559,0.7802,186,0.05
+SigmaDock,5,40,acc,nur gnina,7.05,60.59,32.57,53.76,11.63,4.622,0.8422,186,
+SigmaDock,5,40,beides,Mixed Score,0.6,10.75,6.51,60.61,5.61,10.806,0.7992,33,
+SigmaDock,5,40,beides,nur gnina,0.6,10.75,3.26,30.3,5.61,5.403,0.8197,33,
+Minimal,25,40,acc,Mixed Score,44.82,93.49,74.59,79.79,47.95,1.664,0.7211,276,0.025
+Minimal,25,40,acc,nur gnina,44.82,93.49,74.27,79.44,47.95,1.657,0.7375,276,
+Minimal,25,40,beides,Mixed Score,16.76,78.5,68.08,86.72,21.35,4.063,0.9384,241,
+Minimal,25,40,beides,nur gnina,16.76,78.5,46.91,59.75,21.35,2.799,0.8306,241,
+Minimal,5,200,acc,Mixed Score,44.14,97.72,77.52,79.33,45.17,1.756,0.7146,295,0.005
+Minimal,5,200,acc,nur gnina,44.14,97.72,75.24,77.0,45.17,1.705,0.7378,295,
+Minimal,5,200,beides,Mixed Score,12.96,85.02,72.31,85.06,15.24,5.581,0.9458,261,
+Minimal,5,200,beides,nur gnina,12.96,85.02,41.37,48.66,15.24,3.192,0.8324,261,
+Separate,25,40,acc,Mixed Score,47.93,94.79,71.66,75.6,50.57,1.495,0.7229,283,0.025
+Separate,25,40,acc,nur gnina,47.93,94.79,74.92,79.04,50.57,1.563,0.7419,283,
+Separate,25,40,beides,Mixed Score,19.22,77.2,65.15,84.39,24.89,3.39,0.9327,236,
+Separate,25,40,beides,nur gnina,19.22,77.2,51.79,67.09,24.89,2.695,0.8293,236,
+Separate,5,200,acc,Mixed Score,47.13,97.72,76.87,78.67,48.23,1.631,0.7258,297,0.005
+Separate,5,200,acc,nur gnina,47.13,97.72,80.13,82.0,48.23,1.7,0.7508,297,
+Separate,5,200,beides,Mixed Score,15.11,82.41,70.36,85.38,18.33,4.657,0.9494,253,
+Separate,5,200,beides,nur gnina,15.11,82.41,39.09,47.43,18.33,2.587,0.8219,253,

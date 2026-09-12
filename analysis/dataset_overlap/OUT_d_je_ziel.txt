@@ -1,0 +1,22 @@
+
+PROTEIN >= 0.90  (naechster Nachbar dieses Ziels)
+  PB308-Ziele mit mindestens einem nahen Nachbarn: 130
+  davon betroffen von der Entfernung: 27
+  davon VERWAIST (kein naher Nachbar mehr in R1): 0
+  bei den betroffenen Zielen bleiben im Median 36 nahe Nachbarn uebrig (Minimum 1, Maximum 340)
+
+LIGAND >= 0.70  (naechster Nachbar dieses Ziels)
+  PB308-Ziele mit mindestens einem nahen Nachbarn: 101
+  davon betroffen von der Entfernung: 7
+  davon VERWAIST (kein naher Nachbar mehr in R1): 0
+  bei den betroffenen Zielen bleiben im Median 16 nahe Nachbarn uebrig (Minimum 2, Maximum 33)
+
+
+Maximale Aehnlichkeit je PB308-Ziel, mit gegen ohne die 406
+  prot_cont: 7 von 307 Zielen verlieren ueberhaupt etwas; Median des Verlusts dort 0.0027, Maximum 0.0221
+  lig_tanimoto: 4 von 305 Zielen verlieren ueberhaupt etwas; Median des Verlusts dort 0.0464, Maximum 0.3655
+    Ziele mit Verlust > 0.05:
+                  mit      ohne   verlust
+lig_partner                              
+7O0N_CDP     0.557377  0.191919  0.365458
+8BTI_RFO     0.348837  0.282609  0.066229

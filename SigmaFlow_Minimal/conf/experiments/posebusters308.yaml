@@ -1,0 +1,24 @@
+# Der offizielle PoseBusters-v2-Satz: 308 Komplexe, dieselbe Menge, auf der
+# das SigmaDock-Paper berichtet (Prat et al., S. 8).
+#
+# WARUM EIN EIGENES VERZEICHNIS UND NICHT EINE WHITELIST
+#   `data.blacklist` ist trotz des Namens eine Whitelist, greift aber nur,
+#   wenn der Experimentname woertlich "posebusters" lautet (sample.py:458).
+#   Unter einem anderen Namen wuerde sie STILL ignoriert und es wuerden alle
+#   428 Komplexe gesampelt. Die Auswahl steckt deshalb im Verzeichnis selbst:
+#   `posebusters_v2_308/` enthaelt genau 308 Symlinks in die vollstaendige
+#   Kopie unter `posebusters_full/posebusters_benchmark_set/`.
+#
+#   Anzulegen mit arc/make_v2_308_dir.sh -- das Skript prueft, dass am Ende
+#   exakt 308 Eintraege vorhanden sind, und bricht sonst ab.
+#
+# WARUM NICHT posebusters.yaml AENDERN
+#   Dieselbe Datei bestimmt den VALIDIERUNGSSATZ des laufenden Trainings.
+#   Eine Aenderung dort waehrend eines 72-Stunden-Laufs waere nicht
+#   nachvollziehbar und wuerde die Checkpoint-Auswahl verschieben.
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "posebusters308"
+dataset: "posebusters_v2_308/"
+pdb_regex: ".*\\.pdb$"                # alle .pdb
+sdf_regex: ".*ligands.sdf$"           # wie im 209er-Satz: Plural

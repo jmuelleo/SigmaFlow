@@ -1,0 +1,38 @@
+################################################################################################
+  Gemeinsame Merkmale beider Saetze: 107
+  Nur auf PoseBusters vorhanden    : 41 (die Kontaktfamilie -- Astex hat lokal keine Proteine)
+################################################################################################
+
+  Prueffall                                   Basis  Modell  Gewinn           95%-KI  rett. zerst.   Luecke
+
+  --- Bezugswerte: Kreuzvalidierung im eigenen Satz ---
+  PB308, alle Merkmale (aus Teil E)           68.08%   70.10%   +2.02  [ +0.52, +3.58]     76     45    17.5%
+  PB308, nur gemeinsame Merkmale              68.08%   70.03%   +1.95  [ +0.46, +3.52]     73     43    16.9%
+  ASTEX, nur gemeinsame Merkmale              83.53%   82.35%   -1.18  [ -3.06, +0.71]     11     16   -11.1%
+
+  --- Uebertragung: trainiert auf dem einen, geprueft auf dem anderen ---
+  PB308 trainiert -> ASTEX geprueft           83.53%   83.06%   -0.47  [ -2.82, +1.65]     13     15    -4.4%
+  ASTEX trainiert -> PB308 geprueft           68.08%   68.47%   +0.39  [ -1.30, +2.15]     76     70     3.4%
+
+  --- Uebertragung je Zelle, PB308 -> ASTEX ---
+  SigmaDock, 25 Schritte                      74.12%   76.47%   +2.35  [ -2.35, +7.06]      3      1    16.7%
+  Minimal, 25 Schritte                        81.18%   81.18%   +0.00  [ -5.88, +5.88]      3      3     0.0%
+  Separate, 25 Schritte                       82.35%   81.18%   -1.18  [ -5.88, +3.53]      2      3   -10.0%
+  Minimal, 5 Schritte                         87.06%   87.06%   +0.00  [ -5.88, +7.06]      4      4     0.0%
+  Separate, 5 Schritte                        92.94%   89.41%   -3.53  [ -9.41, +1.18]      1      4   -60.0%
+
+================================================================================================
+  NEBENBEFUND: sagt die Clusterzahl vorher, OB ein Komplex loesbar ist?
+  Das waere eine Konfidenzaussage, keine Auswahlregel -- eine andere,
+  aber ebenfalls nuetzliche Groesse.
+================================================================================================
+
+  Groesse                     PB308 loesbar  PB308 Treffer  ASTEX loesbar  ASTEX Treffer
+  Zahl der Cluster                    0.277          0.333          0.425          0.416
+  Entropie der Massen                 0.237          0.291          0.353          0.348
+  Groesse des groessten               0.810          0.754          0.805          0.772
+  Konkurrenten im Band 0,5            0.494          0.423          0.547          0.416
+  bester Mixed Score                  0.870          0.814          0.845          0.765
+
+  AUC unter 0,5 heisst: das Merkmal zeigt in die Gegenrichtung, ist
+  also nach Vorzeichenwechsel ebenso informativ. 0,5 heisst wertlos.

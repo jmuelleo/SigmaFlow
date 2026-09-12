@@ -1,0 +1,20 @@
+# AUSGEHALTENER PDBBind-Validierungssatz fuer Early Stopping.
+#
+# WARUM NICHT pdbbind-core WIE IM ORIGINAL
+#   Das publizierte Rezept validiert auf `pdbbind-core`, und core ist eine
+#   Teilmenge von refined ist eine Teilmenge von general -- es validiert also
+#   auf Daten, auf denen es trainiert, und Early Stopping waehlt den
+#   Checkpoint teilweise nach Auswendiglernen. Ausserdem liegt core-set auf
+#   ARC gar nicht vor (INDEX_core_data.2016 fehlt).
+#
+#   Diese Menge ist deterministisch aus dem kuratierten general-set
+#   herausgenommen und im Trainingsverzeichnis NICHT enthalten. Abweichung vom
+#   Original, aber in die richtige Richtung -- gehoert so in den Text.
+#
+# Anzulegen mit: N_VAL=285 bash arc/make_kuratiert_dir.sh
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "pdbbind-val-kuratiert"
+dataset: "pdbbind/val-kuratiert/"
+pdb_regex: ".*pocket\\.pdb$"
+sdf_regex: ".*ligand.*\\.sdf$"

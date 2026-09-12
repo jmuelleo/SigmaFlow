@@ -1,0 +1,52 @@
+########## PB308, Schwelle 2.0 A, Ziel best_pose_correct ##########
+38776 Cluster, 148 Merkmale (Score 55, PB 33, Geo 13, Kontakte 41, Ambig 6)
+
+Basis 68.08 %, Cluster-Orakel 79.61 %, Spielraum +11.53 Punkte
+
+  Modell      Merkmalsmenge              Erfolg  vs Basis            95%-KI  gerettet  zerstoert   Luecke
+  Logistisch  nur Mixed-Score-Max        68.08%     +0.00   [ +0.00, +0.00]         0          0     0.0% -
+  Logistisch  nur Score-Familie          64.69%     -3.39   [ -5.21, -1.50]        65        117   -29.4% -
+  Logistisch  nur Geometrie              56.16%    -11.92   [-14.72, -9.12]        64        247  -103.4% -
+  Logistisch  nur Kontakte               58.63%     -9.45   [-11.92, -7.10]        63        208   -81.9% -
+  Logistisch  nur PoseBusters            54.59%    -13.49   [-16.48,-10.62]        71        278  -116.9% -
+  Logistisch  OHNE Score (G+K+P+A)       65.60%     -2.48   [ -4.82, -0.13]        82        120   -21.5% -
+  Logistisch  alles                      66.38%     -1.69   [ -3.71, +0.20]        77        103   -14.7%  
+
+  Baum(2)     nur Mixed-Score-Max        68.08%     +0.00   [ +0.00, +0.00]         0          0     0.0% -
+  Baum(2)     nur Score-Familie          63.06%     -5.02   [ -6.97, -3.06]        62        139   -43.5% -
+  Baum(2)     nur Geometrie              56.87%    -11.21   [-13.88, -8.47]        68        240   -97.2% -
+  Baum(2)     nur Kontakte               44.36%    -23.71   [-26.78,-20.65]        50        414  -205.6% -
+  Baum(2)     nur PoseBusters            45.54%    -22.54   [-26.12,-18.96]        62        408  -195.5% -
+  Baum(2)     OHNE Score (G+K+P+A)       64.95%     -3.13   [ -5.02, -1.37]        38         86   -27.1% -
+  Baum(2)     alles                      64.89%     -3.19   [ -5.28, -1.11]        73        122   -27.7% -
+
+  Baum(3)     nur Mixed-Score-Max        68.08%     +0.00   [ +0.00, +0.00]         0          0     0.0% -
+  Baum(3)     nur Score-Familie          67.69%     -0.39   [ -1.95, +1.11]        60         66    -3.4%  
+  Baum(3)     nur Geometrie              56.68%    -11.40   [-14.14, -8.73]        67        242   -98.9% -
+  Baum(3)     nur Kontakte               49.19%    -18.89   [-22.02,-15.96]        58        348  -163.8% -
+  Baum(3)     nur PoseBusters            45.60%    -22.48   [-25.93,-18.89]        62        407  -194.9% -
+  Baum(3)     OHNE Score (G+K+P+A)       67.69%     -0.39   [ -1.89, +1.04]        36         42    -3.4%  
+  Baum(3)     alles                      68.21%     +0.13   [ -1.30, +1.63]        61         59     1.1%  
+
+  Boosting    nur Mixed-Score-Max        67.56%     -0.52   [ -1.04, -0.07]         2         10    -4.5% -
+  Boosting    nur Score-Familie          68.40%     +0.33   [ -1.04, +1.76]        48         43     2.8%  
+  Boosting    nur Geometrie              56.48%    -11.60   [-14.33, -8.99]        65        243  -100.6% -
+  Boosting    nur Kontakte               58.44%     -9.64   [-12.25, -7.10]        63        211   -83.6% -
+  Boosting    nur PoseBusters            51.53%    -16.55   [-19.87,-13.22]        68        322  -143.5% -
+  Boosting    OHNE Score (G+K+P+A)       68.47%     +0.39   [ -1.24, +2.02]        68         62     3.4%  
+  Boosting    alles                      70.10%     +2.02   [ +0.58, +3.58]        76         45    17.5% *
+
+* = 95-Prozent-Intervall der Differenz liegt vollstaendig ueber null
+
+=== Der flache Baum auf allen Merkmalen (Falte 1) ===
+|--- p_valid_best__r <= 0.29
+|   |--- p_valid_best__r <= 0.17
+|   |   |--- class: False
+|   |--- p_valid_best__r >  0.17
+|   |   |--- class: False
+|--- p_valid_best__r >  0.29
+|   |--- s_g_top2__r <= 1.28
+|   |   |--- class: False
+|   |--- s_g_top2__r >  1.28
+|   |   |--- class: True
+

@@ -1,0 +1,25 @@
+# PDBbind v2020 ORIGINAL-Ausgabe, general set, 19443 Komplexe, UNKURATIERT.
+#
+# WAS DAS IST UND WAS NICHT
+#   Das ist der Datensatz aus dem SigmaDock-Paper ("PDBBind(v2020) [...] a
+#   curated set of 19,443 protein-ligand complexes"). NICHT zu verwechseln
+#   mit dem Bestand unter pdbbind/, der v2020.R1 ist -- dieselben Komplexe
+#   minus 406, aber mit der Aufbereitungspipeline von v2024 neu erzeugt.
+#
+#   Buttenschoen (2025), Tabelle 3.2, misst den Unterschied an den
+#   Kristallposen: Original 63,0 % aller PoseBusters-Pruefungen bestanden,
+#   R1 78,2 %. Der Zugewinn steckt fast ganz in der RDKit-Sanitisierung;
+#   die Protein-Ligand-Kollisionen bleiben gleich.
+#
+# BEWUSST NICHT KURATIERT
+#   Dieser Arm ist die Referenz "Datensatz so, wie ihn alle benutzen".
+#   Die Kuratierung findet auf der R1-Seite statt (pdbbind-general-kuratiert).
+#
+# Angelegt von arc/setup_pdbbind2020.sh als Symlinkbaum: refined-set und
+# v2020-other-PL sind disjunkt, ihre Vereinigung ist der general set.
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "pdbbind2020-general"
+dataset: "pdbbind2020/general-set/"
+pdb_regex: ".*pocket\\.pdb$"
+sdf_regex: ".*ligand.*\\.sdf$"

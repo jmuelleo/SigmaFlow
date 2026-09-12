@@ -1,0 +1,19 @@
+# PDBBind general-set OHNE die nachweislich fehlerhaften Komplexe.
+#
+# Entfernt sind die Codes aus arc_runs/kaputte_komplexe.txt: Ligandatome
+# naeher als 1 A an einem Proteinatom (physikalisch unmoeglich, 208 davon bei
+# Abstand exakt null) oder mindestens eine der 15 ligandinternen Pruefungen
+# durchgefallen. Rund 5,6 % des Satzes.
+#
+# NICHT entfernt sind kovalente Komplexe (rund 4,2 %). Ihre kurzen Kontakte
+# sind korrekte Chemie; ein vdW-Kriterium ist dafuer nicht gemacht.
+#
+# Anzulegen mit arc/make_kuratiert_dir.sh -- das Skript prueft, dass
+# verlinkt + ausgeschlossen die Gesamtzahl ergibt und dass jeder verlinkte
+# Komplex beide Dateien hat, auf die die Regexe unten zeigen.
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "pdbbind-general-kuratiert"
+dataset: "pdbbind/general-set-kuratiert/"
+pdb_regex: ".*pocket\\.pdb$"
+sdf_regex: ".*ligand.*\\.sdf$"

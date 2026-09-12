@@ -1,0 +1,75 @@
+C:\Users\julia\Documents\SigmaFlow\analysis\cluster_selection\o_versagen.py:146: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+  "Cluster m. korr. Pose": rg.apply(
+C:\Users\julia\Documents\SigmaFlow\analysis\cluster_selection\o_versagen.py:146: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+  "Cluster m. korr. Pose": rg.apply(
+C:\Users\julia\Documents\SigmaFlow\analysis\cluster_selection\o_versagen.py:146: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+  "Cluster m. korr. Pose": rg.apply(
+C:\Users\julia\Documents\SigmaFlow\analysis\cluster_selection\o_versagen.py:146: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+  "Cluster m. korr. Pose": rg.apply(
+C:\Users\julia\Documents\SigmaFlow\analysis\cluster_selection\o_versagen.py:146: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
+  "Cluster m. korr. Pose": rg.apply(
+Satz pb308, Clusterschwelle 2.0 A, 38776 Clusterzeilen
+
+TEIL 1+2 -- Versagensquote und wie viel davon reiner Auswahlfehler ist
+       Zelle   N  Erfolg %  Versagen %  n_fehl  davon rettbar %  n_rettbar  davon Pool leer %
+SigmaDock 25 307     64.50       35.50     109            41.28         45              58.72
+  Minimal 25 307     68.08       31.92      98            32.65         32              67.35
+ Separate 25 307     65.15       34.85     107            34.58         37              65.42
+   Minimal 5 307     72.31       27.69      85            45.88         39              54.12
+  Separate 5 307     70.36       29.64      91            40.66         37              59.34
+
+TEIL 3 -- GEGEBEN Versagen: Anteil mit einem uebersehenen Cluster
+(Reinheit >= r, Groesse >= m Posen, NICHT vom Ranker gewaehlt)
+Nenner ist immer die Zahl der Fehlgriffe der Zelle.
+
+  Mindestgroesse m = 1 Pose(n):
+       Zelle  n_fehl  r>=0.5  r>=0.7  r>=0.9
+SigmaDock 25     109   27.52   15.60   11.01
+  Minimal 25      98   16.33    5.10    3.06
+ Separate 25     107   20.56    7.48    6.54
+   Minimal 5      85   18.82    8.24    4.71
+  Separate 5      91   15.38    8.79    5.49
+
+  Mindestgroesse m = 3 Pose(n):
+       Zelle  n_fehl  r>=0.5  r>=0.7  r>=0.9
+SigmaDock 25     109   22.02   11.93    5.50
+  Minimal 25      98    9.18    4.08    2.04
+ Separate 25     107   13.08    3.74    1.87
+   Minimal 5      85   12.94    7.06    3.53
+  Separate 5      91   13.19    7.69    4.40
+
+  Mindestgroesse m = 5 Pose(n):
+       Zelle  n_fehl  r>=0.5  r>=0.7  r>=0.9
+SigmaDock 25     109   13.76    7.34    2.75
+  Minimal 25      98    4.08    1.02    0.00
+ Separate 25     107    9.35    3.74    1.87
+   Minimal 5      85   11.76    7.06    2.35
+  Separate 5      91   10.99    6.59    4.40
+
+TEIL 4 -- dasselbe mit RELATIVER Mindestgroesse (Anteil an K),
+weil die 5-Schritt-Zellen K = 200 statt 40 Ziehungen haben.
+
+  Mindestmasse 5 % der Ziehungen:
+       Zelle   K  n_fehl  r>=0.5  r>=0.7  r>=0.9
+SigmaDock 25  40     109   23.85   11.93    5.50
+  Minimal 25  40      98   16.33    5.10    3.06
+ Separate 25  40     107   18.69    4.67    2.80
+   Minimal 5 200      85    7.06    4.71    2.35
+  Separate 5 200      91    7.69    4.40    4.40
+
+  Mindestmasse 10 % der Ziehungen:
+       Zelle   K  n_fehl  r>=0.5  r>=0.7  r>=0.9
+SigmaDock 25  40     109   17.43   10.09    2.75
+  Minimal 25  40      98    6.12    3.06    1.02
+ Separate 25  40     107   10.28    3.74    1.87
+   Minimal 5 200      85    3.53    2.35    2.35
+  Separate 5 200      91    4.40    3.30    3.30
+
+TEIL 5 -- Kontext: was hat der Ranker im Fehlfall stattdessen gewaehlt?
+
+       Zelle  n_fehl  Cluster je Komplex  Reinheit gew. Cluster  Groesse gew. Cluster  Cluster m. korr. Pose  beste Reinheit dort
+SigmaDock 25     109              13.459                  0.037                 7.541                  1.889                0.610
+  Minimal 25      98              20.296                  0.004                 4.908                  1.875                0.478
+ Separate 25     107              19.636                  0.008                 5.523                  1.595                0.514
+   Minimal 5      85              75.435                  0.005                15.871                  3.205                0.414
+  Separate 5      91              75.516                  0.005                15.440                  2.568                0.417

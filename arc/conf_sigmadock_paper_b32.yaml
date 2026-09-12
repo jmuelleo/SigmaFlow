@@ -1,0 +1,96 @@
+# SIGMADOCK, PUBLIZIERTES REZEPT, EFFEKTIVE BATCH 32.
+#
+# HERKUNFT
+#   Woertlich aus SigmaDock/conf/training/slurm.yaml uebernommen. Entfernt sind
+#   nur die Schluessel, die arc/train_final_72h.slurm selbst setzt
+#   (seed, max_epochs, train/val/test_exps) oder die nicht zu einer einzelnen
+#   GPU passen (devices, accelerator, strategy: ddp, resume_from_checkpoint).
+#
+# WAS GEAENDERT WURDE
+#   batch_size 64 -> 32, dazu accum_grad_batches: 1. `config.py:251` teilt
+#   batch_size durch world_size, der publizierte Wert 64 ist also GLOBAL ueber
+#   vier GPUs. Der PAPERTEXT nennt 32; hier ist die Zahl aus dem Text gewaehlt.
+#   Effektive Batch damit 32.
+#
+#   `accum_grad_batches: 1` steht ausdruecklich da, nicht implizit: bei
+#   fehlendem Schluessel und FINAL_ACCUM=1 greift die Konsistenzpruefung in
+#   train_final_72h.slurm nicht, und eine spaetere Aenderung der YAML fiele
+#   lautlos durch.
+#
+# NICHT geaendert: rot_score_method: space und rot_score_scaling: rms. Der
+#   Trainingsjob uebergibt sie zusaetzlich als METHOD_FLAGS -- doppelt gemoppelt,
+#   aber identisch, und so steht der Wert an beiden Stellen sichtbar.
+#
+# Training config matching slurm/train.sh (4-GPU DDP, 7-day run).
+# Usage:
+#   python scripts/train.py --config conf/training/slurm.yaml --data_dir /path/to/data
+#   # Override num_workers per node: --num_workers 9
+# SLURM script can pass --data_dir and --num_workers; other args come from this file.
+
+# --- Run / experiment ---
+cuda_precision: high
+# num_workers: set via CLI from SLURM_CPUS_PER_TASK (e.g. SLURM_CPUS_PER_TASK - 3)
+
+# --- Training loop ---
+batch_size: 32
+accum_grad_batches: 1
+val_check_interval: 512
+val_cycles: 2
+cache_cycles: 8
+cache_factor: 2
+
+# --- Model / architecture ---
+sphere_channels: 128
+edge_channels: 32
+distance_expansion_dim: 32
+num_heads: 4
+num_layers: 6
+l_max_list: [3]
+m_max_list: [2]
+t_emb_dim: 32
+t_emb_scale: 512.0
+smearing_type: fourier
+radial_type: bessel
+
+# --- Loss weights ---
+trans_score_weight: 2.0
+rot_score_weight: 0.5
+rot_score_method: space
+rot_score_scaling: rms
+
+# --- Optimizer ---
+weight_decay: 0.1
+attention_dropout: 0.3
+edge_dropout: 0.1
+betas: [0.9, 0.998]
+optimizer_eps: 1.0e-08
+# ACHTUNG: 1.0e-4 und NICHT 1e-4. In YAML 1.1 ist `1e-4` ein STRING -- der
+# Float-Resolver verlangt einen Dezimalpunkt in der Mantisse. SigmaDocks
+# eigene conf/training/slurm.yaml hat hier 1e-4 und ist damit so, wie sie
+# ausgeliefert wird, NICHT lauffaehig: AdamW bekommt die Lernrate als
+# Zeichenkette und stirbt an `0.0 <= lr`. Genau daran sind die Jobs 8688976
+# und 8688977 nach sechs Minuten gescheitert.
+#
+# Diese Datei ist aus jener slurm.yaml abgeleitet und hat den Defekt bis
+# 2026-09-07 mitgeschleppt -- in der Flow-Konfiguration war er behoben, hier
+# nicht. Aufgefallen beim Vergleich der beiden Konfigurationen gegeneinander,
+# nicht beim Vergleich gegen das Paper.
+max_lr_start: 1.0e-4
+min_lr_start: 1.0e-5
+init_lr_start: 1.0e-6
+grad_clip: 4.0
+ema_halflife: 8
+
+# --- Structural / graph (pocket, noise, fragmentation) ---
+lig_coordinate_distance_noise: 0.0
+prot_coordinate_distance_noise: 0.02
+pocket_com_noise: 1.0
+pocket_distance_noise: 0.5
+alignment_rmsd_tolerance: 1.0
+
+# --- Flags (set true in SLURM script) ---
+force_retry: true
+include_protein_ligand_interactions: true
+pb_check: true
+random_rotation: true
+# Optional (commented in script):

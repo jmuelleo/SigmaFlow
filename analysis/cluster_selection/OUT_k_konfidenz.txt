@@ -1,0 +1,53 @@
+####################################################################################################
+  Taugt die Clusterstruktur als Konfidenzmass?  Ziel: ist die AUSGELIEFERTE Pose korrekt?
+####################################################################################################
+
+  AUC unter 0,5 heisst: das Merkmal zeigt in die Gegenrichtung und ist
+  nach Vorzeichenwechsel gleich informativ. Ausschlaggebend ist der
+  Abstand zu 0,5, nicht die Seite.
+
+  === POSEBUSTERS ===
+  Merkmal                        gepoolt  SigmaDock/25  SF-Minima/25  SF-Separa/25   SF-Minima/5   SF-Separa/5
+  groesster Cluster, Posen         0.754         0.782         0.782         0.784         0.736         0.790
+  groesster Cluster, Anteil        0.731         0.782         0.783         0.785         0.736         0.790
+  Zahl der Cluster                 0.333         0.242         0.234         0.233         0.278         0.233
+  Entropie, normiert               0.241         0.256         0.239         0.221         0.252         0.205
+  bester Mixed Score               0.814         0.760         0.829         0.851         0.829         0.813
+
+  === ASTEX ===
+  Merkmal                        gepoolt  SigmaDock/25  SF-Minima/25  SF-Separa/25   SF-Minima/5   SF-Separa/5
+  groesster Cluster, Posen         0.772         0.718         0.654         0.790         0.880         0.863
+  groesster Cluster, Anteil        0.687         0.718         0.654         0.790         0.880         0.863
+  Zahl der Cluster                 0.416         0.347         0.356         0.252         0.132         0.136
+  Entropie, normiert               0.256         0.273         0.367         0.261         0.130         0.135
+  bester Mixed Score               0.765         0.809         0.732         0.738         0.720         0.812
+
+====================================================================================================
+  Bringt die Clustergroesse etwas ueber den Mixed Score hinaus?
+====================================================================================================
+
+  POSEBUSTERS
+    nur Mixed Score                       AUC 0.813
+    + Anteil des groessten Clusters       AUC 0.836   Differenz +0.023  [+0.006,+0.041]  *
+    + Anteil, Clusterzahl, Entropie       AUC 0.838   Differenz +0.025
+
+  ASTEX
+    nur Mixed Score                       AUC 0.751
+    + Anteil des groessten Clusters       AUC 0.771   Differenz +0.020  [-0.021,+0.060]
+    + Anteil, Clusterzahl, Entropie       AUC 0.778   Differenz +0.027
+
+====================================================================================================
+  Bleibt Signal INNERHALB von Schichten gleichen Mixed Scores?
+  Wenn ja, ist es eigenstaendige Information und nicht nur eine
+  Umschreibung des Scores. Quintile je Zelle gebildet.
+====================================================================================================
+
+  Schicht (Quintil des Mixed Scores)    PB308 n  PB308 AUC  ASTEX n  ASTEX AUC
+  1. Quintil                                310      0.712       85      0.593
+  2. Quintil                                305      0.740       85      0.817
+  3. Quintil                                305      0.702       85      0.670
+  4. Quintil                                305      0.584       85      0.616
+  5. Quintil                                310      0.604       85      0.114
+
+  Gewichtetes Mittel ueber die Schichten:  PB308 0.668   ASTEX 0.562
+  (0,5 hiesse: die Clustergroesse sagt bei gleichem Mixed Score nichts mehr)

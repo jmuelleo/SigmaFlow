@@ -1,0 +1,42 @@
+########## PB308, Schwelle 2.0 A ##########
+307 Komplexe: 153 Training, 154 Test
+
+=== Bandfamilie: die zwanzig besten auf dem TRAINING ===
+   delta  Merkmal                         Eingriff  Gewinn train  Gewinn test  gerettet  zerstoert  Luecke test
+    0.50  g_gr__r                            22.7%        +1.18        +1.56        25         13        12.8%
+    0.50  g_relgr__r                         22.7%        +1.18        +1.56        25         13        12.8%
+    0.50  g_loggr__r                         22.7%        +1.18        +1.56        25         13        12.8%
+    0.25  k_kon40_max__r                     14.9%        +1.05        +1.56        17          5        12.8%
+    1.00  s_g_top3__r                        22.0%        +0.92        +0.00        22         22         0.0%
+    1.00  g_gr__r                            32.6%        +0.92        -0.39        32         35        -3.2%
+    1.00  g_relgr__r                         32.6%        +0.92        -0.39        32         35        -3.2%
+    1.00  g_loggr__r                         32.6%        +0.92        -0.39        32         35        -3.2%
+    0.25  pc_internal_steric_clash__r        15.5%        +0.65        +0.26        14         12         2.1%
+    0.25  k_kon40_std__r                     14.9%        +0.65        +0.65        12          7         5.3%
+    0.25  k_polar35_medoid__r                14.7%        +0.65        +0.13        13         12         1.1%
+    0.25  k_hydrophob45_max__r               14.4%        +0.65        +1.30        19          9        10.6%
+    0.25  s_g_max__r                          4.3%        +0.52        -0.26         1          3        -2.1%
+    0.25  s_g_zu_global__r                    4.3%        +0.52        -0.26         1          3        -2.1%
+    0.25  k_kon45_max__r                     15.4%        +0.52        +0.91        17         10         7.4%
+    1.00  s_g_top2__r                        19.3%        +0.52        +0.91        23         16         7.4%
+    0.25  pc_volume_overlap_with_organi__r     15.0%        +0.39        -1.04         9         17        -8.5%
+    0.25  k_kon45_std__r                     14.7%        +0.39        -0.13        10         11        -1.1%
+    0.25  k_polar35_med__r                   15.5%        +0.39        -0.52        12         16        -4.3%
+    0.25  k_polar35_std__r                   14.7%        +0.39        +1.04        15          7         8.5%
+
+=== Feste Regeln, alle Komplexe ===
+  Regel                                          Erfolg  vs Basis  gerettet  zerstoert  netto   Luecke
+  Basis: max Mixed                                68.1%     +0.00         0          0     +0     0.0%
+  Zufall                                          19.3%    -48.73        28        776   -748  -422.6%
+  groesster Cluster                               56.9%    -11.21        66        238   -172   -97.2%
+  hoechster Median Mixed                          53.4%    -14.72        42        268   -226  -127.7%
+  hoechster Median gnina                          50.9%    -17.20        31        295   -264  -149.2%
+  hoechster top3 Mixed                            67.0%     -1.11        41         58    -17    -9.6%
+  hoechste PB-Validitaet                          45.1%    -22.93        47        399   -352  -198.9%
+  hoechste Kontaktzahl                            15.7%    -52.38        30        834   -804  -454.2%
+  hoechste Kohaerenz                               7.9%    -60.20        12        936   -924  -522.0%
+  BAND d=0.5 / g_gr__r (Test)                     69.5%     +1.56        25         13    +12    12.8%
+
+  Cluster-Orakel 79.6 %, Basis 68.1 %, Spielraum +11.5 Punkte
+
+Geschrieben nach C:\Users\julia\Documents\SigmaFlow\analysis\cluster_selection

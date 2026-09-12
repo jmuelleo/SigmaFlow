@@ -1,0 +1,90 @@
+########## PB308, Ziel beides ##########
+  loesbare Faelle 1233  (Treffer 1043, Fehlgriff 190), unloesbar 300
+
+=== 1. Auf welchem Platz landet die beste RICHTIGE Pose im Fehlfall? ===
+  Platz 2                      79   41.6 %
+  Platz 3                      35   18.4 %
+  Platz 4-5                    29   15.3 %
+  Platz 6-10                   22   11.6 %
+  Platz 11-25                  17    8.9 %
+  Platz 26 oder schlechter      8    4.2 %
+  Median Platz 3, oberes Quartil 5
+  -> Platz 2 haette der Score fast getroffen; Platz 26+ heisst, dass
+     dutzende falsche Posen besser bewertet wurden.
+
+=== 2. Derselbe Komplex, einmal Treffer und einmal Fehlgriff ===
+  Gleicher Ligand, gleiches Protein, gleiche Scoreskala. Nur so lassen
+  sich A und B trennen. Gepaart, Wilcoxon.
+
+  95 Komplexe erscheinen in beiden Zustaenden
+
+  Groesse                                    Treffer  Fehlgriff   Differenz         p
+  bester RICHTIGER Score                       6.833      5.647      -1.186   0.00000
+  bester FALSCHER Score                        5.203      6.424      +1.221   0.00000
+  Anteil richtiger Posen                       0.163      0.124      -0.039   0.00008
+  bester RMSD im Ziehsatz                      0.831      1.023      +0.193   0.00000
+
+    bester RICHTIGER Score          faellt -> B
+    bester FALSCHER Score           steigt -> A
+    Anteil richtiger Posen          faellt -> C
+    bester RMSD im Ziehsatz         steigt -> C
+
+=== 3. Welcher Anteil der Verschiebung geht auf welches Konto? ===
+  Verschiebung des besten richtigen Scores : -1.186
+  Verschiebung des besten falschen Scores  : +1.221
+  Anteil am Umschwung: Richtiges faellt 49 %, Falsches steigt 51 %
+
+=== 4. Wie gut ist die beste richtige Pose in beiden Zustaenden? ===
+  Wenn sie im Fehlfall nur knapp unter 2 A liegt, ist ihr niedriger
+  Score kein Fehler des Scores, sondern eine zutreffende Bewertung.
+
+  Zustand               Anteil richtig   bester RMSD   RMSD unter 1 A      n
+  Treffer                        23.8%          0.59            84.2%   1043
+  Fehlgriff                      10.7%          1.02            48.4%    190
+
+=== 5. Liegt im Fehlfall der ganze Komplex tiefer? ===
+  Zustand                Siegerscore  Median aller  bester richtig  bester falsch
+  Treffer                      7.797         1.690           7.797          5.099
+  Fehlgriff                    5.943         1.283           5.047          5.943
+
+  Faellt der Median mit, ist der ganze Komplex schwach bewertet;
+  bleibt er gleich, betrifft es gezielt die richtige Pose.
+
+============================================================================================
+  6. Wie viel des Absturzes auf der richtigen Seite ist VERDIENT?
+============================================================================================
+
+  Im Fehlzustand ist die beste richtige Pose nicht dieselbe Pose: sie liegt
+  bei 1,02 statt 0,59 Angstroem. Ein Teil ihres niedrigeren Scores ist damit
+  eine ZUTREFFENDE Bewertung einer schlechteren Pose -- kein Fehler des
+  Scores, sondern eine Folge des Ziehens.
+
+  Herausgerechnet wird das ueber die gepaarten Differenzen: die Aenderung des
+  Scores wird auf die Aenderung des RMSD regressiert. Die Steigung sagt, wie
+  viele Scorepunkte ein Angstroem kostet; der Achsenabschnitt ist der Rest,
+  der bei UNVERAENDERTER Posenqualitaet bleibt -- und nur der ist Hypothese B.
+
+  Steigung        -2.424 Scorepunkte je Angstroem RMSD
+  Achsenabschnitt -0.719  [-1.010,-0.441]
+  Gesamtabsturz   -1.186
+  davon durch schlechtere Posen erklaert: -0.467 (39 %)
+  ungeklaerter Rest (Hypothese B)       : -0.719 (61 %)
+
+============================================================================================
+  7. gnina oder PoseBusters? Der Mixed Score ist (-affinity) * p_pb^4
+============================================================================================
+
+  Beide Faktoren koennen den Umschwung erzeugen. Das ist keine akademische
+  Unterscheidung: liegt es an gnina, ist die Affinitaetsvorhersage im
+  falschen Bindungsmodus zu optimistisch; liegt es an p_pb, waehlt der
+  Exponent 4 eine geometrisch saubere, aber falsch platzierte Pose.
+
+  Groesse                              Treffer  Fehlgriff   Differenz         p
+  gnina der besten RICHTIGEN             6.833      5.647      -1.186   0.00000
+  gnina der besten FALSCHEN              5.661      6.485      +0.823   0.00000
+  p_pb der besten RICHTIGEN              1.000      1.000      +0.000       nan
+  p_pb der besten FALSCHEN               0.974      0.996      +0.022   0.00028
+
+  Lesehilfe: p_pb ist der Anteil bestandener PB-Pruefungen und geht in der
+  vierten Potenz ein -- eine Aenderung von 0,05 wirkt dort etwa so stark wie
+  20 Prozent Aenderung im Score.

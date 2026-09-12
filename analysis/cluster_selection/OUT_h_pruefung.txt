@@ -1,0 +1,47 @@
+####################################################################################################
+  Regel: im Band delta = 0.5 unter dem besten Mixed Score den GROESSTEN Cluster,
+         darin die bestbewertete Pose. Auf der Trainingshaelfte von PoseBusters gewaehlt.
+####################################################################################################
+
+  Prueffall                           Basis   Regel  Gewinn           95%-KI  rett.zerst.        p   Luecke
+
+  PB308 2.0 A, Testhaelfte (154)      67.92%   69.22%   +1.30  [ -0.26, +3.12]     23    13   0.1325    10.6%
+  PB308 2.0 A, alle 307               68.08%   69.38%   +1.30  [ +0.20, +2.54]     46    26   0.0245    11.3%
+
+  PB308 1.0 A, Testhaelfte (154)      67.92%   69.35%   +1.43  [ -0.13, +3.12]     21    10   0.0708    11.1%
+  PB308 1.0 A, alle 307               68.08%   69.32%   +1.24  [ +0.13, +2.35]     42    23   0.0248    10.3%
+
+  ASTEX 2.0 A, alle 85 (unberuehrt)   83.53%   83.06%   -0.47  [ -2.35, +1.41]      7     9   0.8036    -4.4%
+  ASTEX 1.0 A, alle 85 (unberuehrt)   83.53%   83.76%   +0.24  [ -1.18, +1.88]      6     5   1.0000     2.2%
+
+  --- je Zelle, PB308 bei 2,0 A ---
+  SigmaDock, 25 Schritte              64.50%   66.78%   +2.28  [ -0.65, +5.21]     14     7   0.1892    17.1%
+  SF-Minimal, 25 Schritte             68.08%   67.75%   -0.33  [ -2.28, +1.95]      5     6   1.0000    -3.2%
+  SF-Separate, 25 Schritte            65.15%   68.40%   +3.26  [ +1.30, +5.54]     11     1   0.0063    28.6%
+  SF-Minimal, 5 Schritte              72.31%   72.96%   +0.65  [ -1.95, +3.26]      9     7   0.8036     5.7%
+  SF-Separate, 5 Schritte             70.36%   71.01%   +0.65  [ -1.63, +2.93]      7     5   0.7744     5.7%
+
+  --- je Zelle, ASTEX bei 2,0 A ---
+  SigmaDock, 25 Schritte              74.12%   76.47%   +2.35  [ +0.00, +5.88]      2     0   0.5000    16.7%
+  SF-Minimal, 25 Schritte             81.18%   81.18%   +0.00  [ -4.71, +4.71]      2     2   1.0000     0.0%
+  SF-Separate, 25 Schritte            82.35%   82.35%   +0.00  [ -4.71, +4.71]      2     2   1.0000     0.0%
+  SF-Minimal, 5 Schritte              87.06%   85.88%   -1.18  [ -5.88, +2.35]      1     2   1.0000   -11.1%
+  SF-Separate, 5 Schritte             92.94%   89.41%   -3.53  [ -8.24, +0.00]      0     3   0.2500   -60.0%
+
+=== 5. Ist delta = 0,5 ein Grat oder ein Plateau? ===
+    Ein scharfes Maximum waere ein Zeichen fuer Ueberanpassung an die
+    Trainingshaelfte; ein breites Plateau spricht fuer einen echten Effekt.
+
+   delta   PB308 Test   PB308 alle        ASTEX   Eingriff PB
+    0.10       +0.52        +0.00        -0.24         13.6%
+    0.20       +1.17        +0.65        -0.94         22.9%
+    0.30       +1.56        +0.98        -1.18         30.9%
+    0.50       +1.30        +1.30        -0.47         42.7%
+    0.75       +0.78        +0.91        -0.24         53.9%
+    1.00       +0.13        +0.52        -1.41         61.0%
+    1.50       -1.30        -0.78        -1.65         71.8%
+    2.00       -2.47        -1.56        -3.06         79.5%
+    5.00       -7.79        -5.73        -6.35         94.2%
+
+  Eingriff = Anteil der Komplexe, in denen ueberhaupt mehr als ein
+  Cluster im Band liegt; nur dort kann die Regel etwas aendern.

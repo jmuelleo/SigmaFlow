@@ -1,0 +1,24 @@
+# PDBbind v2020 ORIGINAL-Ausgabe, core set (CASF-2016), 285 Komplexe.
+#
+# WOFUER
+#   val_exps des publizierten Rezepts. Early Stopping waehlt den Checkpoint
+#   danach aus.
+#
+# DIE BEKANNTE SCHWAECHE, BEWUSST UEBERNOMMEN
+#   core ist Teilmenge von refined ist Teilmenge von general. Das Rezept
+#   validiert also auf Daten, auf denen es trainiert, und `monitor_metric =
+#   loss_val/total` waehlt teilweise nach Auswendiglernen aus. Wir bilden das
+#   nach, weil der Lauf 1:1 vergleichbar sein soll -- es gehoert als Satz in
+#   den Text, nicht in eine Fussnote.
+#
+# BEWUSST NICHT KURATIERT, UND ZWAR IN BEIDEN FAMILIEN
+#   A und B muessen am selben Massstab gemessen werden. Wuerde nur B auf
+#   einem bereinigten core validieren, waere der Vergleich verdorben.
+#
+# Anzulegen mit arc/make_pdbbind_subset.sh core <CASF-2016-Liste>.
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "pdbbind2020-core"
+dataset: "pdbbind2020/core-set/"
+pdb_regex: ".*pocket\\.pdb$"
+sdf_regex: ".*ligand.*\\.sdf$"

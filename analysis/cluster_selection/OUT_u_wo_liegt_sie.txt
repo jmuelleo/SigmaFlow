@@ -1,0 +1,26 @@
+
+==============================================================================================
+PB308, Clusterschwelle 2,0 A
+==============================================================================================
+  Modell            K  rettbar  im groessten  nur kleiner  Rang der besten  Ranker nahm groessten
+  SigmaDock        40       45        48.9 %       51.1 %            2 (Md)                 31.1 %
+  SigmaFlow-NE     40       32        50.0 %       50.0 %            2 (Md)                 31.2 %
+  SigmaFlow-TR     40       37        48.6 %       51.4 %            2 (Md)                 16.2 %
+  SigmaFlow-NE    200       39        43.6 %       56.4 %            2 (Md)                 23.1 %
+  SigmaFlow-TR    200       37        27.0 %       73.0 %            3 (Md)                 21.6 %
+
+  'Rang der besten' ist der Groessenrang des groessten Clusters,
+  der eine richtige Pose enthaelt. 1 = der groesste Cluster.
+
+==============================================================================================
+ASTEX, Clusterschwelle 2,0 A
+==============================================================================================
+  Modell            K  rettbar  im groessten  nur kleiner  Rang der besten  Ranker nahm groessten
+  SigmaDock        40       13        46.2 %       53.8 %            2 (Md)                 38.5 %
+  SigmaFlow-NE     40        9        77.8 %       22.2 %            1 (Md)                 22.2 %
+  SigmaFlow-TR     40       10        20.0 %       80.0 %            2 (Md)                 30.0 %
+  SigmaFlow-NE    200       10        50.0 %       50.0 %            2 (Md)                 20.0 %
+  SigmaFlow-TR    200        5        20.0 %       80.0 %            2 (Md)                  0.0 %
+
+  'Rang der besten' ist der Groessenrang des groessten Clusters,
+  der eine richtige Pose enthaelt. 1 = der groesste Cluster.

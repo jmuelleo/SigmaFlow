@@ -1,0 +1,48 @@
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+  .apply(lambda d: np.average(d.g_intra_mean, weights=d.g_gr)))
+
+==============================================================================================
+PB308  (307 Komplexe)
+==============================================================================================
+  Modell             K  Cluster  je Zug  groesster  Entropie  innen [A]
+  SigmaDock 25      40     8.83    0.22      45.9 %     0.758      1.153
+  Minimal 25        40    13.92    0.35      27.5 %     0.872      1.351
+  Separate 25       40    13.24    0.33      31.5 %     0.848      1.326
+  Minimal 5        200    46.43    0.23      18.9 %     0.839      1.292
+  Separate 5       200    43.88    0.22      22.2 %     0.810      1.268
+
+  gepaart gegen SigmaDock 25 (nur die 25-Schritt-Zellen sind
+  bei gleicher Ziehungszahl vergleichbar):
+    Minimal 25   Cluster      +5.094  [+4.593, +5.606]  p = 0.0001
+    Minimal 25   groesster   -18.339 %  [-20.342, -16.368]  p = 0.0001
+    Minimal 25   innen        +0.210  [+0.195, +0.224]  p = 0.0001
+    Separate 25  Cluster      +4.417  [+3.958, +4.883]  p = 0.0001
+    Separate 25  groesster   -14.422 %  [-16.474, -12.467]  p = 0.0001
+    Separate 25  innen        +0.181  [+0.167, +0.196]  p = 0.0001
+
+==============================================================================================
+ASTEX  (85 Komplexe)
+==============================================================================================
+  Modell             K  Cluster  je Zug  groesster  Entropie  innen [A]
+  SigmaDock 25      40     5.94    0.15      57.7 %     0.677      1.038
+  Minimal 25        40    10.40    0.26      36.1 %     0.816      1.286
+  Separate 25       40     9.87    0.25      39.1 %     0.800      1.238
+  Minimal 5        200    30.67    0.15      25.3 %     0.783      1.211
+  Separate 5       200    29.40    0.15      29.6 %     0.747      1.173
+
+  gepaart gegen SigmaDock 25 (nur die 25-Schritt-Zellen sind
+  bei gleicher Ziehungszahl vergleichbar):
+    Minimal 25   Cluster      +4.459  [+3.776, +5.153]  p = 0.0001
+    Minimal 25   groesster   -21.647 %  [-25.265, -18.088]  p = 0.0001
+    Minimal 25   innen        +0.248  [+0.223, +0.274]  p = 0.0001
+    Separate 25  Cluster      +3.929  [+3.306, +4.553]  p = 0.0001
+    Separate 25  groesster   -18.588 %  [-22.176, -15.118]  p = 0.0001
+    Separate 25  innen        +0.200  [+0.174, +0.227]  p = 0.0001

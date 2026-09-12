@@ -1,0 +1,17 @@
+Satz astex: 85 Komplexe in allen fuenf Zellen
+
+       Zelle   K  Orakel %  ES GAB NICHTS %  n  A: kein RMSD<2 %  B: nur ungueltig %  Top-1 % vs SD disk.        p
+SigmaDock 25  40     89.41            10.59  9              4.71                5.88    74.12                     
+  Minimal 25  40     91.76             8.24  7              1.18                7.06    81.18 +2.35   6:8   0.7905
+ Separate 25  40     94.12             5.88  5              1.18                4.71    82.35 +4.71   3:7   0.3438
+   Minimal 5 200     98.82             1.18  1              1.18                0.00    87.06 +9.41   0:8 0.007812
+  Separate 5 200     98.82             1.18  1              0.00                1.18    92.94 +9.41   0:8 0.007812
+
+Lesehilfe: 'ES GAB NICHTS' = 100 - Orakel = A + B.
+A ist Genauigkeitsversagen (keine Pose nah genug),
+B ist Validitaetsversagen (nah genug, aber keine davon PB-valide).
+
+  Minimal 25   gegen Separate 25 :  +2.35 pp, 1:3, p = 0.625
+  Minimal 5    gegen Separate 5  :  +0.00 pp, 0:0, p = 1
+  Minimal 25   gegen Minimal 5   :  +7.06 pp, 0:6, p = 0.03125
+  Separate 25  gegen Separate 5  :  +4.71 pp, 0:4, p = 0.125

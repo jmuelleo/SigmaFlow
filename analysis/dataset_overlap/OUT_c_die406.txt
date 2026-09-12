@@ -1,0 +1,52 @@
+v2020-Original : 19443
+davon in R1    : 19037
+ENTFERNT       : 406
+
+PROTEIN  k-mer-Containment   (prot_cont)
+  entfernt  n=  406  Median 0.0055  Mittel 0.1671
+  verblieben n=19037  Median 0.0066  Mittel 0.1979
+  Mann-Whitney p = 0.001172,  P(entfernt naeher) = 0.453
+    Schwelle     entfernt   verblieben  Verhaeltnis   p (Fisher)
+        0.50      16.50 %      19.85 %        0.83x       0.1015
+        0.90      14.78 %      16.11 %        0.92x       0.4955
+        0.95       9.85 %      11.17 %        0.88x       0.4727
+        0.99       5.42 %       4.18 %        1.30x       0.2111
+
+LIGAND   max. Tanimoto   (lig_tanimoto)
+  entfernt  n=  405  Median 0.2597  Mittel 0.2857
+  verblieben n=19033  Median 0.2418  Mittel 0.2952
+  Mann-Whitney p = 0.02479,  P(entfernt naeher) = 0.533
+    Schwelle     entfernt   verblieben  Verhaeltnis   p (Fisher)
+        0.40      12.84 %      15.42 %        0.83x       0.1639
+        0.60       3.95 %       7.15 %        0.55x      0.01063
+        0.70       2.22 %       5.31 %        0.42x     0.003248
+        0.90       0.49 %       2.99 %        0.16x    0.0008814
+        1.00       0.49 %       2.86 %        0.17x     0.001241
+
+prot>=0.9 UND lig>=0.7: entfernt 0/406 (0.00 %), verblieben 65/19037 (0.34 %), p = 0.648
+prot>=0.95 UND lig>=0.9: entfernt 0/406 (0.00 %), verblieben 29/19037 (0.15 %), p = 1
+prot>=0.99 UND lig>=1.0: entfernt 0/406 (0.00 %), verblieben 13/19037 (0.07 %), p = 1
+
+Kontrolle -- unterscheiden sich die Gruppen sonst?
+  jahr     entfernt   2014.0   verblieben   2013.0   p = 0.001159
+  n_res    entfernt    304.5   verblieben    326.0   p = 0.0104
+
+Wirkung auf den Testsatz: PB308-Ziele, deren naechster Nachbar
+unter den ENTFERNTEN lag (prot_cont >= 0.9):
+  betroffene PB308-Ziele: 27 von 308
+prot_partner
+7QHL_D5P    6
+7UAS_MBU    6
+7LT0_ONJ    5
+7PIH_7QW    5
+7MYU_ZR7    4
+7NGW_UAW    3
+7OFK_VCH    3
+7WL4_JFU    3
+8CNH_V6U    3
+7P4C_5OV    2
+7MMH_ZJY    2
+7ZU2_DHT    2
+8AEM_LVF    2
+7BTT_F8R    1
+7FT9_4MB    1

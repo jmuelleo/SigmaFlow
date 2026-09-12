@@ -1,0 +1,104 @@
+# Trainingskonfiguration fuer die Flow-Arme, so nah am publizierten
+# SigmaDock-Rezept wie die Daten auf ARC es zulassen.
+#
+# WOZU
+#   Unsere bisherigen Laeufe haben `--config` nie uebergeben. Jede Einstellung,
+#   die die Kommandozeile nicht setzt, fiel deshalb auf den Dataclass-Vorgabewert
+#   zurueck, und acht davon weichen vom publizierten Wert ab. Diese Datei setzt
+#   sie. Sie ist aus SigmaDock/conf/training/slurm.yaml abgeleitet.
+#
+# ZWEI FALLEN
+#   1. scripts/train.py:49 ueberspringt Schluessel, die RunConfig nicht kennt,
+#      STILL. Ein Tippfehler wirkt also nicht, er verschwindet. Alle Schluessel
+#      hier sind gegen SigmaFlow_Minimal/src/sigmadock/config.py geprueft.
+#      rot_score_method und rot_score_scaling fehlen dort bewusst -- sie sind
+#      diffusionsspezifisch -- und stehen deshalb NICHT in dieser Datei.
+#   2. Die Kommandozeile schlaegt die YAML. Was train_final_72h.slurm als Flag
+#      uebergibt, gewinnt. Deshalb stehen max_epochs, max_steps, seed, devices,
+#      accelerator, num_workers und data_dir hier NICHT drin; die kommen aus
+#      dem Horizont.
+#
+# WAS BEWUSST ABWEICHT
+#   train_exps: das Original trainiert auf general UND refined. refined ist auf
+#   ARC nie aus pdbbind/raw/P-L.tar.gz entpackt worden, also general allein.
+#   val_exps: das Original validiert auf pdbbind-core, ebenfalls nicht entpackt.
+#   Da Early Stopping aus ist und der Endpunkt last.ckpt ist, waehlt die
+#   Validierung kein Modell aus; sie kostet nur Zeit.
+
+# --- Daten ---
+train_exps:
+  - pdbbind-general
+val_exps:
+  - posebusters
+test_exps:
+  - posebusters
+
+# --- Hardware ---
+# Eine GPU, also kein ddp. Das Original setzt hier ddp fuer vier Karten.
+strategy: auto
+cuda_precision: high
+
+# --- Trainingsschleife ---
+# Das Original setzt batch_size 64. config.py teilt den Wert durch world_size,
+# er ist also GLOBAL. Auf einer Karte erreichen wir dieselbe globale Batch als
+# 32 physisch mal 2 Akkumulation. Passt batch 64 physisch in den Speicher
+# (A100 80GB), dann batch_size 64 und accum_grad_batches 1 -- gleiche
+# Optimierung, weniger Zeit.
+batch_size: 32
+accum_grad_batches: 2
+val_check_interval: 512
+val_cycles: 2
+cache_cycles: 8
+cache_factor: 2
+
+# --- Modell ---
+sphere_channels: 128
+edge_channels: 32
+distance_expansion_dim: 32
+num_heads: 4
+num_layers: 6
+l_max_list: [3]
+m_max_list: [2]
+t_emb_dim: 32
+t_emb_scale: 512.0
+smearing_type: fourier
+radial_type: bessel
+
+# --- Verlustgewichte ---
+trans_score_weight: 2.0
+rot_score_weight: 0.5
+
+# --- Optimierer ---
+# ACHTUNG: 1.0e-4 und NICHT 1e-4. In YAML 1.1 ist `1e-4` ein STRING, der
+# Float-Resolver verlangt einen Dezimalpunkt in der Mantisse. SigmaDocks
+# eigene slurm.yaml hat hier 1e-4 und ist damit so nicht lauffaehig: AdamW
+# bekommt die Lernrate als Zeichenkette und stirbt an `0.0 <= lr`.
+# Genau daran sind die Jobs 8688976 und 8688977 nach sechs Minuten gescheitert.
+weight_decay: 0.1
+attention_dropout: 0.3
+edge_dropout: 0.1
+betas: [0.9, 0.998]
+optimizer_eps: 1.0e-08
+max_lr_start: 1.0e-4
+min_lr_start: 1.0e-5
+init_lr_start: 1.0e-6
+grad_clip: 4.0
+ema_halflife: 8
+
+# --- Struktur und Graph ---
+lig_coordinate_distance_noise: 0.0
+prot_coordinate_distance_noise: 0.02
+pocket_com_noise: 1.0
+pocket_distance_noise: 0.5
+alignment_rmsd_tolerance: 1.0
+
+# --- Schalter ---
+# pb_check filtert die Startkonformere mit PoseBusters. Das ist die einzige
+# Aenderung hier, die spuerbar Zeit kostet, und zugleich die einzige, die
+# gezielt auf die PB-Validitaet der erzeugten Posen wirkt -- also auf die
+# Groesse, die das kombinierte Orakel begrenzt (85,0 gegen 97,7 auf PB308).
+# CachedRecycleWrapper mit cache_cycles 8 verwendet jedes erzeugte Beispiel
+# achtmal, der Aufwand faellt also einmal pro acht Nutzungen an.
+force_retry: true
+pb_check: true
+random_rotation: true

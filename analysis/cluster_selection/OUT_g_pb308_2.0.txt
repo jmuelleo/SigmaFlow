@@ -1,0 +1,63 @@
+########## PB308, Schwelle 2.0 A ##########
+
+=== Wie verteilen sich die Komplexe? ===
+  SigmaDock  25 Schritte:  Treffer 198   rettbar  41   unrettbar  68
+  Minimal    25 Schritte:  Treffer 209   rettbar  31   unrettbar  67
+  Separate   25 Schritte:  Treffer 200   rettbar  35   unrettbar  72
+  Minimal     5 Schritte:  Treffer 222   rettbar  35   unrettbar  50
+  Separate    5 Schritte:  Treffer 216   rettbar  35   unrettbar  56
+
+=== 1. Scheitern immer dieselben Komplexe? ===
+  Komplexe, die in ALLEN 5 Zellen treffen        : 138
+  Komplexe, die in ALLEN Zellen rettbar danebenliegen : 4
+  Komplexe, die in KEINER Zelle treffen               : 43
+  Komplexe, die mindestens einmal rettbar scheitern   : 100 von 307
+  ... davon in allen 5 Zellen: 4 beobachtet gegen 0.0 unter Unabhaengigkeit
+  -> deutlich mehr als erwartet heisst: der Fehler klebt am Komplex,
+     nicht an der Ziehung.
+
+=== 2. Score-Abstand: gewaehlter minus bester korrekter Cluster ===
+  Perzentile p10 0.096  p25 0.223  p50 0.532  p75 0.961  p90 1.986
+  Abstand unter 0.05:   3.4 %  (6 Faelle)
+  Abstand unter 0.10:  11.3 %  (20 Faelle)
+  Abstand unter 0.25:  26.0 %  (46 Faelle)
+  Abstand unter 0.50:  49.2 %  (87 Faelle)
+  Abstand unter 1.00:  75.7 %  (134 Faelle)
+  -> das ist die Obergrenze der Bandfamilie: nur diese Faelle sind mit
+     einem Band der Breite delta ueberhaupt erreichbar.
+
+=== 3. Ist der korrekte Cluster kleiner als der gewaehlte? ===
+  Median Groesse gewaehlt : 8 Posen
+  Median Groesse korrekt  : 7 Posen
+  korrekter Cluster kleiner in 47.5 % der Faelle
+  Median Verhaeltnis korrekt/gewaehlt: 1.00
+  -> unter 1 heisst: eine Regel 'nimm den groesseren Cluster' wuerde
+     den Fehler in der Mehrheit der Faelle VERSTAERKEN.
+
+  PB-Validitaetsanteil gewaehlt 0.547 gegen korrekt 0.473
+  Zahl der Cluster: rettbare Faelle 22.90, Treffer 19.08, unrettbar 47.25
+
+=== 4. Haengt das Scheitern an der Ligandgroesse? ===
+  Gruppe            Atome   drehbar     logP      n
+  Treffer              23       4.0     1.16   1045
+  rettbar              19       4.0     1.30    177
+  unrettbar            33       7.0    -0.73    313
+  Korrelation atome mit 'rettbar statt Treffer': -0.073
+  Korrelation drehbar mit 'rettbar statt Treffer': +0.006
+
+=== 5. Die haeufigsten rettbaren Fehlgriffe ===
+  Komplex       Zellen   D Abstand  D Cluster  D RMSD gew.  D RMSD korr.
+  7Z2O_IAJ           5       0.947        6.8         2.89          1.09
+  7L5F_XNG           5       2.179       30.2         2.11          1.48
+  7DQL_4CL           5       0.504        7.4         1.80          0.90
+  7A9E_R4W           5       0.776       15.0         2.29          1.44
+  7PJQ_OWH           4       0.582       11.0         2.48          0.60
+  8AUH_L9I           4       0.969       46.0         3.62          1.72
+  6YT6_PKE           4       0.625       21.5         1.08          0.75
+  5SD5_HWI           4       1.551       42.2         2.89          2.14
+  7OP9_06K           4       0.488       16.2         2.78          1.03
+  7NUT_GLP           4       0.782       10.2         2.12          0.88
+  7LJN_GTP           3       0.792       45.7         2.57          1.39
+  6M2B_EZO           3       1.204       22.3         2.22          1.28
+
+Fallliste nach g_faelle_pb308_2.0.csv

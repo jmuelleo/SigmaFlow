@@ -1,0 +1,79 @@
+########## PB308, Clusterschwelle 2.0 A, Ziel contains_correct ##########
+38776 Cluster, 148 Merkmale
+
+Rettbare Fehlgriffe: 185  {('Minimal', 5): 38, ('Minimal', 25): 31, ('Separate', 5): 37, ('Separate', 25): 37, ('SigmaDock', 25): 42}
+Davon ausgeschlossen, weil der gewaehlte Cluster SELBST eine korrekte Pose enthaelt: 25
+  (dort liegt der Fehler innerhalb des Clusters, nicht zwischen den Clustern -- keine Clusterwahl kann ihn heilen)
+Nullwert der gepaarten Quote im Mittel: 61.8 %
+Nullwert der Top-1-Quote (Zufallscluster) im Mittel: 18.3 %
+
+=== Ebene 3, rettbare Fehlgriffe ===
+  Top-1  : Alle Cluster nach dem Merkmal sortieren, den obersten nehmen --
+           enthaelt er eine korrekte Pose?
+  Zufall : derselbe Wert fuer einen zufaellig gezogenen Cluster.
+  Ueber  : die Differenz. NUR DIESE ZAHL IST AUSSAGEKRAEFTIG.
+  Quote  : gepaarte Quote, um ihren analytischen Nullwert bereinigt.
+
+  Merkmal                          Top-1  Zufall   Ueber   Quote        p  stabil  AUC innen
+  --- die fuenfzehn besten ---
+  g_gr                             43.2%   18.3%  +24.9    -3.2   0.05435/5           0.873
+  g_relgr__r                       43.2%   18.3%  +24.9    -3.2   0.05435/5           0.873
+  g_loggr__r                       43.2%   18.3%  +24.9    -3.2   0.05435/5           0.873
+  g_gr__r                          43.2%   18.3%  +24.9    -3.2   0.05435/5           0.873
+  g_relgr                          43.2%   18.3%  +24.9    -3.2   0.05435/5           0.873
+  g_loggr                          43.2%   18.3%  +24.9    -3.2   0.05435/5           0.873
+  p_valid_best                     37.3%   18.3%  +19.0    -7.8   0.00045/5           0.859
+  p_valid_best__r                  37.3%   18.3%  +19.0    -7.8   0.00045/5           0.859
+  s_p_kurt__r                      34.5%   17.0%  +17.4    +1.0   0.00055/5           0.356
+  s_p_kurt                         34.5%   17.0%  +17.4    +1.0   0.00055/5           0.356
+  s_p_top2                         34.6%   18.3%  +16.3   -12.9   0.00005/5           0.859
+  s_p_top2__r                      34.6%   18.3%  +16.3   -12.9   0.00005/5           0.859
+  s_h_kurt__r                      34.1%   18.3%  +15.8    -0.2   0.00005/5           0.436
+  s_h_kurt                         34.1%   18.3%  +15.8    -0.2   0.00005/5           0.436
+  s_p_max__r                       33.5%   18.3%  +15.2   -11.3   0.00005/5           0.836
+  --- die fuenf schlechtesten ---
+  g_duplikate                       6.5%   18.3%  -11.8    -9.1   0.00000/5           0.428
+  p_verl_min__r                     5.4%   18.3%  -12.9   -14.8   0.00000/5           0.131
+  p_verl_best__r                    5.4%   18.3%  -12.9   -11.6   0.00000/5           0.135
+  p_verl_best                       5.4%   18.3%  -12.9   -11.6   0.00000/5           0.135
+  p_verl_min                        5.4%   18.3%  -12.9   -14.8   0.00000/5           0.131
+
+=== Wie viele Merkmale schlagen den Zufall wirklich? ===
+  Ueberschuss ueber 0                  : 210 von 296
+  Ueberschuss ueber 5 Punkten          : 100
+  ueber 5 Punkten UND in allen Zellen  : 76
+  ueber 10 Punkten UND in allen Zellen : 54
+  ... davon mit p < 0,05               : 48
+
+  Kandidaten: Ueberschuss > 5 Punkte, in allen Zellen positiv, p < 0,05
+    Merkmal                            Top-1  Zufall   Ueber        p
+    p_valid_best                       37.3%   18.3%  +19.0   0.0004
+    p_valid_best__r                    37.3%   18.3%  +19.0   0.0004
+    s_p_kurt__r                        34.5%   17.0%  +17.4   0.0005
+    s_p_kurt                           34.5%   17.0%  +17.4   0.0005
+    s_p_top2                           34.6%   18.3%  +16.3   0.0000
+    s_p_top2__r                        34.6%   18.3%  +16.3   0.0000
+    s_h_kurt__r                        34.1%   18.3%  +15.8   0.0000
+    s_h_kurt                           34.1%   18.3%  +15.8   0.0000
+    s_p_max__r                         33.5%   18.3%  +15.2   0.0000
+    s_p_max                            33.5%   18.3%  +15.2   0.0000
+    s_p_top3__r                        33.0%   18.3%  +14.7   0.0000
+    s_p_top3                           33.0%   18.3%  +14.7   0.0000
+    s_h_top3                           32.4%   18.3%  +14.1   0.0000
+    s_h_top3__r                        32.4%   18.3%  +14.1   0.0000
+    p_valid__r                         31.9%   18.3%  +13.6   0.0000
+    s_h_trimm__r                       31.9%   18.3%  +13.6   0.0000
+    s_h_trimm                          31.9%   18.3%  +13.6   0.0000
+    p_valid                            31.9%   18.3%  +13.6   0.0000
+    s_g_kurt__r                        31.4%   18.3%  +13.1   0.0000
+    s_p_extrem                         31.4%   18.3%  +13.1   0.0000
+    s_korr_hv                          31.4%   18.3%  +13.1   0.0000
+    s_g_kurt                           31.4%   18.3%  +13.1   0.0000
+    s_korr_hv__r                       31.4%   18.3%  +13.1   0.0000
+    s_p_extrem__r                      31.4%   18.3%  +13.1   0.0000
+    s_h_extrem__r                      30.3%   18.3%  +12.0   0.0000
+    k_dmin_max                         30.3%   18.3%  +12.0   0.0000
+    s_p_exzess                         30.3%   18.3%  +12.0   0.0000
+    s_p_exzess__r                      30.3%   18.3%  +12.0   0.0000
+    s_h_extrem                         30.3%   18.3%  +12.0   0.0000
+    k_dmin_max__r                      30.3%   18.3%  +12.0   0.0000

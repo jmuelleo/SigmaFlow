@@ -1,0 +1,12 @@
+# Shell- und SLURM-Skripte MUESSEN mit LF ausgecheckt werden. Mit CRLF
+# scheitert die Shebang-Zeile auf Linux mit
+#   /bin/bash^M: bad interpreter: No such file or directory
+# Das Repo wird unter Windows bearbeitet und auf ARC (Linux) ausgefuehrt,
+# der Fall tritt also garantiert ein, wenn man ihn nicht festlegt.
+*.sh    text eol=lf
+*.slurm text eol=lf
+*.env   text eol=lf
+
+# Nachgetragen 2026-09-07: eine .env wird per `source` gelesen, ein
+# CRLF haengt sich damit an JEDEN exportierten Wert. FINAL_N_TRAIN
+# waere dann "24759" und jede Arithmetik darauf scheitert.

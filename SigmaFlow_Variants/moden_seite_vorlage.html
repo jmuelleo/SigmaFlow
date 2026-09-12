@@ -1,0 +1,367 @@
+<title>Pose Mode Explorer</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/3dmol@2.1.0/build/3Dmol-min.js"></script>
+<style>
+:root{
+  /* Bewusst EIN Thema: reines Weiss. Die Farben sind hier die Aussage der
+     Abbildung; ein zweites Farbschema haette zwei Saetze bedeutet, die beide
+     stimmen muessen. Alles explizit, damit die Seite auf jedem Grund haelt. */
+  --ground:#ffffff; --panel:#ffffff; --edge:#d4d0c8; --edge-soft:#ebe8e2;
+  --ink:#14130f; --ink-2:#54504a; --ink-3:#87827a;
+  --crystal:#0032ff; --accent:#c8321a;
+  /* Modusfarben gesaettigt und weit auseinander. Blau fehlt bewusst -- es
+     gehoert der Kristallpose. */
+  --m0:#e6194b; --m1:#f58231; --m2:#3cb44b; --m3:#911eb4;
+  --m4:#f032e6; --m5:#00a0a0; --m6:#a8a800; --m7:#8b4513; --rest:#9e9992;
+  --good:#00e640; --bad:#ff0033;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);margin:0;
+  font-family:Archivo,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  line-height:1.5}
+.wrap{max-width:1240px;margin:0 auto;padding:28px 22px 56px}
+header{border-bottom:1px solid var(--edge);padding-bottom:16px;margin-bottom:20px}
+h1{font-size:26px;font-weight:700;letter-spacing:-.02em;margin:0 0 6px;
+  text-wrap:balance}
+.sub{color:var(--ink-2);font-size:14px;max-width:76ch;margin:0}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin:16px 0 0}
+.chip{border:1px solid var(--edge);background:var(--panel);color:var(--ink-2);
+  padding:7px 12px;border-radius:2px;cursor:pointer;font-size:12.5px;
+  font-family:"IBM Plex Mono",monospace;transition:border-color .12s,color .12s}
+.chip:hover{border-color:var(--ink-3);color:var(--ink)}
+.chip[aria-pressed="true"]{border-color:var(--ink);color:var(--ink);
+  font-weight:500;box-shadow:inset 0 -2px 0 var(--accent)}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.knobs{display:flex;flex-wrap:wrap;gap:22px;align-items:center;
+  margin-top:14px;padding:11px 13px;border:1px solid var(--edge);
+  border-radius:3px;font-size:13px}
+.knob{display:flex;align-items:center;gap:8px}
+.knob b{font-weight:600;font-size:12px;color:var(--ink-2);
+  text-transform:uppercase;letter-spacing:.05em}
+select{font:inherit;font-family:"IBM Plex Mono",monospace;padding:3px 6px;
+  border:1px solid var(--edge);border-radius:2px;background:var(--panel);
+  color:var(--ink)}
+.knob label{display:flex;align-items:center;gap:5px;cursor:pointer;
+  color:var(--ink-2)}
+
+.grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);
+  gap:20px;align-items:start;margin-top:18px}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+
+.viewer-card{background:var(--panel);border:1px solid var(--edge);
+  border-radius:3px;overflow:hidden}
+#viewer{width:100%;height:450px;position:relative;background:var(--panel)}
+.viewer-bar{display:flex;flex-wrap:wrap;gap:14px;align-items:center;
+  padding:9px 13px;border-top:1px solid var(--edge-soft);
+  font-size:12.5px;color:var(--ink-2)}
+.viewer-bar label{display:flex;align-items:center;gap:6px;cursor:pointer}
+.hint{font-size:12px;color:var(--ink-3);padding:0 13px 11px;margin:0}
+
+.arm{background:var(--panel);border:1px solid var(--edge);border-radius:3px;
+  padding:12px 14px 14px;margin-bottom:11px;cursor:pointer;
+  transition:border-color .12s}
+.arm:hover{border-color:var(--ink-3)}
+.arm[aria-pressed="true"]{border-color:var(--ink);
+  box-shadow:inset 3px 0 0 var(--accent)}
+.arm:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.arm-head{display:flex;justify-content:space-between;align-items:baseline;
+  gap:10px;margin-bottom:8px}
+.arm-name{font-weight:600;font-size:14.5px}
+.arm-num{font-size:12px;color:var(--ink-2);
+  font-family:"IBM Plex Mono",monospace}
+.bars{display:flex;height:26px;gap:2px;margin-bottom:6px}
+.seg{position:relative;min-width:3px;border-radius:1px;overflow:hidden;
+  cursor:pointer;background:var(--edge-soft)}
+.seg .fill{position:absolute;left:0;bottom:0;width:100%}
+.seg .shell{position:absolute;inset:0;border:1px solid rgba(0,0,0,.16)}
+.seg[data-picked="1"]::after{content:"";position:absolute;inset:0;
+  border:2px solid var(--ink)}
+.seglab{display:flex;gap:2px;font-size:10.5px;color:var(--ink-3);
+  font-family:"IBM Plex Mono",monospace}
+.seglab span{text-align:center;overflow:hidden;white-space:nowrap}
+
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);
+  margin-top:13px;padding-top:11px;border-top:1px solid var(--edge-soft)}
+.key{display:flex;align-items:center;gap:6px}
+.sw{width:13px;height:13px;border-radius:2px;border:1px solid rgba(0,0,0,.2)}
+.sw.half{background:linear-gradient(to top,var(--good) 55%,var(--edge-soft) 55%)}
+table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:15px}
+th,td{text-align:right;padding:5px 7px;border-bottom:1px solid var(--edge-soft)}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--ink-3);font-weight:500;font-size:11.5px;
+  text-transform:uppercase;letter-spacing:.06em}
+td.num{font-family:"IBM Plex Mono",monospace;font-variant-numeric:tabular-nums}
+footer{margin-top:32px;padding-top:15px;border-top:1px solid var(--edge);
+  font-size:12.5px;color:var(--ink-3);max-width:80ch}
+footer p{margin:0 0 8px}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>Pose Mode Explorer</h1>
+  <p class="sub">Forty independent samples per complex, clustered into binding
+  modes. Each bar is one mode; its width is the number of poses, the filled part
+  the share that meets the success criterion. The outlined bar holds the pose the
+  ranker selected.</p>
+  <div class="chips" id="chips" role="group" aria-label="Complex"></div>
+  <div class="knobs">
+    <span class="knob"><b>Cluster at</b>
+      <select id="selClust"></select></span>
+    <span class="knob"><b>Success</b>
+      <select id="selCrit"></select>
+      <label><input type="checkbox" id="cbPB" checked> and PB-valid</label></span>
+  </div>
+</header>
+
+<div class="grid">
+  <div>
+    <div class="viewer-card">
+      <div id="viewer"></div>
+      <div class="viewer-bar">
+        <label><input type="checkbox" id="cbCrystal" checked> crystal pose</label>
+        <label><input type="checkbox" id="cbRanked" checked> ranked pose</label>
+        <label><input type="radio" name="col" id="colMode" checked> colour by mode</label>
+        <label><input type="radio" name="col" id="colOk"> colour by criterion</label>
+      </div>
+      <p class="hint">Drag to rotate, scroll to zoom. Click a bar on the right to
+      isolate one mode; click it again to show all.</p>
+    </div>
+    <table id="tbl"></table>
+  </div>
+  <div>
+    <div id="arms"></div>
+    <div class="legend">
+      <span class="key"><span class="sw" style="background:var(--crystal)"></span>crystal pose</span>
+      <span class="key"><span class="sw half"></span>filled = meets criterion</span>
+      <span class="key"><span class="sw" style="background:var(--rest)"></span>singletons</span>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <p><strong>Two thresholds that both happen to be 2&nbsp;Å.</strong> The
+  <em>clustering</em> threshold decides how similar two poses must be to count as
+  the same binding mode — a modelling choice, and adjustable above. The
+  <em>success</em> criterion decides how close a pose must be to the crystal
+  structure to count as correct — the field standard from PoseBusters. They are
+  independent, and pushing them apart is instructive: at a 1&nbsp;Å success
+  criterion much of what passes at 2&nbsp;Å turns out to have individual fragments
+  rotated the wrong way.</p>
+  <p><strong>How the modes are defined.</strong> Pairwise RMSD without
+  superposition — the poses already sit in the protein frame, so superimposing
+  them would destroy the spatial information at issue — then
+  <em>complete-linkage</em> hierarchical clustering. Complete linkage merges two
+  groups only once their <em>largest</em> cross distance falls below the
+  threshold, which guarantees what the eye expects: every pair of poses inside a
+  mode lies within the threshold of every other. Average linkage does not give
+  that guarantee. Modes are numbered by size, so Mode&nbsp;1 is always the
+  largest. RMSD to the crystal pose is symmetry-corrected.</p>
+  <p><strong>What to look for.</strong> A large mode is not automatically the
+  right one. Where the ranker succeeds, it sometimes selects from a mode holding a
+  quarter of the samples while the largest mode holds none that are correct.</p>
+  <p id="prov"></p>
+</footer>
+</div>
+
+<script id="daten" type="application/json">__DATEN__</script>
+<script>
+(function(){
+  const D = JSON.parse(document.getElementById("daten").textContent);
+  const MC = ["--m0","--m1","--m2","--m3","--m4","--m5","--m6","--m7"];
+  const css = v => getComputedStyle(document.documentElement)
+                     .getPropertyValue(v).trim();
+  const modeCol = i => css(MC[i % MC.length]);
+  const MIN_MODUS = 2;
+
+  let ki = 0, ai = 1, iso = -1, viewer = null;
+  const el = id => document.getElementById(id);
+
+  // --- SDF aus Elementen, Bindungen und einem Koordinatensatz -----------
+  // Alle Posen eines Komplexes teilen Atomfolge und Bindungen; nur die
+  // Koordinaten wechseln. Deshalb liegt die Bindungsliste einmal vor und
+  // der Text wird hier zusammengesetzt.
+  function sdf(e, b, xyz){
+    const f = n => n.toFixed(4).padStart(10," ");
+    let s = "\n  mode-explorer\n\n";
+    s += String(e.length).padStart(3," ") + String(b.length).padStart(3," ")
+       + "  0  0  0  0  0  0  0  0999 V2000\n";
+    for (let i=0;i<e.length;i++){
+      const p = xyz[i];
+      s += f(p[0])+f(p[1])+f(p[2])+" "+e[i].padEnd(3," ")
+         + " 0  0  0  0  0  0  0  0  0  0  0  0\n";
+    }
+    for (const x of b){
+      s += String(x[0]+1).padStart(3," ")+String(x[1]+1).padStart(3," ")
+         + String(x[2]).padStart(3," ")+"  0  0  0  0\n";
+    }
+    return s + "M  END\n";
+  }
+
+  const komplex = () => D.komplexe[ki];
+
+  // --- Der Zustand haengt an BEIDEN Schaltern ---------------------------
+  // Die Modusnummern liegen je Clusterschwelle fertig vor; die Korrektheit
+  // wird hier aus RMSD und Validitaet gebildet. Erst danach werden die
+  // Cluster nach Groesse sortiert und die Einzelgaenger zusammengefasst --
+  // in dieser Reihenfolge, damit "Mode 1" immer der groesste ist, egal
+  // welche Schwelle gewaehlt wurde.
+  function zustand(a){
+    const roh = a.moden[el("selClust").value];
+    const crit = parseFloat(el("selCrit").value), pb = el("cbPB").checked;
+    const ok = a.rmsd.map((r,i) => (r < crit && (!pb || a.valid[i])) ? 1 : 0);
+    const n = roh.length;
+    const gruppen = new Map();
+    roh.forEach((m,i) => { if(!gruppen.has(m)) gruppen.set(m,[]);
+                           gruppen.get(m).push(i); });
+    const gross = [...gruppen.values()].filter(g => g.length >= MIN_MODUS)
+                                       .sort((x,y) => y.length - x.length);
+    const rest = [...gruppen.values()].filter(g => g.length < MIN_MODUS).flat();
+    const kacheln = gross.map(g => ({idx:g, rest:false}));
+    if (rest.length) kacheln.push({idx:rest.sort((x,y)=>x-y), rest:true});
+    const modus = new Array(n).fill(0);
+    kacheln.forEach((k,j) => k.idx.forEach(i => { modus[i] = j; }));
+    kacheln.forEach(k => {
+      k.n = k.idx.length;
+      k.korrekt = k.idx.reduce((s,i) => s + ok[i], 0);
+      k.gewaehlt = k.idx.includes(a.sieger);
+    });
+    return {ok, modus, kacheln, n};
+  }
+
+  function zeichne3d(){
+    const k = komplex(), a = k.arme[ai], z = zustand(a);
+    if (!viewer) viewer = $3Dmol.createViewer(el("viewer"),
+      {backgroundColor: css("--panel")});
+    viewer.clear();
+    viewer.setBackgroundColor(css("--panel"));
+    const nachModus = el("colMode").checked, zeigeSieger = el("cbRanked").checked;
+    for (let i=0;i<a.posen.length;i++){
+      if (iso >= 0 && z.modus[i] !== iso) continue;
+      if (i === a.sieger && zeigeSieger) continue;
+      const m = viewer.addModel(sdf(k.elemente, k.bindungen, a.posen[i]), "sdf");
+      const c = nachModus
+        ? (z.kacheln[z.modus[i]].rest ? css("--rest") : modeCol(z.modus[i]))
+        : (z.ok[i] ? css("--good") : css("--bad"));
+      m.setStyle({}, {stick:{radius:0.055, color:c}});
+    }
+    if (zeigeSieger && (iso < 0 || z.modus[a.sieger] === iso)){
+      const m = viewer.addModel(sdf(k.elemente,k.bindungen,a.posen[a.sieger]),"sdf");
+      m.setStyle({}, {stick:{radius:0.16,
+        color: z.ok[a.sieger] ? css("--good") : css("--bad")}});
+    }
+    if (el("cbCrystal").checked){
+      const m = viewer.addModel(sdf(k.elemente,k.bindungen,k.kristall),"sdf");
+      m.setStyle({}, {stick:{radius:0.20, color: css("--crystal")}});
+    }
+    viewer.zoomTo(); viewer.render();
+  }
+
+  function zeichneArme(){
+    const host = el("arms"); host.textContent = "";
+    komplex().arme.forEach((a, j) => {
+      const z = zustand(a);
+      const box = document.createElement("div");
+      box.className = "arm"; box.tabIndex = 0;
+      box.setAttribute("role","button");
+      box.setAttribute("aria-pressed", j === ai ? "true" : "false");
+
+      const head = document.createElement("div"); head.className = "arm-head";
+      const nm = document.createElement("span");
+      nm.className = "arm-name"; nm.textContent = a.name;
+      const nu = document.createElement("span"); nu.className = "arm-num";
+      const echte = z.kacheln.filter(c => !c.rest).length;
+      const korrekt = z.kacheln.reduce((s,c) => s + c.korrekt, 0);
+      nu.textContent = `${echte} modes · ${korrekt}/${z.n} correct`;
+      head.append(nm, nu); box.append(head);
+
+      const bars = document.createElement("div"); bars.className = "bars";
+      const labs = document.createElement("div"); labs.className = "seglab";
+      z.kacheln.forEach((c, ci) => {
+        const seg = document.createElement("div");
+        seg.className = "seg"; seg.style.flex = String(c.n);
+        if (c.gewaehlt) seg.dataset.picked = "1";
+        const fill = document.createElement("div"); fill.className = "fill";
+        fill.style.height = (100 * c.korrekt / c.n) + "%";
+        fill.style.background = c.rest ? css("--rest") : modeCol(ci);
+        const shell = document.createElement("div"); shell.className = "shell";
+        seg.append(fill, shell);
+        seg.title = (c.rest ? "Singletons" : "Mode " + (ci+1))
+          + `: ${c.n}/${z.n} poses, ${c.korrekt} correct`
+          + (c.gewaehlt ? " — holds the ranked pose" : "");
+        seg.addEventListener("click", ev => {
+          ev.stopPropagation();
+          if (j !== ai){ ai = j; iso = ci; } else { iso = (iso === ci) ? -1 : ci; }
+          alles();
+        });
+        bars.append(seg);
+        const lab = document.createElement("span");
+        lab.style.flex = String(c.n);
+        lab.textContent = c.n >= z.n*0.08 ? c.n : "";
+        labs.append(lab);
+      });
+      box.append(bars, labs);
+      box.addEventListener("click", () => { ai = j; iso = -1; alles(); });
+      box.addEventListener("keydown", e => {
+        if (e.key === "Enter" || e.key === " "){
+          e.preventDefault(); ai = j; iso = -1; alles(); }
+      });
+      host.append(box);
+    });
+  }
+
+  function zeichneTabelle(){
+    const a = komplex().arme[ai], z = zustand(a);
+    const t = el("tbl"); t.textContent = "";
+    const hd = t.insertRow();
+    ["Mode","Poses","Share","Correct","Rate","median RMSD"].forEach(x => {
+      const th = document.createElement("th"); th.textContent = x; hd.append(th); });
+    z.kacheln.forEach((c, ci) => {
+      const r = t.insertRow();
+      if (ci === iso) r.style.background = "var(--edge-soft)";
+      const rs = c.idx.map(i => a.rmsd[i]).sort((x,y) => x-y);
+      const med = rs[Math.floor(rs.length/2)];
+      [ (c.rest ? "Singletons" : "Mode " + (ci+1)) + (c.gewaehlt ? "  ← ranked" : ""),
+        c.n, (100*c.n/z.n).toFixed(0)+"%", c.korrekt,
+        (100*c.korrekt/c.n).toFixed(0)+"%", med.toFixed(2)+" Å"
+      ].forEach((x,i) => { const td = r.insertCell(); td.textContent = x;
+                           if (i) td.className = "num"; });
+    });
+  }
+
+  function alles(){
+    document.querySelectorAll("#chips .chip").forEach((c,i) =>
+      c.setAttribute("aria-pressed", i === ki ? "true" : "false"));
+    zeichneArme(); zeichneTabelle(); zeichne3d();
+    el("prov").textContent =
+      `PoseBusters · ${D.nfe} integration steps · 40 samples per complex · `
+      + `${D.methode} linkage at ${el("selClust").value} Å · `
+      + `success: RMSD < ${el("selCrit").value} Å`
+      + (el("cbPB").checked ? " and PB-valid" : "");
+  }
+
+  D.komplexe.forEach((k, i) => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = k.code;
+    b.setAttribute("aria-pressed", i === 0 ? "true" : "false");
+    b.addEventListener("click", () => { ki = i; ai = 1; iso = -1; alles(); });
+    el("chips").append(b);
+  });
+  D.schwellen.forEach(s => {
+    const v = s.toFixed(1);
+    for (const id of ["selClust","selCrit"]){
+      const o = document.createElement("option");
+      o.value = v; o.textContent = v + " Å";
+      if (Math.abs(s - 2.0) < 1e-6) o.selected = true;
+      el(id).append(o);
+    }
+  });
+  ["selClust","selCrit","cbPB"].forEach(id =>
+    el(id).addEventListener("change", () => { iso = -1; alles(); }));
+  ["cbCrystal","cbRanked","colMode","colOk"].forEach(id =>
+    el(id).addEventListener("change", zeichne3d));
+
+  alles();
+})();
+</script>

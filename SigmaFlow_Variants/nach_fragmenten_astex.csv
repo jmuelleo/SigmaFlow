@@ -1,0 +1,811 @@
+arm,nfe,K,gruppe,n_komplexe,ziel,regel,anteil_prozent
+SigmaDock,25,40,alle,85,RMSD<2,je Zug,65.47
+SigmaDock,25,40,frag=1,6,RMSD<2,je Zug,56.67
+SigmaDock,25,40,frag=2,9,RMSD<2,je Zug,62.78
+SigmaDock,25,40,frag=3,17,RMSD<2,je Zug,77.21
+SigmaDock,25,40,frag=4,20,RMSD<2,je Zug,75.5
+SigmaDock,25,40,frag=5,11,RMSD<2,je Zug,61.82
+SigmaDock,25,40,frag=6,12,RMSD<2,je Zug,60.62
+SigmaDock,25,40,frag=7,8,RMSD<2,je Zug,52.81
+SigmaDock,25,40,frag=8,2,RMSD<2,je Zug,3.75
+SigmaDock,25,40,alle,85,RMSD<2,nur gnina,77.65
+SigmaDock,25,40,frag=1,6,RMSD<2,nur gnina,66.67
+SigmaDock,25,40,frag=2,9,RMSD<2,nur gnina,77.78
+SigmaDock,25,40,frag=3,17,RMSD<2,nur gnina,82.35
+SigmaDock,25,40,frag=4,20,RMSD<2,nur gnina,85.0
+SigmaDock,25,40,frag=5,11,RMSD<2,nur gnina,72.73
+SigmaDock,25,40,frag=6,12,RMSD<2,nur gnina,75.0
+SigmaDock,25,40,frag=7,8,RMSD<2,nur gnina,75.0
+SigmaDock,25,40,frag=8,2,RMSD<2,nur gnina,50.0
+SigmaDock,25,40,alle,85,RMSD<2,Mixed Score (Paper),78.82
+SigmaDock,25,40,frag=1,6,RMSD<2,Mixed Score (Paper),66.67
+SigmaDock,25,40,frag=2,9,RMSD<2,Mixed Score (Paper),77.78
+SigmaDock,25,40,frag=3,17,RMSD<2,Mixed Score (Paper),82.35
+SigmaDock,25,40,frag=4,20,RMSD<2,Mixed Score (Paper),90.0
+SigmaDock,25,40,frag=5,11,RMSD<2,Mixed Score (Paper),72.73
+SigmaDock,25,40,frag=6,12,RMSD<2,Mixed Score (Paper),75.0
+SigmaDock,25,40,frag=7,8,RMSD<2,Mixed Score (Paper),87.5
+SigmaDock,25,40,frag=8,2,RMSD<2,Mixed Score (Paper),0.0
+SigmaDock,25,40,alle,85,RMSD<2,PB-Filter -> gnina,78.82
+SigmaDock,25,40,frag=1,6,RMSD<2,PB-Filter -> gnina,66.67
+SigmaDock,25,40,frag=2,9,RMSD<2,PB-Filter -> gnina,77.78
+SigmaDock,25,40,frag=3,17,RMSD<2,PB-Filter -> gnina,82.35
+SigmaDock,25,40,frag=4,20,RMSD<2,PB-Filter -> gnina,90.0
+SigmaDock,25,40,frag=5,11,RMSD<2,PB-Filter -> gnina,72.73
+SigmaDock,25,40,frag=6,12,RMSD<2,PB-Filter -> gnina,75.0
+SigmaDock,25,40,frag=7,8,RMSD<2,PB-Filter -> gnina,87.5
+SigmaDock,25,40,frag=8,2,RMSD<2,PB-Filter -> gnina,0.0
+SigmaDock,25,40,alle,85,RMSD<2,Orakel,95.29
+SigmaDock,25,40,frag=1,6,RMSD<2,Orakel,100.0
+SigmaDock,25,40,frag=2,9,RMSD<2,Orakel,88.89
+SigmaDock,25,40,frag=3,17,RMSD<2,Orakel,94.12
+SigmaDock,25,40,frag=4,20,RMSD<2,Orakel,95.0
+SigmaDock,25,40,frag=5,11,RMSD<2,Orakel,90.91
+SigmaDock,25,40,frag=6,12,RMSD<2,Orakel,100.0
+SigmaDock,25,40,frag=7,8,RMSD<2,Orakel,100.0
+SigmaDock,25,40,frag=8,2,RMSD<2,Orakel,100.0
+SigmaDock,25,40,alle,85,PB-valide,je Zug,49.32
+SigmaDock,25,40,frag=1,6,PB-valide,je Zug,54.17
+SigmaDock,25,40,frag=2,9,PB-valide,je Zug,58.61
+SigmaDock,25,40,frag=3,17,PB-valide,je Zug,56.76
+SigmaDock,25,40,frag=4,20,PB-valide,je Zug,54.25
+SigmaDock,25,40,frag=5,11,PB-valide,je Zug,43.41
+SigmaDock,25,40,frag=6,12,PB-valide,je Zug,46.46
+SigmaDock,25,40,frag=7,8,PB-valide,je Zug,28.75
+SigmaDock,25,40,frag=8,2,PB-valide,je Zug,12.5
+SigmaDock,25,40,alle,85,PB-valide,nur gnina,76.47
+SigmaDock,25,40,frag=1,6,PB-valide,nur gnina,83.33
+SigmaDock,25,40,frag=2,9,PB-valide,nur gnina,100.0
+SigmaDock,25,40,frag=3,17,PB-valide,nur gnina,76.47
+SigmaDock,25,40,frag=4,20,PB-valide,nur gnina,75.0
+SigmaDock,25,40,frag=5,11,PB-valide,nur gnina,63.64
+SigmaDock,25,40,frag=6,12,PB-valide,nur gnina,75.0
+SigmaDock,25,40,frag=7,8,PB-valide,nur gnina,75.0
+SigmaDock,25,40,frag=8,2,PB-valide,nur gnina,50.0
+SigmaDock,25,40,alle,85,PB-valide,Mixed Score (Paper),94.12
+SigmaDock,25,40,frag=1,6,PB-valide,Mixed Score (Paper),83.33
+SigmaDock,25,40,frag=2,9,PB-valide,Mixed Score (Paper),100.0
+SigmaDock,25,40,frag=3,17,PB-valide,Mixed Score (Paper),94.12
+SigmaDock,25,40,frag=4,20,PB-valide,Mixed Score (Paper),95.0
+SigmaDock,25,40,frag=5,11,PB-valide,Mixed Score (Paper),90.91
+SigmaDock,25,40,frag=6,12,PB-valide,Mixed Score (Paper),100.0
+SigmaDock,25,40,frag=7,8,PB-valide,Mixed Score (Paper),87.5
+SigmaDock,25,40,frag=8,2,PB-valide,Mixed Score (Paper),100.0
+SigmaDock,25,40,alle,85,PB-valide,PB-Filter -> gnina,95.29
+SigmaDock,25,40,frag=1,6,PB-valide,PB-Filter -> gnina,83.33
+SigmaDock,25,40,frag=2,9,PB-valide,PB-Filter -> gnina,100.0
+SigmaDock,25,40,frag=3,17,PB-valide,PB-Filter -> gnina,94.12
+SigmaDock,25,40,frag=4,20,PB-valide,PB-Filter -> gnina,95.0
+SigmaDock,25,40,frag=5,11,PB-valide,PB-Filter -> gnina,90.91
+SigmaDock,25,40,frag=6,12,PB-valide,PB-Filter -> gnina,100.0
+SigmaDock,25,40,frag=7,8,PB-valide,PB-Filter -> gnina,100.0
+SigmaDock,25,40,frag=8,2,PB-valide,PB-Filter -> gnina,100.0
+SigmaDock,25,40,alle,85,PB-valide,Orakel,95.29
+SigmaDock,25,40,frag=1,6,PB-valide,Orakel,83.33
+SigmaDock,25,40,frag=2,9,PB-valide,Orakel,100.0
+SigmaDock,25,40,frag=3,17,PB-valide,Orakel,94.12
+SigmaDock,25,40,frag=4,20,PB-valide,Orakel,95.0
+SigmaDock,25,40,frag=5,11,PB-valide,Orakel,90.91
+SigmaDock,25,40,frag=6,12,PB-valide,Orakel,100.0
+SigmaDock,25,40,frag=7,8,PB-valide,Orakel,100.0
+SigmaDock,25,40,frag=8,2,PB-valide,Orakel,100.0
+SigmaDock,25,40,alle,85,RMSD<2 & PB,je Zug,38.65
+SigmaDock,25,40,frag=1,6,RMSD<2 & PB,je Zug,24.17
+SigmaDock,25,40,frag=2,9,RMSD<2 & PB,je Zug,50.0
+SigmaDock,25,40,frag=3,17,RMSD<2 & PB,je Zug,47.21
+SigmaDock,25,40,frag=4,20,RMSD<2 & PB,je Zug,49.25
+SigmaDock,25,40,frag=5,11,RMSD<2 & PB,je Zug,30.0
+SigmaDock,25,40,frag=6,12,RMSD<2 & PB,je Zug,33.54
+SigmaDock,25,40,frag=7,8,RMSD<2 & PB,je Zug,21.25
+SigmaDock,25,40,frag=8,2,RMSD<2 & PB,je Zug,0.0
+SigmaDock,25,40,alle,85,RMSD<2 & PB,nur gnina,61.18
+SigmaDock,25,40,frag=1,6,RMSD<2 & PB,nur gnina,50.0
+SigmaDock,25,40,frag=2,9,RMSD<2 & PB,nur gnina,77.78
+SigmaDock,25,40,frag=3,17,RMSD<2 & PB,nur gnina,64.71
+SigmaDock,25,40,frag=4,20,RMSD<2 & PB,nur gnina,65.0
+SigmaDock,25,40,frag=5,11,RMSD<2 & PB,nur gnina,45.45
+SigmaDock,25,40,frag=6,12,RMSD<2 & PB,nur gnina,58.33
+SigmaDock,25,40,frag=7,8,RMSD<2 & PB,nur gnina,75.0
+SigmaDock,25,40,frag=8,2,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,25,40,alle,85,RMSD<2 & PB,Mixed Score (Paper),74.12
+SigmaDock,25,40,frag=1,6,RMSD<2 & PB,Mixed Score (Paper),50.0
+SigmaDock,25,40,frag=2,9,RMSD<2 & PB,Mixed Score (Paper),77.78
+SigmaDock,25,40,frag=3,17,RMSD<2 & PB,Mixed Score (Paper),76.47
+SigmaDock,25,40,frag=4,20,RMSD<2 & PB,Mixed Score (Paper),85.0
+SigmaDock,25,40,frag=5,11,RMSD<2 & PB,Mixed Score (Paper),72.73
+SigmaDock,25,40,frag=6,12,RMSD<2 & PB,Mixed Score (Paper),75.0
+SigmaDock,25,40,frag=7,8,RMSD<2 & PB,Mixed Score (Paper),75.0
+SigmaDock,25,40,frag=8,2,RMSD<2 & PB,Mixed Score (Paper),0.0
+SigmaDock,25,40,alle,85,RMSD<2 & PB,PB-Filter -> gnina,75.29
+SigmaDock,25,40,frag=1,6,RMSD<2 & PB,PB-Filter -> gnina,50.0
+SigmaDock,25,40,frag=2,9,RMSD<2 & PB,PB-Filter -> gnina,77.78
+SigmaDock,25,40,frag=3,17,RMSD<2 & PB,PB-Filter -> gnina,76.47
+SigmaDock,25,40,frag=4,20,RMSD<2 & PB,PB-Filter -> gnina,85.0
+SigmaDock,25,40,frag=5,11,RMSD<2 & PB,PB-Filter -> gnina,72.73
+SigmaDock,25,40,frag=6,12,RMSD<2 & PB,PB-Filter -> gnina,75.0
+SigmaDock,25,40,frag=7,8,RMSD<2 & PB,PB-Filter -> gnina,87.5
+SigmaDock,25,40,frag=8,2,RMSD<2 & PB,PB-Filter -> gnina,0.0
+SigmaDock,25,40,alle,85,RMSD<2 & PB,Orakel,89.41
+SigmaDock,25,40,frag=1,6,RMSD<2 & PB,Orakel,83.33
+SigmaDock,25,40,frag=2,9,RMSD<2 & PB,Orakel,88.89
+SigmaDock,25,40,frag=3,17,RMSD<2 & PB,Orakel,88.24
+SigmaDock,25,40,frag=4,20,RMSD<2 & PB,Orakel,90.0
+SigmaDock,25,40,frag=5,11,RMSD<2 & PB,Orakel,90.91
+SigmaDock,25,40,frag=6,12,RMSD<2 & PB,Orakel,100.0
+SigmaDock,25,40,frag=7,8,RMSD<2 & PB,Orakel,100.0
+SigmaDock,25,40,frag=8,2,RMSD<2 & PB,Orakel,0.0
+SigmaDock,5,40,alle,85,RMSD<2,je Zug,10.24
+SigmaDock,5,40,frag=1,6,RMSD<2,je Zug,28.33
+SigmaDock,5,40,frag=2,9,RMSD<2,je Zug,18.89
+SigmaDock,5,40,frag=3,17,RMSD<2,je Zug,19.85
+SigmaDock,5,40,frag=4,20,RMSD<2,je Zug,8.0
+SigmaDock,5,40,frag=5,11,RMSD<2,je Zug,1.59
+SigmaDock,5,40,frag=6,12,RMSD<2,je Zug,1.04
+SigmaDock,5,40,frag=7,8,RMSD<2,je Zug,0.31
+SigmaDock,5,40,frag=8,2,RMSD<2,je Zug,0.0
+SigmaDock,5,40,alle,85,RMSD<2,nur gnina,40.0
+SigmaDock,5,40,frag=1,6,RMSD<2,nur gnina,50.0
+SigmaDock,5,40,frag=2,9,RMSD<2,nur gnina,66.67
+SigmaDock,5,40,frag=3,17,RMSD<2,nur gnina,76.47
+SigmaDock,5,40,frag=4,20,RMSD<2,nur gnina,45.0
+SigmaDock,5,40,frag=5,11,RMSD<2,nur gnina,27.27
+SigmaDock,5,40,frag=6,12,RMSD<2,nur gnina,0.0
+SigmaDock,5,40,frag=7,8,RMSD<2,nur gnina,0.0
+SigmaDock,5,40,frag=8,2,RMSD<2,nur gnina,0.0
+SigmaDock,5,40,alle,85,RMSD<2,Mixed Score (Paper),29.41
+SigmaDock,5,40,frag=1,6,RMSD<2,Mixed Score (Paper),33.33
+SigmaDock,5,40,frag=2,9,RMSD<2,Mixed Score (Paper),44.44
+SigmaDock,5,40,frag=3,17,RMSD<2,Mixed Score (Paper),52.94
+SigmaDock,5,40,frag=4,20,RMSD<2,Mixed Score (Paper),30.0
+SigmaDock,5,40,frag=5,11,RMSD<2,Mixed Score (Paper),27.27
+SigmaDock,5,40,frag=6,12,RMSD<2,Mixed Score (Paper),8.33
+SigmaDock,5,40,frag=7,8,RMSD<2,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=8,2,RMSD<2,Mixed Score (Paper),0.0
+SigmaDock,5,40,alle,85,RMSD<2,PB-Filter -> gnina,37.65
+SigmaDock,5,40,frag=1,6,RMSD<2,PB-Filter -> gnina,33.33
+SigmaDock,5,40,frag=2,9,RMSD<2,PB-Filter -> gnina,55.56
+SigmaDock,5,40,frag=3,17,RMSD<2,PB-Filter -> gnina,76.47
+SigmaDock,5,40,frag=4,20,RMSD<2,PB-Filter -> gnina,45.0
+SigmaDock,5,40,frag=5,11,RMSD<2,PB-Filter -> gnina,27.27
+SigmaDock,5,40,frag=6,12,RMSD<2,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=7,8,RMSD<2,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=8,2,RMSD<2,PB-Filter -> gnina,0.0
+SigmaDock,5,40,alle,85,RMSD<2,Orakel,68.24
+SigmaDock,5,40,frag=1,6,RMSD<2,Orakel,100.0
+SigmaDock,5,40,frag=2,9,RMSD<2,Orakel,100.0
+SigmaDock,5,40,frag=3,17,RMSD<2,Orakel,94.12
+SigmaDock,5,40,frag=4,20,RMSD<2,Orakel,85.0
+SigmaDock,5,40,frag=5,11,RMSD<2,Orakel,45.45
+SigmaDock,5,40,frag=6,12,RMSD<2,Orakel,33.33
+SigmaDock,5,40,frag=7,8,RMSD<2,Orakel,12.5
+SigmaDock,5,40,frag=8,2,RMSD<2,Orakel,0.0
+SigmaDock,5,40,alle,85,PB-valide,je Zug,1.94
+SigmaDock,5,40,frag=1,6,PB-valide,je Zug,22.08
+SigmaDock,5,40,frag=2,9,PB-valide,je Zug,2.78
+SigmaDock,5,40,frag=3,17,PB-valide,je Zug,0.44
+SigmaDock,5,40,frag=4,20,PB-valide,je Zug,0.0
+SigmaDock,5,40,frag=5,11,PB-valide,je Zug,0.0
+SigmaDock,5,40,frag=6,12,PB-valide,je Zug,0.0
+SigmaDock,5,40,frag=7,8,PB-valide,je Zug,0.0
+SigmaDock,5,40,frag=8,2,PB-valide,je Zug,0.0
+SigmaDock,5,40,alle,85,PB-valide,nur gnina,7.06
+SigmaDock,5,40,frag=1,6,PB-valide,nur gnina,83.33
+SigmaDock,5,40,frag=2,9,PB-valide,nur gnina,11.11
+SigmaDock,5,40,frag=3,17,PB-valide,nur gnina,0.0
+SigmaDock,5,40,frag=4,20,PB-valide,nur gnina,0.0
+SigmaDock,5,40,frag=5,11,PB-valide,nur gnina,0.0
+SigmaDock,5,40,frag=6,12,PB-valide,nur gnina,0.0
+SigmaDock,5,40,frag=7,8,PB-valide,nur gnina,0.0
+SigmaDock,5,40,frag=8,2,PB-valide,nur gnina,0.0
+SigmaDock,5,40,alle,85,PB-valide,Mixed Score (Paper),15.29
+SigmaDock,5,40,frag=1,6,PB-valide,Mixed Score (Paper),100.0
+SigmaDock,5,40,frag=2,9,PB-valide,Mixed Score (Paper),44.44
+SigmaDock,5,40,frag=3,17,PB-valide,Mixed Score (Paper),17.65
+SigmaDock,5,40,frag=4,20,PB-valide,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=5,11,PB-valide,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=6,12,PB-valide,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=7,8,PB-valide,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=8,2,PB-valide,Mixed Score (Paper),0.0
+SigmaDock,5,40,alle,85,PB-valide,PB-Filter -> gnina,15.29
+SigmaDock,5,40,frag=1,6,PB-valide,PB-Filter -> gnina,100.0
+SigmaDock,5,40,frag=2,9,PB-valide,PB-Filter -> gnina,44.44
+SigmaDock,5,40,frag=3,17,PB-valide,PB-Filter -> gnina,17.65
+SigmaDock,5,40,frag=4,20,PB-valide,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=5,11,PB-valide,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=6,12,PB-valide,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=7,8,PB-valide,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=8,2,PB-valide,PB-Filter -> gnina,0.0
+SigmaDock,5,40,alle,85,PB-valide,Orakel,15.29
+SigmaDock,5,40,frag=1,6,PB-valide,Orakel,100.0
+SigmaDock,5,40,frag=2,9,PB-valide,Orakel,44.44
+SigmaDock,5,40,frag=3,17,PB-valide,Orakel,17.65
+SigmaDock,5,40,frag=4,20,PB-valide,Orakel,0.0
+SigmaDock,5,40,frag=5,11,PB-valide,Orakel,0.0
+SigmaDock,5,40,frag=6,12,PB-valide,Orakel,0.0
+SigmaDock,5,40,frag=7,8,PB-valide,Orakel,0.0
+SigmaDock,5,40,frag=8,2,PB-valide,Orakel,0.0
+SigmaDock,5,40,alle,85,RMSD<2 & PB,je Zug,0.94
+SigmaDock,5,40,frag=1,6,RMSD<2 & PB,je Zug,9.58
+SigmaDock,5,40,frag=2,9,RMSD<2 & PB,je Zug,1.67
+SigmaDock,5,40,frag=3,17,RMSD<2 & PB,je Zug,0.44
+SigmaDock,5,40,frag=4,20,RMSD<2 & PB,je Zug,0.0
+SigmaDock,5,40,frag=5,11,RMSD<2 & PB,je Zug,0.0
+SigmaDock,5,40,frag=6,12,RMSD<2 & PB,je Zug,0.0
+SigmaDock,5,40,frag=7,8,RMSD<2 & PB,je Zug,0.0
+SigmaDock,5,40,frag=8,2,RMSD<2 & PB,je Zug,0.0
+SigmaDock,5,40,alle,85,RMSD<2 & PB,nur gnina,3.53
+SigmaDock,5,40,frag=1,6,RMSD<2 & PB,nur gnina,33.33
+SigmaDock,5,40,frag=2,9,RMSD<2 & PB,nur gnina,11.11
+SigmaDock,5,40,frag=3,17,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,5,40,frag=4,20,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,5,40,frag=5,11,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,5,40,frag=6,12,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,5,40,frag=7,8,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,5,40,frag=8,2,RMSD<2 & PB,nur gnina,0.0
+SigmaDock,5,40,alle,85,RMSD<2 & PB,Mixed Score (Paper),8.24
+SigmaDock,5,40,frag=1,6,RMSD<2 & PB,Mixed Score (Paper),33.33
+SigmaDock,5,40,frag=2,9,RMSD<2 & PB,Mixed Score (Paper),22.22
+SigmaDock,5,40,frag=3,17,RMSD<2 & PB,Mixed Score (Paper),17.65
+SigmaDock,5,40,frag=4,20,RMSD<2 & PB,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=5,11,RMSD<2 & PB,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=6,12,RMSD<2 & PB,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=7,8,RMSD<2 & PB,Mixed Score (Paper),0.0
+SigmaDock,5,40,frag=8,2,RMSD<2 & PB,Mixed Score (Paper),0.0
+SigmaDock,5,40,alle,85,RMSD<2 & PB,PB-Filter -> gnina,8.24
+SigmaDock,5,40,frag=1,6,RMSD<2 & PB,PB-Filter -> gnina,33.33
+SigmaDock,5,40,frag=2,9,RMSD<2 & PB,PB-Filter -> gnina,22.22
+SigmaDock,5,40,frag=3,17,RMSD<2 & PB,PB-Filter -> gnina,17.65
+SigmaDock,5,40,frag=4,20,RMSD<2 & PB,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=5,11,RMSD<2 & PB,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=6,12,RMSD<2 & PB,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=7,8,RMSD<2 & PB,PB-Filter -> gnina,0.0
+SigmaDock,5,40,frag=8,2,RMSD<2 & PB,PB-Filter -> gnina,0.0
+SigmaDock,5,40,alle,85,RMSD<2 & PB,Orakel,11.76
+SigmaDock,5,40,frag=1,6,RMSD<2 & PB,Orakel,83.33
+SigmaDock,5,40,frag=2,9,RMSD<2 & PB,Orakel,22.22
+SigmaDock,5,40,frag=3,17,RMSD<2 & PB,Orakel,17.65
+SigmaDock,5,40,frag=4,20,RMSD<2 & PB,Orakel,0.0
+SigmaDock,5,40,frag=5,11,RMSD<2 & PB,Orakel,0.0
+SigmaDock,5,40,frag=6,12,RMSD<2 & PB,Orakel,0.0
+SigmaDock,5,40,frag=7,8,RMSD<2 & PB,Orakel,0.0
+SigmaDock,5,40,frag=8,2,RMSD<2 & PB,Orakel,0.0
+Minimal,25,40,alle,85,RMSD<2,je Zug,60.62
+Minimal,25,40,frag=1,6,RMSD<2,je Zug,57.5
+Minimal,25,40,frag=2,9,RMSD<2,je Zug,58.33
+Minimal,25,40,frag=3,17,RMSD<2,je Zug,69.41
+Minimal,25,40,frag=4,20,RMSD<2,je Zug,61.38
+Minimal,25,40,frag=5,11,RMSD<2,je Zug,57.5
+Minimal,25,40,frag=6,12,RMSD<2,je Zug,60.62
+Minimal,25,40,frag=7,8,RMSD<2,je Zug,60.0
+Minimal,25,40,frag=8,2,RMSD<2,je Zug,17.5
+Minimal,25,40,alle,85,RMSD<2,nur gnina,84.71
+Minimal,25,40,frag=1,6,RMSD<2,nur gnina,50.0
+Minimal,25,40,frag=2,9,RMSD<2,nur gnina,88.89
+Minimal,25,40,frag=3,17,RMSD<2,nur gnina,94.12
+Minimal,25,40,frag=4,20,RMSD<2,nur gnina,90.0
+Minimal,25,40,frag=5,11,RMSD<2,nur gnina,90.91
+Minimal,25,40,frag=6,12,RMSD<2,nur gnina,66.67
+Minimal,25,40,frag=7,8,RMSD<2,nur gnina,100.0
+Minimal,25,40,frag=8,2,RMSD<2,nur gnina,50.0
+Minimal,25,40,alle,85,RMSD<2,Mixed Score (Paper),85.88
+Minimal,25,40,frag=1,6,RMSD<2,Mixed Score (Paper),50.0
+Minimal,25,40,frag=2,9,RMSD<2,Mixed Score (Paper),88.89
+Minimal,25,40,frag=3,17,RMSD<2,Mixed Score (Paper),94.12
+Minimal,25,40,frag=4,20,RMSD<2,Mixed Score (Paper),90.0
+Minimal,25,40,frag=5,11,RMSD<2,Mixed Score (Paper),81.82
+Minimal,25,40,frag=6,12,RMSD<2,Mixed Score (Paper),83.33
+Minimal,25,40,frag=7,8,RMSD<2,Mixed Score (Paper),100.0
+Minimal,25,40,frag=8,2,RMSD<2,Mixed Score (Paper),50.0
+Minimal,25,40,alle,85,RMSD<2,PB-Filter -> gnina,84.71
+Minimal,25,40,frag=1,6,RMSD<2,PB-Filter -> gnina,50.0
+Minimal,25,40,frag=2,9,RMSD<2,PB-Filter -> gnina,88.89
+Minimal,25,40,frag=3,17,RMSD<2,PB-Filter -> gnina,94.12
+Minimal,25,40,frag=4,20,RMSD<2,PB-Filter -> gnina,90.0
+Minimal,25,40,frag=5,11,RMSD<2,PB-Filter -> gnina,81.82
+Minimal,25,40,frag=6,12,RMSD<2,PB-Filter -> gnina,83.33
+Minimal,25,40,frag=7,8,RMSD<2,PB-Filter -> gnina,87.5
+Minimal,25,40,frag=8,2,RMSD<2,PB-Filter -> gnina,50.0
+Minimal,25,40,alle,85,RMSD<2,Orakel,98.82
+Minimal,25,40,frag=1,6,RMSD<2,Orakel,100.0
+Minimal,25,40,frag=2,9,RMSD<2,Orakel,100.0
+Minimal,25,40,frag=3,17,RMSD<2,Orakel,100.0
+Minimal,25,40,frag=4,20,RMSD<2,Orakel,100.0
+Minimal,25,40,frag=5,11,RMSD<2,Orakel,90.91
+Minimal,25,40,frag=6,12,RMSD<2,Orakel,100.0
+Minimal,25,40,frag=7,8,RMSD<2,Orakel,100.0
+Minimal,25,40,frag=8,2,RMSD<2,Orakel,100.0
+Minimal,25,40,alle,85,PB-valide,je Zug,37.91
+Minimal,25,40,frag=1,6,PB-valide,je Zug,56.67
+Minimal,25,40,frag=2,9,PB-valide,je Zug,53.33
+Minimal,25,40,frag=3,17,PB-valide,je Zug,44.56
+Minimal,25,40,frag=4,20,PB-valide,je Zug,39.62
+Minimal,25,40,frag=5,11,PB-valide,je Zug,34.32
+Minimal,25,40,frag=6,12,PB-valide,je Zug,26.04
+Minimal,25,40,frag=7,8,PB-valide,je Zug,16.25
+Minimal,25,40,frag=8,2,PB-valide,je Zug,16.25
+Minimal,25,40,alle,85,PB-valide,nur gnina,65.88
+Minimal,25,40,frag=1,6,PB-valide,nur gnina,83.33
+Minimal,25,40,frag=2,9,PB-valide,nur gnina,100.0
+Minimal,25,40,frag=3,17,PB-valide,nur gnina,82.35
+Minimal,25,40,frag=4,20,PB-valide,nur gnina,60.0
+Minimal,25,40,frag=5,11,PB-valide,nur gnina,54.55
+Minimal,25,40,frag=6,12,PB-valide,nur gnina,41.67
+Minimal,25,40,frag=7,8,PB-valide,nur gnina,37.5
+Minimal,25,40,frag=8,2,PB-valide,nur gnina,100.0
+Minimal,25,40,alle,85,PB-valide,Mixed Score (Paper),94.12
+Minimal,25,40,frag=1,6,PB-valide,Mixed Score (Paper),100.0
+Minimal,25,40,frag=2,9,PB-valide,Mixed Score (Paper),100.0
+Minimal,25,40,frag=3,17,PB-valide,Mixed Score (Paper),100.0
+Minimal,25,40,frag=4,20,PB-valide,Mixed Score (Paper),85.0
+Minimal,25,40,frag=5,11,PB-valide,Mixed Score (Paper),90.91
+Minimal,25,40,frag=6,12,PB-valide,Mixed Score (Paper),100.0
+Minimal,25,40,frag=7,8,PB-valide,Mixed Score (Paper),87.5
+Minimal,25,40,frag=8,2,PB-valide,Mixed Score (Paper),100.0
+Minimal,25,40,alle,85,PB-valide,PB-Filter -> gnina,96.47
+Minimal,25,40,frag=1,6,PB-valide,PB-Filter -> gnina,100.0
+Minimal,25,40,frag=2,9,PB-valide,PB-Filter -> gnina,100.0
+Minimal,25,40,frag=3,17,PB-valide,PB-Filter -> gnina,100.0
+Minimal,25,40,frag=4,20,PB-valide,PB-Filter -> gnina,90.0
+Minimal,25,40,frag=5,11,PB-valide,PB-Filter -> gnina,90.91
+Minimal,25,40,frag=6,12,PB-valide,PB-Filter -> gnina,100.0
+Minimal,25,40,frag=7,8,PB-valide,PB-Filter -> gnina,100.0
+Minimal,25,40,frag=8,2,PB-valide,PB-Filter -> gnina,100.0
+Minimal,25,40,alle,85,PB-valide,Orakel,96.47
+Minimal,25,40,frag=1,6,PB-valide,Orakel,100.0
+Minimal,25,40,frag=2,9,PB-valide,Orakel,100.0
+Minimal,25,40,frag=3,17,PB-valide,Orakel,100.0
+Minimal,25,40,frag=4,20,PB-valide,Orakel,90.0
+Minimal,25,40,frag=5,11,PB-valide,Orakel,90.91
+Minimal,25,40,frag=6,12,PB-valide,Orakel,100.0
+Minimal,25,40,frag=7,8,PB-valide,Orakel,100.0
+Minimal,25,40,frag=8,2,PB-valide,Orakel,100.0
+Minimal,25,40,alle,85,RMSD<2 & PB,je Zug,28.38
+Minimal,25,40,frag=1,6,RMSD<2 & PB,je Zug,35.83
+Minimal,25,40,frag=2,9,RMSD<2 & PB,je Zug,39.72
+Minimal,25,40,frag=3,17,RMSD<2 & PB,je Zug,37.21
+Minimal,25,40,frag=4,20,RMSD<2 & PB,je Zug,30.88
+Minimal,25,40,frag=5,11,RMSD<2 & PB,je Zug,24.09
+Minimal,25,40,frag=6,12,RMSD<2 & PB,je Zug,17.92
+Minimal,25,40,frag=7,8,RMSD<2 & PB,je Zug,11.25
+Minimal,25,40,frag=8,2,RMSD<2 & PB,je Zug,10.0
+Minimal,25,40,alle,85,RMSD<2 & PB,nur gnina,56.47
+Minimal,25,40,frag=1,6,RMSD<2 & PB,nur gnina,33.33
+Minimal,25,40,frag=2,9,RMSD<2 & PB,nur gnina,88.89
+Minimal,25,40,frag=3,17,RMSD<2 & PB,nur gnina,76.47
+Minimal,25,40,frag=4,20,RMSD<2 & PB,nur gnina,55.0
+Minimal,25,40,frag=5,11,RMSD<2 & PB,nur gnina,54.55
+Minimal,25,40,frag=6,12,RMSD<2 & PB,nur gnina,33.33
+Minimal,25,40,frag=7,8,RMSD<2 & PB,nur gnina,37.5
+Minimal,25,40,frag=8,2,RMSD<2 & PB,nur gnina,50.0
+Minimal,25,40,alle,85,RMSD<2 & PB,Mixed Score (Paper),81.18
+Minimal,25,40,frag=1,6,RMSD<2 & PB,Mixed Score (Paper),50.0
+Minimal,25,40,frag=2,9,RMSD<2 & PB,Mixed Score (Paper),88.89
+Minimal,25,40,frag=3,17,RMSD<2 & PB,Mixed Score (Paper),94.12
+Minimal,25,40,frag=4,20,RMSD<2 & PB,Mixed Score (Paper),75.0
+Minimal,25,40,frag=5,11,RMSD<2 & PB,Mixed Score (Paper),81.82
+Minimal,25,40,frag=6,12,RMSD<2 & PB,Mixed Score (Paper),83.33
+Minimal,25,40,frag=7,8,RMSD<2 & PB,Mixed Score (Paper),87.5
+Minimal,25,40,frag=8,2,RMSD<2 & PB,Mixed Score (Paper),50.0
+Minimal,25,40,alle,85,RMSD<2 & PB,PB-Filter -> gnina,82.35
+Minimal,25,40,frag=1,6,RMSD<2 & PB,PB-Filter -> gnina,50.0
+Minimal,25,40,frag=2,9,RMSD<2 & PB,PB-Filter -> gnina,88.89
+Minimal,25,40,frag=3,17,RMSD<2 & PB,PB-Filter -> gnina,94.12
+Minimal,25,40,frag=4,20,RMSD<2 & PB,PB-Filter -> gnina,80.0
+Minimal,25,40,frag=5,11,RMSD<2 & PB,PB-Filter -> gnina,81.82
+Minimal,25,40,frag=6,12,RMSD<2 & PB,PB-Filter -> gnina,83.33
+Minimal,25,40,frag=7,8,RMSD<2 & PB,PB-Filter -> gnina,87.5
+Minimal,25,40,frag=8,2,RMSD<2 & PB,PB-Filter -> gnina,50.0
+Minimal,25,40,alle,85,RMSD<2 & PB,Orakel,91.76
+Minimal,25,40,frag=1,6,RMSD<2 & PB,Orakel,100.0
+Minimal,25,40,frag=2,9,RMSD<2 & PB,Orakel,100.0
+Minimal,25,40,frag=3,17,RMSD<2 & PB,Orakel,100.0
+Minimal,25,40,frag=4,20,RMSD<2 & PB,Orakel,85.0
+Minimal,25,40,frag=5,11,RMSD<2 & PB,Orakel,81.82
+Minimal,25,40,frag=6,12,RMSD<2 & PB,Orakel,91.67
+Minimal,25,40,frag=7,8,RMSD<2 & PB,Orakel,87.5
+Minimal,25,40,frag=8,2,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,alle,85,RMSD<2,je Zug,61.08
+Minimal,5,200,frag=1,6,RMSD<2,je Zug,47.67
+Minimal,5,200,frag=2,9,RMSD<2,je Zug,58.61
+Minimal,5,200,frag=3,17,RMSD<2,je Zug,70.79
+Minimal,5,200,frag=4,20,RMSD<2,je Zug,64.4
+Minimal,5,200,frag=5,11,RMSD<2,je Zug,58.41
+Minimal,5,200,frag=6,12,RMSD<2,je Zug,62.54
+Minimal,5,200,frag=7,8,RMSD<2,je Zug,60.44
+Minimal,5,200,frag=8,2,RMSD<2,je Zug,5.25
+Minimal,5,200,alle,85,RMSD<2,nur gnina,87.06
+Minimal,5,200,frag=1,6,RMSD<2,nur gnina,100.0
+Minimal,5,200,frag=2,9,RMSD<2,nur gnina,88.89
+Minimal,5,200,frag=3,17,RMSD<2,nur gnina,100.0
+Minimal,5,200,frag=4,20,RMSD<2,nur gnina,85.0
+Minimal,5,200,frag=5,11,RMSD<2,nur gnina,72.73
+Minimal,5,200,frag=6,12,RMSD<2,nur gnina,83.33
+Minimal,5,200,frag=7,8,RMSD<2,nur gnina,87.5
+Minimal,5,200,frag=8,2,RMSD<2,nur gnina,50.0
+Minimal,5,200,alle,85,RMSD<2,Mixed Score (Paper),89.41
+Minimal,5,200,frag=1,6,RMSD<2,Mixed Score (Paper),100.0
+Minimal,5,200,frag=2,9,RMSD<2,Mixed Score (Paper),88.89
+Minimal,5,200,frag=3,17,RMSD<2,Mixed Score (Paper),100.0
+Minimal,5,200,frag=4,20,RMSD<2,Mixed Score (Paper),90.0
+Minimal,5,200,frag=5,11,RMSD<2,Mixed Score (Paper),63.64
+Minimal,5,200,frag=6,12,RMSD<2,Mixed Score (Paper),100.0
+Minimal,5,200,frag=7,8,RMSD<2,Mixed Score (Paper),87.5
+Minimal,5,200,frag=8,2,RMSD<2,Mixed Score (Paper),50.0
+Minimal,5,200,alle,85,RMSD<2,PB-Filter -> gnina,89.41
+Minimal,5,200,frag=1,6,RMSD<2,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=2,9,RMSD<2,PB-Filter -> gnina,88.89
+Minimal,5,200,frag=3,17,RMSD<2,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=4,20,RMSD<2,PB-Filter -> gnina,90.0
+Minimal,5,200,frag=5,11,RMSD<2,PB-Filter -> gnina,63.64
+Minimal,5,200,frag=6,12,RMSD<2,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=7,8,RMSD<2,PB-Filter -> gnina,87.5
+Minimal,5,200,frag=8,2,RMSD<2,PB-Filter -> gnina,50.0
+Minimal,5,200,alle,85,RMSD<2,Orakel,98.82
+Minimal,5,200,frag=1,6,RMSD<2,Orakel,100.0
+Minimal,5,200,frag=2,9,RMSD<2,Orakel,100.0
+Minimal,5,200,frag=3,17,RMSD<2,Orakel,100.0
+Minimal,5,200,frag=4,20,RMSD<2,Orakel,100.0
+Minimal,5,200,frag=5,11,RMSD<2,Orakel,90.91
+Minimal,5,200,frag=6,12,RMSD<2,Orakel,100.0
+Minimal,5,200,frag=7,8,RMSD<2,Orakel,100.0
+Minimal,5,200,frag=8,2,RMSD<2,Orakel,100.0
+Minimal,5,200,alle,85,PB-valide,je Zug,30.51
+Minimal,5,200,frag=1,6,PB-valide,je Zug,46.92
+Minimal,5,200,frag=2,9,PB-valide,je Zug,46.33
+Minimal,5,200,frag=3,17,PB-valide,je Zug,38.41
+Minimal,5,200,frag=4,20,PB-valide,je Zug,31.82
+Minimal,5,200,frag=5,11,PB-valide,je Zug,22.18
+Minimal,5,200,frag=6,12,PB-valide,je Zug,21.79
+Minimal,5,200,frag=7,8,PB-valide,je Zug,11.37
+Minimal,5,200,frag=8,2,PB-valide,je Zug,4.25
+Minimal,5,200,alle,85,PB-valide,nur gnina,58.82
+Minimal,5,200,frag=1,6,PB-valide,nur gnina,100.0
+Minimal,5,200,frag=2,9,PB-valide,nur gnina,100.0
+Minimal,5,200,frag=3,17,PB-valide,nur gnina,76.47
+Minimal,5,200,frag=4,20,PB-valide,nur gnina,55.0
+Minimal,5,200,frag=5,11,PB-valide,nur gnina,27.27
+Minimal,5,200,frag=6,12,PB-valide,nur gnina,58.33
+Minimal,5,200,frag=7,8,PB-valide,nur gnina,12.5
+Minimal,5,200,frag=8,2,PB-valide,nur gnina,0.0
+Minimal,5,200,alle,85,PB-valide,Mixed Score (Paper),95.29
+Minimal,5,200,frag=1,6,PB-valide,Mixed Score (Paper),100.0
+Minimal,5,200,frag=2,9,PB-valide,Mixed Score (Paper),100.0
+Minimal,5,200,frag=3,17,PB-valide,Mixed Score (Paper),94.12
+Minimal,5,200,frag=4,20,PB-valide,Mixed Score (Paper),90.0
+Minimal,5,200,frag=5,11,PB-valide,Mixed Score (Paper),90.91
+Minimal,5,200,frag=6,12,PB-valide,Mixed Score (Paper),100.0
+Minimal,5,200,frag=7,8,PB-valide,Mixed Score (Paper),100.0
+Minimal,5,200,frag=8,2,PB-valide,Mixed Score (Paper),100.0
+Minimal,5,200,alle,85,PB-valide,PB-Filter -> gnina,98.82
+Minimal,5,200,frag=1,6,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=2,9,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=3,17,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=4,20,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=5,11,PB-valide,PB-Filter -> gnina,90.91
+Minimal,5,200,frag=6,12,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=7,8,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=8,2,PB-valide,PB-Filter -> gnina,100.0
+Minimal,5,200,alle,85,PB-valide,Orakel,98.82
+Minimal,5,200,frag=1,6,PB-valide,Orakel,100.0
+Minimal,5,200,frag=2,9,PB-valide,Orakel,100.0
+Minimal,5,200,frag=3,17,PB-valide,Orakel,100.0
+Minimal,5,200,frag=4,20,PB-valide,Orakel,100.0
+Minimal,5,200,frag=5,11,PB-valide,Orakel,90.91
+Minimal,5,200,frag=6,12,PB-valide,Orakel,100.0
+Minimal,5,200,frag=7,8,PB-valide,Orakel,100.0
+Minimal,5,200,frag=8,2,PB-valide,Orakel,100.0
+Minimal,5,200,alle,85,RMSD<2 & PB,je Zug,23.19
+Minimal,5,200,frag=1,6,RMSD<2 & PB,je Zug,25.08
+Minimal,5,200,frag=2,9,RMSD<2 & PB,je Zug,34.89
+Minimal,5,200,frag=3,17,RMSD<2 & PB,je Zug,32.03
+Minimal,5,200,frag=4,20,RMSD<2 & PB,je Zug,26.47
+Minimal,5,200,frag=5,11,RMSD<2 & PB,je Zug,15.27
+Minimal,5,200,frag=6,12,RMSD<2 & PB,je Zug,16.12
+Minimal,5,200,frag=7,8,RMSD<2 & PB,je Zug,8.75
+Minimal,5,200,frag=8,2,RMSD<2 & PB,je Zug,0.75
+Minimal,5,200,alle,85,RMSD<2 & PB,nur gnina,54.12
+Minimal,5,200,frag=1,6,RMSD<2 & PB,nur gnina,100.0
+Minimal,5,200,frag=2,9,RMSD<2 & PB,nur gnina,88.89
+Minimal,5,200,frag=3,17,RMSD<2 & PB,nur gnina,76.47
+Minimal,5,200,frag=4,20,RMSD<2 & PB,nur gnina,50.0
+Minimal,5,200,frag=5,11,RMSD<2 & PB,nur gnina,9.09
+Minimal,5,200,frag=6,12,RMSD<2 & PB,nur gnina,58.33
+Minimal,5,200,frag=7,8,RMSD<2 & PB,nur gnina,12.5
+Minimal,5,200,frag=8,2,RMSD<2 & PB,nur gnina,0.0
+Minimal,5,200,alle,85,RMSD<2 & PB,Mixed Score (Paper),87.06
+Minimal,5,200,frag=1,6,RMSD<2 & PB,Mixed Score (Paper),100.0
+Minimal,5,200,frag=2,9,RMSD<2 & PB,Mixed Score (Paper),88.89
+Minimal,5,200,frag=3,17,RMSD<2 & PB,Mixed Score (Paper),94.12
+Minimal,5,200,frag=4,20,RMSD<2 & PB,Mixed Score (Paper),85.0
+Minimal,5,200,frag=5,11,RMSD<2 & PB,Mixed Score (Paper),63.64
+Minimal,5,200,frag=6,12,RMSD<2 & PB,Mixed Score (Paper),100.0
+Minimal,5,200,frag=7,8,RMSD<2 & PB,Mixed Score (Paper),87.5
+Minimal,5,200,frag=8,2,RMSD<2 & PB,Mixed Score (Paper),50.0
+Minimal,5,200,alle,85,RMSD<2 & PB,PB-Filter -> gnina,89.41
+Minimal,5,200,frag=1,6,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=2,9,RMSD<2 & PB,PB-Filter -> gnina,88.89
+Minimal,5,200,frag=3,17,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=4,20,RMSD<2 & PB,PB-Filter -> gnina,90.0
+Minimal,5,200,frag=5,11,RMSD<2 & PB,PB-Filter -> gnina,63.64
+Minimal,5,200,frag=6,12,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Minimal,5,200,frag=7,8,RMSD<2 & PB,PB-Filter -> gnina,87.5
+Minimal,5,200,frag=8,2,RMSD<2 & PB,PB-Filter -> gnina,50.0
+Minimal,5,200,alle,85,RMSD<2 & PB,Orakel,98.82
+Minimal,5,200,frag=1,6,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,frag=2,9,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,frag=3,17,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,frag=4,20,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,frag=5,11,RMSD<2 & PB,Orakel,90.91
+Minimal,5,200,frag=6,12,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,frag=7,8,RMSD<2 & PB,Orakel,100.0
+Minimal,5,200,frag=8,2,RMSD<2 & PB,Orakel,100.0
+Separate,25,40,alle,85,RMSD<2,je Zug,63.32
+Separate,25,40,frag=1,6,RMSD<2,je Zug,63.33
+Separate,25,40,frag=2,9,RMSD<2,je Zug,56.11
+Separate,25,40,frag=3,17,RMSD<2,je Zug,75.74
+Separate,25,40,frag=4,20,RMSD<2,je Zug,68.12
+Separate,25,40,frag=5,11,RMSD<2,je Zug,57.27
+Separate,25,40,frag=6,12,RMSD<2,je Zug,60.42
+Separate,25,40,frag=7,8,RMSD<2,je Zug,57.81
+Separate,25,40,frag=8,2,RMSD<2,je Zug,15.0
+Separate,25,40,alle,85,RMSD<2,nur gnina,83.53
+Separate,25,40,frag=1,6,RMSD<2,nur gnina,83.33
+Separate,25,40,frag=2,9,RMSD<2,nur gnina,100.0
+Separate,25,40,frag=3,17,RMSD<2,nur gnina,82.35
+Separate,25,40,frag=4,20,RMSD<2,nur gnina,85.0
+Separate,25,40,frag=5,11,RMSD<2,nur gnina,72.73
+Separate,25,40,frag=6,12,RMSD<2,nur gnina,83.33
+Separate,25,40,frag=7,8,RMSD<2,nur gnina,87.5
+Separate,25,40,frag=8,2,RMSD<2,nur gnina,50.0
+Separate,25,40,alle,85,RMSD<2,Mixed Score (Paper),85.88
+Separate,25,40,frag=1,6,RMSD<2,Mixed Score (Paper),83.33
+Separate,25,40,frag=2,9,RMSD<2,Mixed Score (Paper),100.0
+Separate,25,40,frag=3,17,RMSD<2,Mixed Score (Paper),88.24
+Separate,25,40,frag=4,20,RMSD<2,Mixed Score (Paper),85.0
+Separate,25,40,frag=5,11,RMSD<2,Mixed Score (Paper),90.91
+Separate,25,40,frag=6,12,RMSD<2,Mixed Score (Paper),83.33
+Separate,25,40,frag=7,8,RMSD<2,Mixed Score (Paper),75.0
+Separate,25,40,frag=8,2,RMSD<2,Mixed Score (Paper),50.0
+Separate,25,40,alle,85,RMSD<2,PB-Filter -> gnina,83.53
+Separate,25,40,frag=1,6,RMSD<2,PB-Filter -> gnina,66.67
+Separate,25,40,frag=2,9,RMSD<2,PB-Filter -> gnina,100.0
+Separate,25,40,frag=3,17,RMSD<2,PB-Filter -> gnina,88.24
+Separate,25,40,frag=4,20,RMSD<2,PB-Filter -> gnina,85.0
+Separate,25,40,frag=5,11,RMSD<2,PB-Filter -> gnina,90.91
+Separate,25,40,frag=6,12,RMSD<2,PB-Filter -> gnina,83.33
+Separate,25,40,frag=7,8,RMSD<2,PB-Filter -> gnina,62.5
+Separate,25,40,frag=8,2,RMSD<2,PB-Filter -> gnina,50.0
+Separate,25,40,alle,85,RMSD<2,Orakel,98.82
+Separate,25,40,frag=1,6,RMSD<2,Orakel,100.0
+Separate,25,40,frag=2,9,RMSD<2,Orakel,100.0
+Separate,25,40,frag=3,17,RMSD<2,Orakel,100.0
+Separate,25,40,frag=4,20,RMSD<2,Orakel,100.0
+Separate,25,40,frag=5,11,RMSD<2,Orakel,90.91
+Separate,25,40,frag=6,12,RMSD<2,Orakel,100.0
+Separate,25,40,frag=7,8,RMSD<2,Orakel,100.0
+Separate,25,40,frag=8,2,RMSD<2,Orakel,100.0
+Separate,25,40,alle,85,PB-valide,je Zug,40.82
+Separate,25,40,frag=1,6,PB-valide,je Zug,59.17
+Separate,25,40,frag=2,9,PB-valide,je Zug,56.67
+Separate,25,40,frag=3,17,PB-valide,je Zug,48.82
+Separate,25,40,frag=4,20,PB-valide,je Zug,42.0
+Separate,25,40,frag=5,11,PB-valide,je Zug,29.77
+Separate,25,40,frag=6,12,PB-valide,je Zug,36.04
+Separate,25,40,frag=7,8,PB-valide,je Zug,16.88
+Separate,25,40,frag=8,2,PB-valide,je Zug,20.0
+Separate,25,40,alle,85,PB-valide,nur gnina,60.0
+Separate,25,40,frag=1,6,PB-valide,nur gnina,83.33
+Separate,25,40,frag=2,9,PB-valide,nur gnina,100.0
+Separate,25,40,frag=3,17,PB-valide,nur gnina,76.47
+Separate,25,40,frag=4,20,PB-valide,nur gnina,65.0
+Separate,25,40,frag=5,11,PB-valide,nur gnina,27.27
+Separate,25,40,frag=6,12,PB-valide,nur gnina,50.0
+Separate,25,40,frag=7,8,PB-valide,nur gnina,12.5
+Separate,25,40,frag=8,2,PB-valide,nur gnina,50.0
+Separate,25,40,alle,85,PB-valide,Mixed Score (Paper),95.29
+Separate,25,40,frag=1,6,PB-valide,Mixed Score (Paper),83.33
+Separate,25,40,frag=2,9,PB-valide,Mixed Score (Paper),100.0
+Separate,25,40,frag=3,17,PB-valide,Mixed Score (Paper),100.0
+Separate,25,40,frag=4,20,PB-valide,Mixed Score (Paper),95.0
+Separate,25,40,frag=5,11,PB-valide,Mixed Score (Paper),90.91
+Separate,25,40,frag=6,12,PB-valide,Mixed Score (Paper),100.0
+Separate,25,40,frag=7,8,PB-valide,Mixed Score (Paper),87.5
+Separate,25,40,frag=8,2,PB-valide,Mixed Score (Paper),100.0
+Separate,25,40,alle,85,PB-valide,PB-Filter -> gnina,98.82
+Separate,25,40,frag=1,6,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,frag=2,9,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,frag=3,17,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,frag=4,20,PB-valide,PB-Filter -> gnina,95.0
+Separate,25,40,frag=5,11,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,frag=6,12,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,frag=7,8,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,frag=8,2,PB-valide,PB-Filter -> gnina,100.0
+Separate,25,40,alle,85,PB-valide,Orakel,98.82
+Separate,25,40,frag=1,6,PB-valide,Orakel,100.0
+Separate,25,40,frag=2,9,PB-valide,Orakel,100.0
+Separate,25,40,frag=3,17,PB-valide,Orakel,100.0
+Separate,25,40,frag=4,20,PB-valide,Orakel,95.0
+Separate,25,40,frag=5,11,PB-valide,Orakel,100.0
+Separate,25,40,frag=6,12,PB-valide,Orakel,100.0
+Separate,25,40,frag=7,8,PB-valide,Orakel,100.0
+Separate,25,40,frag=8,2,PB-valide,Orakel,100.0
+Separate,25,40,alle,85,RMSD<2 & PB,je Zug,31.5
+Separate,25,40,frag=1,6,RMSD<2 & PB,je Zug,39.58
+Separate,25,40,frag=2,9,RMSD<2 & PB,je Zug,42.78
+Separate,25,40,frag=3,17,RMSD<2 & PB,je Zug,41.47
+Separate,25,40,frag=4,20,RMSD<2 & PB,je Zug,35.38
+Separate,25,40,frag=5,11,RMSD<2 & PB,je Zug,22.95
+Separate,25,40,frag=6,12,RMSD<2 & PB,je Zug,24.79
+Separate,25,40,frag=7,8,RMSD<2 & PB,je Zug,10.31
+Separate,25,40,frag=8,2,RMSD<2 & PB,je Zug,5.0
+Separate,25,40,alle,85,RMSD<2 & PB,nur gnina,56.47
+Separate,25,40,frag=1,6,RMSD<2 & PB,nur gnina,66.67
+Separate,25,40,frag=2,9,RMSD<2 & PB,nur gnina,100.0
+Separate,25,40,frag=3,17,RMSD<2 & PB,nur gnina,64.71
+Separate,25,40,frag=4,20,RMSD<2 & PB,nur gnina,65.0
+Separate,25,40,frag=5,11,RMSD<2 & PB,nur gnina,27.27
+Separate,25,40,frag=6,12,RMSD<2 & PB,nur gnina,50.0
+Separate,25,40,frag=7,8,RMSD<2 & PB,nur gnina,12.5
+Separate,25,40,frag=8,2,RMSD<2 & PB,nur gnina,50.0
+Separate,25,40,alle,85,RMSD<2 & PB,Mixed Score (Paper),82.35
+Separate,25,40,frag=1,6,RMSD<2 & PB,Mixed Score (Paper),66.67
+Separate,25,40,frag=2,9,RMSD<2 & PB,Mixed Score (Paper),100.0
+Separate,25,40,frag=3,17,RMSD<2 & PB,Mixed Score (Paper),88.24
+Separate,25,40,frag=4,20,RMSD<2 & PB,Mixed Score (Paper),80.0
+Separate,25,40,frag=5,11,RMSD<2 & PB,Mixed Score (Paper),90.91
+Separate,25,40,frag=6,12,RMSD<2 & PB,Mixed Score (Paper),83.33
+Separate,25,40,frag=7,8,RMSD<2 & PB,Mixed Score (Paper),62.5
+Separate,25,40,frag=8,2,RMSD<2 & PB,Mixed Score (Paper),50.0
+Separate,25,40,alle,85,RMSD<2 & PB,PB-Filter -> gnina,82.35
+Separate,25,40,frag=1,6,RMSD<2 & PB,PB-Filter -> gnina,66.67
+Separate,25,40,frag=2,9,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Separate,25,40,frag=3,17,RMSD<2 & PB,PB-Filter -> gnina,88.24
+Separate,25,40,frag=4,20,RMSD<2 & PB,PB-Filter -> gnina,80.0
+Separate,25,40,frag=5,11,RMSD<2 & PB,PB-Filter -> gnina,90.91
+Separate,25,40,frag=6,12,RMSD<2 & PB,PB-Filter -> gnina,83.33
+Separate,25,40,frag=7,8,RMSD<2 & PB,PB-Filter -> gnina,62.5
+Separate,25,40,frag=8,2,RMSD<2 & PB,PB-Filter -> gnina,50.0
+Separate,25,40,alle,85,RMSD<2 & PB,Orakel,94.12
+Separate,25,40,frag=1,6,RMSD<2 & PB,Orakel,83.33
+Separate,25,40,frag=2,9,RMSD<2 & PB,Orakel,100.0
+Separate,25,40,frag=3,17,RMSD<2 & PB,Orakel,100.0
+Separate,25,40,frag=4,20,RMSD<2 & PB,Orakel,90.0
+Separate,25,40,frag=5,11,RMSD<2 & PB,Orakel,90.91
+Separate,25,40,frag=6,12,RMSD<2 & PB,Orakel,100.0
+Separate,25,40,frag=7,8,RMSD<2 & PB,Orakel,87.5
+Separate,25,40,frag=8,2,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,alle,85,RMSD<2,je Zug,64.06
+Separate,5,200,frag=1,6,RMSD<2,je Zug,58.08
+Separate,5,200,frag=2,9,RMSD<2,je Zug,57.72
+Separate,5,200,frag=3,17,RMSD<2,je Zug,73.94
+Separate,5,200,frag=4,20,RMSD<2,je Zug,69.87
+Separate,5,200,frag=5,11,RMSD<2,je Zug,61.55
+Separate,5,200,frag=6,12,RMSD<2,je Zug,60.21
+Separate,5,200,frag=7,8,RMSD<2,je Zug,61.94
+Separate,5,200,frag=8,2,RMSD<2,je Zug,14.0
+Separate,5,200,alle,85,RMSD<2,nur gnina,89.41
+Separate,5,200,frag=1,6,RMSD<2,nur gnina,100.0
+Separate,5,200,frag=2,9,RMSD<2,nur gnina,100.0
+Separate,5,200,frag=3,17,RMSD<2,nur gnina,94.12
+Separate,5,200,frag=4,20,RMSD<2,nur gnina,90.0
+Separate,5,200,frag=5,11,RMSD<2,nur gnina,72.73
+Separate,5,200,frag=6,12,RMSD<2,nur gnina,83.33
+Separate,5,200,frag=7,8,RMSD<2,nur gnina,87.5
+Separate,5,200,frag=8,2,RMSD<2,nur gnina,100.0
+Separate,5,200,alle,85,RMSD<2,Mixed Score (Paper),92.94
+Separate,5,200,frag=1,6,RMSD<2,Mixed Score (Paper),100.0
+Separate,5,200,frag=2,9,RMSD<2,Mixed Score (Paper),100.0
+Separate,5,200,frag=3,17,RMSD<2,Mixed Score (Paper),100.0
+Separate,5,200,frag=4,20,RMSD<2,Mixed Score (Paper),90.0
+Separate,5,200,frag=5,11,RMSD<2,Mixed Score (Paper),72.73
+Separate,5,200,frag=6,12,RMSD<2,Mixed Score (Paper),91.67
+Separate,5,200,frag=7,8,RMSD<2,Mixed Score (Paper),100.0
+Separate,5,200,frag=8,2,RMSD<2,Mixed Score (Paper),100.0
+Separate,5,200,alle,85,RMSD<2,PB-Filter -> gnina,92.94
+Separate,5,200,frag=1,6,RMSD<2,PB-Filter -> gnina,100.0
+Separate,5,200,frag=2,9,RMSD<2,PB-Filter -> gnina,100.0
+Separate,5,200,frag=3,17,RMSD<2,PB-Filter -> gnina,100.0
+Separate,5,200,frag=4,20,RMSD<2,PB-Filter -> gnina,90.0
+Separate,5,200,frag=5,11,RMSD<2,PB-Filter -> gnina,72.73
+Separate,5,200,frag=6,12,RMSD<2,PB-Filter -> gnina,91.67
+Separate,5,200,frag=7,8,RMSD<2,PB-Filter -> gnina,100.0
+Separate,5,200,frag=8,2,RMSD<2,PB-Filter -> gnina,100.0
+Separate,5,200,alle,85,RMSD<2,Orakel,100.0
+Separate,5,200,frag=1,6,RMSD<2,Orakel,100.0
+Separate,5,200,frag=2,9,RMSD<2,Orakel,100.0
+Separate,5,200,frag=3,17,RMSD<2,Orakel,100.0
+Separate,5,200,frag=4,20,RMSD<2,Orakel,100.0
+Separate,5,200,frag=5,11,RMSD<2,Orakel,100.0
+Separate,5,200,frag=6,12,RMSD<2,Orakel,100.0
+Separate,5,200,frag=7,8,RMSD<2,Orakel,100.0
+Separate,5,200,frag=8,2,RMSD<2,Orakel,100.0
+Separate,5,200,alle,85,PB-valide,je Zug,32.78
+Separate,5,200,frag=1,6,PB-valide,je Zug,50.5
+Separate,5,200,frag=2,9,PB-valide,je Zug,46.28
+Separate,5,200,frag=3,17,PB-valide,je Zug,40.74
+Separate,5,200,frag=4,20,PB-valide,je Zug,34.43
+Separate,5,200,frag=5,11,PB-valide,je Zug,24.86
+Separate,5,200,frag=6,12,PB-valide,je Zug,23.71
+Separate,5,200,frag=7,8,PB-valide,je Zug,13.69
+Separate,5,200,frag=8,2,PB-valide,je Zug,9.0
+Separate,5,200,alle,85,PB-valide,nur gnina,51.76
+Separate,5,200,frag=1,6,PB-valide,nur gnina,100.0
+Separate,5,200,frag=2,9,PB-valide,nur gnina,77.78
+Separate,5,200,frag=3,17,PB-valide,nur gnina,64.71
+Separate,5,200,frag=4,20,PB-valide,nur gnina,50.0
+Separate,5,200,frag=5,11,PB-valide,nur gnina,27.27
+Separate,5,200,frag=6,12,PB-valide,nur gnina,50.0
+Separate,5,200,frag=7,8,PB-valide,nur gnina,0.0
+Separate,5,200,frag=8,2,PB-valide,nur gnina,50.0
+Separate,5,200,alle,85,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=1,6,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=2,9,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=3,17,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=4,20,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=5,11,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=6,12,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=7,8,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,frag=8,2,PB-valide,Mixed Score (Paper),100.0
+Separate,5,200,alle,85,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=1,6,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=2,9,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=3,17,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=4,20,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=5,11,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=6,12,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=7,8,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,frag=8,2,PB-valide,PB-Filter -> gnina,100.0
+Separate,5,200,alle,85,PB-valide,Orakel,100.0
+Separate,5,200,frag=1,6,PB-valide,Orakel,100.0
+Separate,5,200,frag=2,9,PB-valide,Orakel,100.0
+Separate,5,200,frag=3,17,PB-valide,Orakel,100.0
+Separate,5,200,frag=4,20,PB-valide,Orakel,100.0
+Separate,5,200,frag=5,11,PB-valide,Orakel,100.0
+Separate,5,200,frag=6,12,PB-valide,Orakel,100.0
+Separate,5,200,frag=7,8,PB-valide,Orakel,100.0
+Separate,5,200,frag=8,2,PB-valide,Orakel,100.0
+Separate,5,200,alle,85,RMSD<2 & PB,je Zug,26.21
+Separate,5,200,frag=1,6,RMSD<2 & PB,je Zug,32.33
+Separate,5,200,frag=2,9,RMSD<2 & PB,je Zug,34.61
+Separate,5,200,frag=3,17,RMSD<2 & PB,je Zug,35.09
+Separate,5,200,frag=4,20,RMSD<2 & PB,je Zug,31.0
+Separate,5,200,frag=5,11,RMSD<2 & PB,je Zug,18.73
+Separate,5,200,frag=6,12,RMSD<2 & PB,je Zug,17.54
+Separate,5,200,frag=7,8,RMSD<2 & PB,je Zug,10.63
+Separate,5,200,frag=8,2,RMSD<2 & PB,je Zug,2.0
+Separate,5,200,alle,85,RMSD<2 & PB,nur gnina,50.59
+Separate,5,200,frag=1,6,RMSD<2 & PB,nur gnina,100.0
+Separate,5,200,frag=2,9,RMSD<2 & PB,nur gnina,77.78
+Separate,5,200,frag=3,17,RMSD<2 & PB,nur gnina,64.71
+Separate,5,200,frag=4,20,RMSD<2 & PB,nur gnina,50.0
+Separate,5,200,frag=5,11,RMSD<2 & PB,nur gnina,27.27
+Separate,5,200,frag=6,12,RMSD<2 & PB,nur gnina,41.67
+Separate,5,200,frag=7,8,RMSD<2 & PB,nur gnina,0.0
+Separate,5,200,frag=8,2,RMSD<2 & PB,nur gnina,50.0
+Separate,5,200,alle,85,RMSD<2 & PB,Mixed Score (Paper),92.94
+Separate,5,200,frag=1,6,RMSD<2 & PB,Mixed Score (Paper),100.0
+Separate,5,200,frag=2,9,RMSD<2 & PB,Mixed Score (Paper),100.0
+Separate,5,200,frag=3,17,RMSD<2 & PB,Mixed Score (Paper),100.0
+Separate,5,200,frag=4,20,RMSD<2 & PB,Mixed Score (Paper),90.0
+Separate,5,200,frag=5,11,RMSD<2 & PB,Mixed Score (Paper),72.73
+Separate,5,200,frag=6,12,RMSD<2 & PB,Mixed Score (Paper),91.67
+Separate,5,200,frag=7,8,RMSD<2 & PB,Mixed Score (Paper),100.0
+Separate,5,200,frag=8,2,RMSD<2 & PB,Mixed Score (Paper),100.0
+Separate,5,200,alle,85,RMSD<2 & PB,PB-Filter -> gnina,92.94
+Separate,5,200,frag=1,6,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Separate,5,200,frag=2,9,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Separate,5,200,frag=3,17,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Separate,5,200,frag=4,20,RMSD<2 & PB,PB-Filter -> gnina,90.0
+Separate,5,200,frag=5,11,RMSD<2 & PB,PB-Filter -> gnina,72.73
+Separate,5,200,frag=6,12,RMSD<2 & PB,PB-Filter -> gnina,91.67
+Separate,5,200,frag=7,8,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Separate,5,200,frag=8,2,RMSD<2 & PB,PB-Filter -> gnina,100.0
+Separate,5,200,alle,85,RMSD<2 & PB,Orakel,98.82
+Separate,5,200,frag=1,6,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,frag=2,9,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,frag=3,17,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,frag=4,20,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,frag=5,11,RMSD<2 & PB,Orakel,90.91
+Separate,5,200,frag=6,12,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,frag=7,8,RMSD<2 & PB,Orakel,100.0
+Separate,5,200,frag=8,2,RMSD<2 & PB,Orakel,100.0

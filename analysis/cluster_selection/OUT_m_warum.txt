@@ -1,0 +1,91 @@
+############################################################################################
+  Wie kann ein hoher Score Richtigkeit anzeigen, wenn falsche Posen
+  hohe Scores bekommen?
+############################################################################################
+
+=== 1. Der Siegerscore, aufgeschluesselt ===
+  Was der Score im Fehlfall auszeichnet, ist nicht, dass er niedrig
+  waere -- sondern dass er niedriger ist, als ein echter Treffer waere.
+
+  Groesse                                       Wert
+  Siegerscore im Trefferfall                   7.797
+  Siegerscore im Fehlfall                      5.943
+  bester RICHTIGER Score im Fehlfall           5.047
+
+  Der falsche Sieger (5.94) liegt UEBER der richtigen Pose desselben
+  Ziehsatzes (5.05) -- deshalb gewinnt er. Er liegt aber
+  UNTER dem Niveau eines echten Treffers (7.80).
+
+  Gepaart, 95 Komplexe in beiden Zustaenden:
+    Siegerscore Treffer 6.833, Fehlgriff 6.424, Differenz -0.409, p = 0.00009
+    -> derselbe Komplex, dieselbe Skala. Das Niveau faellt tatsaechlich.
+
+=== 2. Zerlegung: zwischen Komplexen oder innerhalb? ===
+  gepoolt, wie in Teil K berichtet          0.697
+  ZWISCHEN Komplexen (je Komplex gemittelt) 0.705
+  INNERHALB eines Komplexes (421 Zeilen, 95 Komplexe) 0.661
+
+  Beide Anteile liegen ueber 0,5. Das Score-Niveau sagt also nicht nur,
+  welcher KOMPLEX schwer ist, sondern auch, welcher LAUF schiefging.
+
+=== 3. Ist das Score-Niveau nur eine Umschreibung der Ligandgroesse? ===
+  Groesse                                AUC
+  Siegerscore roh                      0.697
+  Zahl der Schweratome                 0.563
+  drehbare Bindungen                   0.512
+  Score je Schweratom                  0.632
+  Score nach Abzug der Groesse         0.710
+
+  Bleibt das Residuum deutlich ueber 0,5, traegt der Score eigene
+  Information und ist nicht nur ein Groessenmass.
+
+=== 4. Was bringt es, die schwaechsten Laeufe zu markieren? ===
+  Markiert wird komplexweise nach dem Siegerscore, je Zelle getrennt
+  (die Zellen haben verschiedene Trefferquoten).
+
+   markiert  Fehlgriffe erwischt   Treffer geopfert   Treffer im Rest  Anreicherung
+         5%                16.5%               3.2%             86.4%         +1.8
+        10%                21.6%               8.2%             86.5%         +1.9
+        20%                40.2%              16.7%             88.4%         +3.8
+        30%                50.2%              26.6%             88.9%         +4.4
+        50%                76.1%              45.5%             92.5%         +7.9
+
+  Basisrate ohne Markierung: 84.6 % Treffer.
+  'Anreicherung' ist der Gewinn an Trefferquote unter den nicht
+  markierten Laeufen -- das, was ein Anwender davon haette.
+
+============================================================================================
+  5. Dieselbe Rechnung fuer ALLE 307 Komplexe
+============================================================================================
+
+  Die Abschnitte 1 bis 4 betrachten nur LOESBARE Komplexe -- solche, in denen
+  ueberhaupt eine korrekte Pose gezogen wurde. Dort beantwortet der Score die
+  schwere Frage: "eine richtige Pose lag vor, habe ich sie genommen?"
+
+  Zur Inferenzzeit weiss man das aber nicht. Da lautet die Frage: "ist die
+  Pose, die ich gerade ausliefere, korrekt?" -- und in 300 der 1535 Faelle
+  lautet die Antwort schon deshalb nein, weil nichts Richtiges gezogen wurde.
+  Diese Faelle haben niedrige Scores und sind leicht zu erkennen. Deshalb ist
+  die AUC auf der vollen Population hoeher; sie loest eine leichtere Aufgabe.
+
+  Beide Zahlen sind richtig. Welche gilt, haengt an der Frage.
+
+  1535 Faelle, davon 313 unloesbar
+
+  Frage                                                    AUC
+  ist die ausgelieferte Pose korrekt? (alle)             0.814
+  wurde ueberhaupt etwas Richtiges gezogen?              0.870
+  richtig gewaehlt, GEGEBEN es lag was vor?              0.689
+
+  Die erste Zahl ist eine Mischung aus der zweiten (leicht) und der
+  dritten (schwer). Sie ist die operativ richtige, aber der Score
+  verdankt ihr Niveau zum grossen Teil der leichten Teilaufgabe.
+
+   markiert  Fehlgriffe erwischt   Treffer geopfert   Treffer im Rest  Anreicherung
+         5%                16.2%               0.1%             71.8%         +3.7
+        10%                30.9%               0.5%             75.4%         +7.3
+        20%                48.3%               7.0%             79.3%        +11.2
+        30%                61.4%              15.3%             82.3%        +14.2
+        50%                79.3%              36.6%             86.5%        +18.5
+
+  Basisrate ohne Markierung: 68.1 % Treffer.

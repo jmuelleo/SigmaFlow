@@ -1,0 +1,86 @@
+################################################################################################
+  Clusterkonzentration oder Mixed Score -- was traegt die Frage
+  'vertrauen wir dieser Pose?'
+################################################################################################
+
+  Vorzeichen sind so gedreht, dass hoehere Werte 'vertrauenswuerdig'
+  bedeuten sollen. AUC unter 0,5 hiesse: das Mass zeigt in die
+  Gegenrichtung.
+
+  === PB308 (1535 Faelle, 313 unloesbar) ===
+  Mass                       treffer   loesbar   gewaehlt   (operativ)
+  Mixed Score                  0.814     0.870      0.689
+  Rueckhalt der Pose           0.775     0.798      0.698
+  groesster Cluster            0.731     0.777      0.627
+  p_agree unter 2 A            0.763     0.813      0.652
+  Entropie der Massen          0.759     0.804      0.655
+  Zahl der Cluster             0.667     0.723      0.558
+
+  === ASTEX (425 Faelle, 25 unloesbar) ===
+  Mass                       treffer   loesbar   gewaehlt   (operativ)
+  Mixed Score                  0.765     0.845      0.715
+  Rueckhalt der Pose           0.715     0.665      0.728
+  groesster Cluster            0.687     0.681      0.680
+  p_agree unter 2 A            0.752     0.727      0.757
+  Entropie der Massen          0.744     0.755      0.726
+  Zahl der Cluster             0.584     0.575      0.584
+
+  Spalte 'treffer' ist die operative: ist die ausgelieferte Pose korrekt?
+  'loesbar' und 'gewaehlt' zerlegen sie in die leichte und die schwere
+  Teilaufgabe.
+
+================================================================================================
+  Bringt die Kombination mehr als der Mixed Score allein?
+  Logistische Regression, fuenf Falten gruppiert nach Komplex.
+================================================================================================
+
+  PB308    nur Mixed Score: AUC 0.813
+    zusaetzlich                    AUC   Differenz            95%-KI
+    Rueckhalt der Pose           0.846      +0.033  [+0.012,+0.054] *
+    groesster Cluster            0.836      +0.023  [+0.005,+0.040] *
+    p_agree unter 2 A            0.853      +0.040  [+0.019,+0.061] *
+    Entropie der Massen          0.834      +0.021  [+0.002,+0.039] *
+    Zahl der Cluster             0.831      +0.018  [+0.006,+0.030] *
+    alles zusammen               0.857      +0.044
+
+  ASTEX    nur Mixed Score: AUC 0.751
+    zusaetzlich                    AUC   Differenz            95%-KI
+    Rueckhalt der Pose           0.779      +0.028  [-0.019,+0.070]
+    groesster Cluster            0.771      +0.020  [-0.019,+0.061]
+    p_agree unter 2 A            0.811      +0.061  [-0.012,+0.131]
+    Entropie der Massen          0.777      +0.026  [-0.020,+0.069]
+    Zahl der Cluster             0.766      +0.016  [-0.019,+0.051]
+    alles zusammen               0.808      +0.058
+
+================================================================================================
+  Sind die Masse ueberhaupt komplementaer? (Spearman auf PB308)
+================================================================================================
+
+                        Mixed Score  Rueckhalt d  groesster C  p_agree unt  Entropie de  Zahl der Cl
+  Mixed Score                  1.00         0.32         0.27         0.28        -0.35        -0.14
+  Rueckhalt der Pose           0.32         1.00         0.86         0.71        -0.71        -0.74
+  groesster Cluster            0.27         0.86         1.00         0.81        -0.80        -0.86
+  p_agree unter 2 A            0.28         0.71         0.81         1.00        -0.73        -0.71
+  Entropie der Massen         -0.35        -0.71        -0.80        -0.73         1.00         0.49
+  Zahl der Cluster            -0.14        -0.74        -0.86        -0.71         0.49         1.00
+
+  Werte nahe 0 zwischen Score und den Clustermassen heissen: die
+  Information ist weitgehend unabhaengig, eine Kombination lohnt sich.
+
+================================================================================================
+  Praktisch: die schwaechsten x Prozent je Zelle als unsicher markieren
+================================================================================================
+
+  PB308, Basisrate 68.1 % Treffer
+   markiert       nur Mixed Score         nur Rueckhalt            kombiniert
+        10%       30.9% /    75.4%       35.2% /    76.0%       30.5% /    75.2%
+        20%       48.3% /    79.3%       52.1% /    80.2%       51.8% /    80.7%
+        30%       61.4% /    82.3%       63.8% /    83.1%       68.4% /    85.5%
+  je Spalte: Anteil der gefangenen Fehlgriffe / Trefferquote im Rest
+
+  ASTEX, Basisrate 83.5 % Treffer
+   markiert       nur Mixed Score         nur Rueckhalt            kombiniert
+        10%       28.6% /    87.1%       39.9% /    88.2%       35.7% /    87.9%
+        20%       49.2% /    89.7%       60.4% /    91.3%       61.2% /    91.2%
+        30%       59.2% /    90.2%       76.7% /    93.1%       77.3% /    93.9%
+  je Spalte: Anteil der gefangenen Fehlgriffe / Trefferquote im Rest

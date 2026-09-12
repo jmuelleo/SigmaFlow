@@ -1,0 +1,19 @@
+# PDBbind v2020.R1, refined set, OHNE die nachweislich fehlerhaften Komplexe.
+#
+# WARUM ES DIESE DATEI GEBEN MUSS
+#   Es reicht NICHT, nur general zu kuratieren. Das Rezept trainiert auf
+#   [general, refined], und `MetaFront` dedupliziert nicht -- die entfernten
+#   Komplexe kaemen ueber refined vollstaendig wieder herein, und der
+#   kuratierte Lauf waere gar keiner.
+#
+# Anzulegen mit:
+#   QUELLE=$D/pdbbind/refined-set ZIEL=$D/pdbbind/refined-set-kuratiert \
+#     N_VAL=0 MIN_TREFFER_PROZENT=0 bash arc/make_kuratiert_dir.sh
+#   MIN_TREFFER_PROZENT=0, weil nur ein Bruchteil der 1067 Ausschlusscodes
+#   ueberhaupt in refined liegt -- die Vorgabe 90 % waere hier ein Fehlalarm.
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "pdbbind-refined-kuratiert"
+dataset: "pdbbind/refined-set-kuratiert/"
+pdb_regex: ".*pocket\\.pdb$"
+sdf_regex: ".*ligand.*\\.sdf$"

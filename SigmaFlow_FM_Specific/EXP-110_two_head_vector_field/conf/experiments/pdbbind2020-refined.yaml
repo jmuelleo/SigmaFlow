@@ -1,0 +1,14 @@
+# PDBbind v2020 ORIGINAL-Ausgabe, refined set, 5316 Komplexe.
+#
+# ACHTUNG, DOPPELZAEHLUNG
+#   Das publizierte Rezept trainiert auf [general, refined], und refined ist
+#   TEILMENGE von general. `MetaFront` dedupliziert nicht -- diese 5316
+#   Komplexe gehen also zweimal in eine Epoche ein. Das ist im Original so
+#   und wird hier bewusst nachgebildet; es muss nur in FINAL_N_TRAIN
+#   mitgerechnet werden (19443 + 5316 = 24759).
+
+_target_: sigmadock.experiments.ExperimentConfig
+name: "pdbbind2020-refined"
+dataset: "pdbbind2020/refined-set/"
+pdb_regex: ".*pocket\\.pdb$"
+sdf_regex: ".*ligand.*\\.sdf$"

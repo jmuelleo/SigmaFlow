@@ -1,0 +1,50 @@
+# Training artefacts. Regenerable from the scripts in arc/.
+# Note the "sigmadock" segment: a bare "experiments/" would also match
+# conf/experiments/, which holds the dataset definitions and must stay.
+experiments/sigmadock/
+outputs/
+wandb/
+*.ckpt
+lightning_logs/
+
+# Generated poses and per-pose evaluation tables. Scoped to the directories the
+# sampling and evaluation scripts write into, so that the small SDF fixtures
+# under notebooks/dummy_data stay in the repository.
+results/
+learning_curve_cpu/
+posebusters_redock_curve/
+hydra_out_*/
+snapshots/
+snapshots_korrekt/
+per_pose.csv
+per_complex.csv
+evaluation.json
+
+# The per-complex table behind the bootstrap tests, ~80 MB.
+# Written by SigmaFlow_Variants/ergebnisse_72h.py next to the aggregate file.
+ergebnisse_72h_je_komplex.csv
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# Editors and OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# LaTeX build products
+*.aux
+*.log
+*.out
+*.toc
+*.lof
+*.lot
+*.bbl
+*.blg
+*.synctex.gz
