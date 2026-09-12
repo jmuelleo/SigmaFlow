@@ -1,7 +1,6 @@
 # SigmaFlow
 
-Code for the MSc dissertation *Replacing SE(3) Diffusion with Riemannian Flow
-Matching for Fragment-Based Molecular Docking*.
+Code for the MSc dissertation *SigmaFlow: Riemannian Flow Matching for Generative Protein-Ligand Docking*.
 
 SigmaFlow is a minimally invasive replacement of SigmaDock's score-based
 SE(3) diffusion by Riemannian flow matching. The fragment state space, the
@@ -70,19 +69,6 @@ file is the single source of truth: `final_tables.py`, `final_comparison.py` and
 `plot_ranking.py` read it rather than recomputing, so tables and figures cannot
 drift apart.
 
-## Two conventions worth knowing
-
-**PoseBusters rates are over 307 complexes, not 308.** The complex `7XPO_UPG`
-never yields a pose, in any model. Each seed writes 308 SDF files because one
-other complex is emitted twice; the duplicate is removed before merging. All
-three models see exactly the same 307 complexes, so the comparison is unaffected.
-
-**Astex overlaps the training data.** PoseBusters v2 is a temporal split with no
-overlap with PDBbind. The Astex Diverse Set is not: 47 of its 85 complexes appear
-in PDBbind v2020, matched on both PDB entry and ligand code. This applies equally
-to the published SigmaDock figures, which are trained on the same data, so the
-comparison is like for like.
-
 ## What is not in this repository
 
 Model checkpoints, generated poses and per-pose evaluation tables are not
@@ -91,7 +77,7 @@ committed. They are large and regenerable from the scripts here.
 bootstrap tests, is also omitted for size; `ergebnisse_72h.py` writes it
 alongside the aggregate file.
 
-The SigmaDock source tree is not included. It is third-party code and not ours
+The SigmaDock source tree is not included. It is third-party code and not mine
 to redistribute. The baseline reported in the dissertation is our own
 reproduction, trained from that code under the configuration recorded in `arc/`.
 
