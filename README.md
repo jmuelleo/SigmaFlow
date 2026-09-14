@@ -5,7 +5,7 @@ Code for the MSc dissertation *SigmaFlow: Riemannian Flow Matching for Generativ
 SigmaFlow is a minimally invasive replacement of SigmaDock's score-based
 SE(3) diffusion by Riemannian flow matching. The fragment state space, the
 EquiformerV2 backbone, the data pipeline and the evaluation protocol are kept
-fixed; only the generative mechanism changes.
+fixe, only the generative mechanism changes.
 
 ## The three models
 
